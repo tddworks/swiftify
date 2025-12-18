@@ -165,19 +165,13 @@ struct ContentView: View {
         statusText = "Subscribing to current user..."
 
         // Using the Swiftify-generated AsyncStream property!
-        // Note: The property is named `currentUserStream` to avoid collision with Kotlin property
-        var count = 0
+        // Note: StateFlow emits current value immediately, then waits for changes
+        // We just get the first value since StateFlow is a state holder
         for await user in repository.currentUserStream {
-            count += 1
-            statusText = "Current user update #\(count): \(user)"
-
-            // Stop after 3 updates for demo
-            if count >= 3 {
-                break
-            }
+            statusText = "Current user: \(user)"
+            break // StateFlow gives us the current state immediately
         }
 
-        statusText = "Received \(count) current user updates"
         isLoading = false
     }
 }
