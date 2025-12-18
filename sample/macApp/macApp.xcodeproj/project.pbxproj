@@ -11,9 +11,8 @@
 		1100000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1200000000000002 /* ContentView.swift */; };
 		1100000000000003 /* SampleKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1200000000000003 /* SampleKit.framework */; };
 		1100000000000004 /* SampleKit.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1200000000000003 /* SampleKit.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		1100000000000005 /* UserRepository+Swiftify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1200000000000005 /* UserRepository+Swiftify.swift */; };
+		1100000000000005 /* Swiftify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1200000000000005 /* Swiftify.swift */; };
 		1100000000000006 /* SwiftifyRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1200000000000006 /* SwiftifyRuntime.swift */; };
-		/* NetworkResult+Swiftify.swift removed - conflicts with Kotlin class */
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -35,9 +34,8 @@
 		1200000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		1200000000000003 /* SampleKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SampleKit.framework; path = ../build/bin/macosArm64/releaseFramework/SampleKit.framework; sourceTree = "<group>"; };
 		1200000000000004 /* macApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1200000000000005 /* UserRepository+Swiftify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "UserRepository+Swiftify.swift"; path = "../build/generated/swiftify/UserRepository+Swiftify.swift"; sourceTree = "<group>"; };
+		1200000000000005 /* Swiftify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Swiftify.swift; path = ../build/generated/swiftify/Swiftify.swift; sourceTree = "<group>"; };
 		1200000000000006 /* SwiftifyRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SwiftifyRuntime.swift; path = ../build/generated/swiftify/SwiftifyRuntime.swift; sourceTree = "<group>"; };
-		1200000000000007 /* NetworkResult+Swiftify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "NetworkResult+Swiftify.swift"; path = "../build/generated/swiftify/NetworkResult+Swiftify.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,9 +72,8 @@
 		1500000000000003 /* Generated */ = {
 			isa = PBXGroup;
 			children = (
-				1200000000000005 /* UserRepository+Swiftify.swift */,
+				1200000000000005 /* Swiftify.swift */,
 				1200000000000006 /* SwiftifyRuntime.swift */,
-				1200000000000007 /* NetworkResult+Swiftify.swift */,
 			);
 			name = Generated;
 			sourceTree = "<group>";
@@ -157,7 +154,7 @@
 			files = (
 				1100000000000001 /* macAppApp.swift in Sources */,
 				1100000000000002 /* ContentView.swift in Sources */,
-				1100000000000005 /* UserRepository+Swiftify.swift in Sources */,
+				1100000000000005 /* Swiftify.swift in Sources */,
 				1100000000000006 /* SwiftifyRuntime.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
