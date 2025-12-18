@@ -145,11 +145,14 @@ Built with TDD (Test-Driven Development):
 
 ## Test Coverage
 
-- 58 unit tests covering:
-  - Swift type representations
-  - Enum spec and generation
-  - Async function spec and generation
-  - DSL configuration
+- **81 tests** across unit and integration:
+  - Swift type representations (14 tests)
+  - Enum spec and generation (14 tests)
+  - Async function spec and generation (20 tests)
+  - DSL configuration (10 tests)
+  - Kotlin declaration analysis (10 tests)
+  - End-to-end transformation (7 tests)
+  - Integration tests (8 tests)
 
 ## License
 
