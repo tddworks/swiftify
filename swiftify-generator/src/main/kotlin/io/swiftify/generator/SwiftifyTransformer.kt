@@ -225,7 +225,7 @@ class SwiftifyTransformer {
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = param.defaultValue
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
             )
         }
 
@@ -271,7 +271,7 @@ class SwiftifyTransformer {
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = param.defaultValue
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
             )
         }
 
@@ -307,7 +307,7 @@ class SwiftifyTransformer {
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = param.defaultValue
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
             )
         }
 
@@ -335,7 +335,7 @@ class SwiftifyTransformer {
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = param.defaultValue
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
             )
         }
 
@@ -387,6 +387,17 @@ class SwiftifyTransformer {
         }
 
         return if (isNullable) SwiftType.Optional(baseType) else baseType
+    }
+
+    /**
+     * Convert Kotlin default value to Swift.
+     */
+    private fun mapKotlinDefaultValueToSwift(kotlinDefaultValue: String?): String? {
+        return when (kotlinDefaultValue) {
+            null -> null
+            "null" -> "nil"
+            else -> kotlinDefaultValue
+        }
     }
 }
 
