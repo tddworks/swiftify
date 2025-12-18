@@ -13,10 +13,10 @@ class KotlinDeclarationAnalyzer {
         """(@SwiftEnum\s*\([^)]*\)\s*)?sealed\s+class\s+(\w+)(?:<([^>]+)>)?"""
     )
     private val dataClassPattern = Regex(
-        """data\s+class\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)\s*:\s*(\w+)"""
+        """data\s+class\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)\s*:\s*(\w+)(?:<[^>]*>)?(?:\(\))?"""
     )
     private val objectPattern = Regex(
-        """object\s+(\w+)\s*:\s*(\w+)"""
+        """(?:data\s+)?object\s+(\w+)\s*:\s*(\w+)(?:<[^>]*>)?(?:\(\))?"""
     )
     private val suspendFunctionPattern = Regex(
         """(@SwiftAsync\s*\([^)]*\)\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?"""
@@ -45,18 +45,32 @@ class KotlinDeclarationAnalyzer {
      */
     fun analyze(source: String): List<KotlinDeclaration> {
         val declarations = mutableListOf<KotlinDeclaration>()
+
+        // Strip comments to avoid false matches
+        val cleanedSource = stripComments(source)
+
         val packageName = packagePattern.find(source)?.groupValues?.get(1) ?: ""
 
         // Analyze sealed classes
-        declarations += analyzeSealedClasses(source, packageName)
+        declarations += analyzeSealedClasses(cleanedSource, packageName)
 
         // Analyze suspend functions
-        declarations += analyzeSuspendFunctions(source, packageName)
+        declarations += analyzeSuspendFunctions(cleanedSource, packageName)
 
         // Analyze Flow-returning functions
-        declarations += analyzeFlowFunctions(source, packageName)
+        declarations += analyzeFlowFunctions(cleanedSource, packageName)
 
         return declarations
+    }
+
+    /**
+     * Strip single-line and multi-line comments from source code.
+     */
+    private fun stripComments(source: String): String {
+        // Remove multi-line comments (/** ... */ and /* ... */)
+        val withoutBlockComments = source.replace(Regex("""/\*[\s\S]*?\*/"""), "")
+        // Remove single-line comments (// ...)
+        return withoutBlockComments.replace(Regex("""//.*$""", RegexOption.MULTILINE), "")
     }
 
     private fun analyzeSealedClasses(source: String, packageName: String): List<SealedClassDeclaration> {
