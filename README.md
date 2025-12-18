@@ -409,6 +409,65 @@ swiftify/
 
 ---
 
+## Sample Project
+
+The `sample/` directory contains a complete demo project with macOS and iOS apps showcasing all Swiftify features.
+
+### Quick Start
+
+```bash
+# Run macOS demo app
+./run-mac-demo.sh
+
+# Run iOS demo app (opens Xcode)
+./run-ios-demo.sh
+```
+
+### Sample Structure
+
+```
+sample/
+├── src/commonMain/kotlin/com/example/
+│   ├── UserRepository.kt      # Basic async/await demo
+│   ├── ProductRepository.kt   # E-commerce with cart, checkout
+│   ├── ChatRepository.kt      # Real-time messaging
+│   └── NetworkResult.kt       # Sealed class example
+├── macApp/                    # macOS SwiftUI app
+│   └── macApp/
+│       └── ContentView.swift  # Sidebar navigation with 3 demos
+├── iosApp/                    # iOS SwiftUI app
+│   └── iosApp/
+│       └── ContentView.swift  # Tab navigation with 3 demos
+└── build/generated/swiftify/
+    ├── Swiftify.swift         # Generated Swift extensions
+    └── SwiftifyRuntime.swift  # Runtime helpers
+```
+
+### Demo Features
+
+| Demo | Features Demonstrated |
+|------|----------------------|
+| **User** | `@SwiftAsync` for suspend functions, `@SwiftFlow` for user updates stream |
+| **E-commerce** | Default parameters, cart state, `Flow` for price watching |
+| **Chat** | Connection state, real-time messages, typing indicators |
+
+### Manual Build Steps
+
+```bash
+# 1. Build the Kotlin framework
+./gradlew :sample:linkDebugFrameworkMacosArm64
+
+# 2. Generate Swift wrappers
+./gradlew :sample:swiftifyGenerate
+
+# 3. Open and run in Xcode
+open sample/macApp/macApp.xcodeproj
+# or
+open sample/iosApp/iosApp.xcodeproj
+```
+
+---
+
 ## Development
 
 ```bash
@@ -423,6 +482,10 @@ swiftify/
 
 # Generate sample Swift code
 ./gradlew :sample:swiftifyGenerate
+
+# Run demo apps
+./run-mac-demo.sh
+./run-ios-demo.sh
 ```
 
 ---
