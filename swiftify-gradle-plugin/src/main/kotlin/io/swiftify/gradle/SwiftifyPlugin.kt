@@ -102,6 +102,7 @@ class SwiftifyPlugin : Plugin<Project> {
             task.group = "swiftify"
             task.description = "Generate Swift code from Kotlin declarations"
             task.outputDirectory.set(extension.outputDirectory)
+            task.frameworkName.set(extension.frameworkName)
         }
     }
 
@@ -226,6 +227,11 @@ abstract class SwiftifyExtension(private val project: Project) {
     abstract val outputDirectory: DirectoryProperty
 
     /**
+     * Framework name for imports. Defaults to project name with first letter capitalized.
+     */
+    abstract val frameworkName: Property<String>
+
+    /**
      * Configuration for sealed class transformations.
      */
     val sealedClassConfig = SealedClassConfig()
@@ -242,6 +248,7 @@ abstract class SwiftifyExtension(private val project: Project) {
 
     init {
         enabled.convention(true)
+        frameworkName.convention(project.name.replaceFirstChar { it.uppercase() })
     }
 
     /**

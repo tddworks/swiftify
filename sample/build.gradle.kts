@@ -29,6 +29,7 @@ kotlin {
 
 // Swiftify DSL configuration
 swiftify {
+    frameworkName.set("SampleKit")
     sealedClasses {
         transformToEnum(exhaustive = true)
     }

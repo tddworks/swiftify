@@ -127,7 +127,8 @@ class SwiftAsyncSequenceGenerator {
             appendLine("$indent            continuation.finish()")
             appendLine("$indent        }")
             appendLine("$indent    )")
-            appendLine("$indent    self.${spec.name}Flow.collect(collector: collector, completionHandler: { _ in })")
+            // Call the Kotlin Flow property (same name, returns Flow)
+            appendLine("$indent    self.${spec.name}.collect(collector: collector, completionHandler: { _ in })")
             appendLine("$indent}")
             append("}")
         } else {
@@ -165,7 +166,8 @@ class SwiftAsyncSequenceGenerator {
             appendLine("$indent            continuation.finish()")
             appendLine("$indent        }")
             appendLine("$indent    )")
-            append("$indent    self.${spec.name}Flow(")
+            // Call the Kotlin Flow function (same name, returns Flow)
+            append("$indent    self.${spec.name}(")
             spec.parameters.forEachIndexed { index, param ->
                 if (index > 0) append(", ")
                 append("${param.name}: ${param.name}")
@@ -241,7 +243,7 @@ class SwiftAsyncSequenceGenerator {
             append("self.")
         }
         // The Kotlin Flow property - use actual name, not __prefixed
-        appendLine("${spec.name}Flow.collect(collector: collector, completionHandler: { _ in })")
+        appendLine("${spec.name}.collect(collector: collector, completionHandler: { _ in })")
         appendLine("$indent}")
         append(baseIndent)
         append("}")
@@ -303,7 +305,7 @@ class SwiftAsyncSequenceGenerator {
             append("self.")
         }
         // Call the Kotlin Flow function with parameters
-        append("${spec.name}Flow(")
+        append("${spec.name}(")
         spec.parameters.forEachIndexed { index, param ->
             if (index > 0) append(", ")
             append("${param.name}: ${param.name}")
