@@ -11,6 +11,7 @@ dependencies {
     implementation(project(":swiftify-annotations"))
     implementation(project(":swiftify-generator"))
     implementation(project(":swiftify-analyzer"))
+    implementation(project(":swiftify-linker"))
 
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")

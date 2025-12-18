@@ -2,6 +2,8 @@ package io.swiftify.generator
 
 import io.swiftify.common.SwiftAsyncSequenceSpec
 import io.swiftify.common.SwiftParameter
+import io.swiftify.common.SwiftifyGenerationException
+import io.swiftify.common.SwiftifyValidationException
 
 /**
  * Generates Swift AsyncSequence declarations from SwiftAsyncSequenceSpec.
@@ -12,8 +14,50 @@ class SwiftAsyncSequenceGenerator {
 
     /**
      * Generate Swift AsyncSequence declaration.
+     *
+     * @throws SwiftifyValidationException if the spec is invalid
+     * @throws SwiftifyGenerationException if code generation fails
      */
-    fun generate(spec: SwiftAsyncSequenceSpec): String = buildString {
+    fun generate(spec: SwiftAsyncSequenceSpec): String {
+        validate(spec)
+        return try {
+            generateCode(spec)
+        } catch (e: Exception) {
+            if (e is SwiftifyValidationException) throw e
+            throw SwiftifyGenerationException(
+                "Failed to generate Swift AsyncSequence",
+                specType = "asyncSequence",
+                specName = spec.name,
+                cause = e
+            )
+        }
+    }
+
+    private fun validate(spec: SwiftAsyncSequenceSpec) {
+        val errors = mutableListOf<SwiftifyValidationException.ValidationError>()
+
+        if (spec.name.isBlank()) {
+            errors.add(SwiftifyValidationException.ValidationError(
+                "AsyncSequence name cannot be blank",
+                field = "name"
+            ))
+        }
+
+        spec.parameters.forEachIndexed { index, param ->
+            if (param.name.isBlank()) {
+                errors.add(SwiftifyValidationException.ValidationError(
+                    "Parameter name cannot be blank",
+                    field = "parameters[$index].name"
+                ))
+            }
+        }
+
+        if (errors.isNotEmpty()) {
+            throw SwiftifyValidationException(errors)
+        }
+    }
+
+    private fun generateCode(spec: SwiftAsyncSequenceSpec): String = buildString {
         val elementTypeStr = spec.elementType.swiftRepresentation
         val streamType = "AsyncStream<$elementTypeStr>"
 

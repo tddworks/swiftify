@@ -3,6 +3,8 @@ package io.swiftify.generator
 import io.swiftify.common.SwiftAsyncFunctionSpec
 import io.swiftify.common.SwiftParameter
 import io.swiftify.common.SwiftType
+import io.swiftify.common.SwiftifyGenerationException
+import io.swiftify.common.SwiftifyValidationException
 
 /**
  * Generates Swift async function declarations from SwiftAsyncFunctionSpec.
@@ -14,8 +16,50 @@ class SwiftAsyncFunctionGenerator {
 
     /**
      * Generate Swift async function declaration.
+     *
+     * @throws SwiftifyValidationException if the spec is invalid
+     * @throws SwiftifyGenerationException if code generation fails
      */
-    fun generate(spec: SwiftAsyncFunctionSpec): String = buildString {
+    fun generate(spec: SwiftAsyncFunctionSpec): String {
+        validate(spec)
+        return try {
+            generateCode(spec)
+        } catch (e: Exception) {
+            if (e is SwiftifyValidationException) throw e
+            throw SwiftifyGenerationException(
+                "Failed to generate Swift async function",
+                specType = "asyncFunction",
+                specName = spec.name,
+                cause = e
+            )
+        }
+    }
+
+    private fun validate(spec: SwiftAsyncFunctionSpec) {
+        val errors = mutableListOf<SwiftifyValidationException.ValidationError>()
+
+        if (spec.name.isBlank()) {
+            errors.add(SwiftifyValidationException.ValidationError(
+                "Function name cannot be blank",
+                field = "name"
+            ))
+        }
+
+        spec.parameters.forEachIndexed { index, param ->
+            if (param.name.isBlank()) {
+                errors.add(SwiftifyValidationException.ValidationError(
+                    "Parameter name cannot be blank",
+                    field = "parameters[$index].name"
+                ))
+            }
+        }
+
+        if (errors.isNotEmpty()) {
+            throw SwiftifyValidationException(errors)
+        }
+    }
+
+    private fun generateCode(spec: SwiftAsyncFunctionSpec): String = buildString {
         // Access level
         append(spec.accessLevel.swiftKeyword)
         append(" func ")
