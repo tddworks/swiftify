@@ -197,14 +197,99 @@ class SwiftAsyncFunctionGenerator {
     }
 
     /**
-     * Generate the full implementation that bridges to Kotlin.
+     * Generate function body only (without extension wrapper).
+     * Used for grouped extension generation where multiple functions share one extension.
      */
-    private fun generateImplementation(spec: SwiftAsyncFunctionSpec, className: String?): String = buildString {
+    fun generateFunctionBody(spec: SwiftAsyncFunctionSpec): String {
+        validate(spec)
+        return generateFunctionBodyInternal(spec)
+    }
+
+    /**
+     * Internal function body generation.
+     */
+    private fun generateFunctionBodyInternal(spec: SwiftAsyncFunctionSpec): String = buildString {
         // Signature
         append(generateSignature(spec))
         appendLine(" {")
 
         val indent = "    "
+        val returnType = spec.returnType
+
+        if (returnType is SwiftType.Void) {
+            if (spec.isThrowing) {
+                appendLine("${indent}try await withCheckedThrowingContinuation { continuation in")
+            } else {
+                appendLine("${indent}await withCheckedContinuation { continuation in")
+            }
+
+            append("$indent    self.${spec.name}(")
+            spec.parameters.forEachIndexed { index, param ->
+                if (index > 0) append(", ")
+                append("${param.name}: ${param.name}")
+            }
+            if (spec.parameters.isNotEmpty()) append(", ")
+            appendLine("completionHandler: { error in")
+
+            if (spec.isThrowing) {
+                appendLine("$indent        if let error = error {")
+                appendLine("$indent            continuation.resume(throwing: error)")
+                appendLine("$indent        } else {")
+                appendLine("$indent            continuation.resume(returning: ())")
+                appendLine("$indent        }")
+            } else {
+                appendLine("$indent        continuation.resume(returning: ())")
+            }
+            appendLine("$indent    })")
+            appendLine("$indent}")
+        } else {
+            if (spec.isThrowing) {
+                appendLine("${indent}return try await withCheckedThrowingContinuation { continuation in")
+            } else {
+                appendLine("${indent}return await withCheckedContinuation { continuation in")
+            }
+
+            append("$indent    self.${spec.name}(")
+            spec.parameters.forEachIndexed { index, param ->
+                if (index > 0) append(", ")
+                append("${param.name}: ${param.name}")
+            }
+            if (spec.parameters.isNotEmpty()) append(", ")
+            appendLine("completionHandler: { result, error in")
+
+            if (spec.isThrowing) {
+                appendLine("$indent        if let error = error {")
+                appendLine("$indent            continuation.resume(throwing: error)")
+                appendLine("$indent        } else if let result = result {")
+                appendLine("$indent            continuation.resume(returning: result)")
+                appendLine("$indent        }")
+            } else {
+                appendLine("$indent        continuation.resume(returning: result!)")
+            }
+            appendLine("$indent    })")
+            appendLine("$indent}")
+        }
+
+        append("}")
+    }
+
+    /**
+     * Generate the full implementation that bridges to Kotlin.
+     */
+    private fun generateImplementation(spec: SwiftAsyncFunctionSpec, className: String?): String = buildString {
+        val baseIndent = if (className != null) "    " else ""
+        val indent = "$baseIndent    "
+
+        // Wrap in extension if class name provided
+        if (className != null) {
+            appendLine("extension $className {")
+        }
+
+        // Signature
+        append(baseIndent)
+        append(generateSignature(spec))
+        appendLine(" {")
+
         val returnType = spec.returnType
 
         if (returnType is SwiftType.Void) {
@@ -215,12 +300,12 @@ class SwiftAsyncFunctionGenerator {
                 appendLine("${indent}await withCheckedContinuation { continuation in")
             }
 
-            // Call the Kotlin function
+            // Call the Kotlin function (use self. for class methods)
             append("$indent    ")
             if (className != null) {
                 append("self.")
             }
-            append("__${spec.name}(")
+            append("${spec.name}(")
             spec.parameters.forEachIndexed { index, param ->
                 if (index > 0) append(", ")
                 append("${param.name}: ${param.name}")
@@ -247,12 +332,12 @@ class SwiftAsyncFunctionGenerator {
                 appendLine("${indent}return await withCheckedContinuation { continuation in")
             }
 
-            // Call the Kotlin function
+            // Call the Kotlin function (use self. for class methods)
             append("$indent    ")
             if (className != null) {
                 append("self.")
             }
-            append("__${spec.name}(")
+            append("${spec.name}(")
             spec.parameters.forEachIndexed { index, param ->
                 if (index > 0) append(", ")
                 append("${param.name}: ${param.name}")
@@ -273,7 +358,14 @@ class SwiftAsyncFunctionGenerator {
             appendLine("$indent}")
         }
 
+        append(baseIndent)
         append("}")
+
+        // Close extension
+        if (className != null) {
+            appendLine()
+            append("}")
+        }
     }
 
     private fun validate(spec: SwiftAsyncFunctionSpec) {

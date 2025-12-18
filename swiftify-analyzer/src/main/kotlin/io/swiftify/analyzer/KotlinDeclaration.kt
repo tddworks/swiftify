@@ -58,7 +58,9 @@ data class SuspendFunctionDeclaration(
     val typeParameters: List<String> = emptyList(),
     val hasSwiftAsyncAnnotation: Boolean = false,
     val isThrowing: Boolean = true,
-    val receiverTypeName: String? = null
+    val receiverTypeName: String? = null,
+    /** The name of the class containing this function, if any */
+    val containingClassName: String? = null
 ) : KotlinDeclaration
 
 /**
@@ -83,5 +85,7 @@ data class FlowFunctionDeclaration(
     val parameters: List<ParameterDeclaration>,
     val elementTypeName: String,
     val hasSwiftFlowAnnotation: Boolean = false,
-    val isProperty: Boolean = false
+    val isProperty: Boolean = false,
+    /** The name of the class containing this function/property, if any */
+    val containingClassName: String? = null
 ) : KotlinDeclaration

@@ -39,6 +39,9 @@ class KotlinDeclarationAnalyzer {
     private val swiftAsyncAnnotationPattern = Regex(
         """@SwiftAsync\s*\(\s*throwing\s*=\s*(true|false)\s*\)"""
     )
+    private val classPattern = Regex(
+        """(?:open\s+|abstract\s+)?class\s+(\w+)"""
+    )
 
     /**
      * Analyze Kotlin source code and extract transformable declarations.
@@ -51,14 +54,17 @@ class KotlinDeclarationAnalyzer {
 
         val packageName = packagePattern.find(source)?.groupValues?.get(1) ?: ""
 
+        // Find class ranges for determining containing class
+        val classRanges = findClassRanges(cleanedSource)
+
         // Analyze sealed classes
         declarations += analyzeSealedClasses(cleanedSource, packageName)
 
         // Analyze suspend functions
-        declarations += analyzeSuspendFunctions(cleanedSource, packageName)
+        declarations += analyzeSuspendFunctions(cleanedSource, packageName, classRanges)
 
         // Analyze Flow-returning functions
-        declarations += analyzeFlowFunctions(cleanedSource, packageName)
+        declarations += analyzeFlowFunctions(cleanedSource, packageName, classRanges)
 
         return declarations
     }
@@ -71,6 +77,56 @@ class KotlinDeclarationAnalyzer {
         val withoutBlockComments = source.replace(Regex("""/\*[\s\S]*?\*/"""), "")
         // Remove single-line comments (// ...)
         return withoutBlockComments.replace(Regex("""//.*$""", RegexOption.MULTILINE), "")
+    }
+
+    /**
+     * Find all class declarations with their ranges in the source.
+     */
+    private fun findClassRanges(source: String): List<Pair<String, IntRange>> {
+        val classRanges = mutableListOf<Pair<String, IntRange>>()
+
+        classPattern.findAll(source).forEach { match ->
+            val className = match.groupValues[1]
+            val startIndex = match.range.first
+
+            // Find the class body by counting braces
+            var braceCount = 0
+            var foundFirstBrace = false
+            var endIndex = startIndex
+
+            for (i in startIndex until source.length) {
+                when (source[i]) {
+                    '{' -> {
+                        braceCount++
+                        foundFirstBrace = true
+                    }
+                    '}' -> {
+                        braceCount--
+                        if (foundFirstBrace && braceCount == 0) {
+                            endIndex = i
+                            break
+                        }
+                    }
+                }
+            }
+
+            if (foundFirstBrace && endIndex > startIndex) {
+                classRanges.add(className to startIndex..endIndex)
+            }
+        }
+
+        return classRanges
+    }
+
+    /**
+     * Find the containing class for a given position in the source.
+     */
+    private fun findContainingClass(position: Int, classRanges: List<Pair<String, IntRange>>): String? {
+        // Find the most deeply nested class containing this position
+        return classRanges
+            .filter { position in it.second }
+            .maxByOrNull { it.second.first } // The one that starts latest is most nested
+            ?.first
     }
 
     private fun analyzeSealedClasses(source: String, packageName: String): List<SealedClassDeclaration> {
@@ -169,7 +225,11 @@ class KotlinDeclarationAnalyzer {
         }.toList()
     }
 
-    private fun analyzeSuspendFunctions(source: String, packageName: String): List<SuspendFunctionDeclaration> {
+    private fun analyzeSuspendFunctions(
+        source: String,
+        packageName: String,
+        classRanges: List<Pair<String, IntRange>>
+    ): List<SuspendFunctionDeclaration> {
         val results = mutableListOf<SuspendFunctionDeclaration>()
 
         suspendFunctionPattern.findAll(source).forEach { match ->
@@ -191,6 +251,9 @@ class KotlinDeclarationAnalyzer {
 
             val parameters = parseParameters(paramsStr)
 
+            // Find containing class
+            val containingClass = findContainingClass(match.range.first, classRanges)
+
             results += SuspendFunctionDeclaration(
                 qualifiedName = if (packageName.isNotEmpty()) "$packageName.$funcName" else funcName,
                 simpleName = funcName,
@@ -200,7 +263,8 @@ class KotlinDeclarationAnalyzer {
                 returnTypeName = returnType,
                 typeParameters = typeParams,
                 hasSwiftAsyncAnnotation = hasAnnotation,
-                isThrowing = isThrowing
+                isThrowing = isThrowing,
+                containingClassName = containingClass
             )
         }
 
@@ -224,7 +288,11 @@ class KotlinDeclarationAnalyzer {
         }.toList()
     }
 
-    private fun analyzeFlowFunctions(source: String, packageName: String): List<FlowFunctionDeclaration> {
+    private fun analyzeFlowFunctions(
+        source: String,
+        packageName: String,
+        classRanges: List<Pair<String, IntRange>>
+    ): List<FlowFunctionDeclaration> {
         val results = mutableListOf<FlowFunctionDeclaration>()
 
         // Analyze Flow-returning functions
@@ -235,6 +303,9 @@ class KotlinDeclarationAnalyzer {
 
             val parameters = parseParameters(paramsStr)
 
+            // Find containing class
+            val containingClass = findContainingClass(match.range.first, classRanges)
+
             results += FlowFunctionDeclaration(
                 qualifiedName = if (packageName.isNotEmpty()) "$packageName.$funcName" else funcName,
                 simpleName = funcName,
@@ -242,7 +313,8 @@ class KotlinDeclarationAnalyzer {
                 name = funcName,
                 parameters = parameters,
                 elementTypeName = elementType.removeSuffix("?"),
-                isProperty = false
+                isProperty = false,
+                containingClassName = containingClass
             )
         }
 
@@ -251,6 +323,9 @@ class KotlinDeclarationAnalyzer {
             val propName = match.groupValues[1]
             val elementType = match.groupValues[2]
 
+            // Find containing class
+            val containingClass = findContainingClass(match.range.first, classRanges)
+
             results += FlowFunctionDeclaration(
                 qualifiedName = if (packageName.isNotEmpty()) "$packageName.$propName" else propName,
                 simpleName = propName,
@@ -258,7 +333,8 @@ class KotlinDeclarationAnalyzer {
                 name = propName,
                 parameters = emptyList(),
                 elementTypeName = elementType.removeSuffix("?"),
-                isProperty = true
+                isProperty = true,
+                containingClassName = containingClass
             )
         }
 

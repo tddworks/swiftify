@@ -90,14 +90,111 @@ class SwiftAsyncSequenceGenerator {
         }
     }
 
+    /**
+     * Generate function/property body only (without extension wrapper).
+     * Used for grouped extension generation where multiple functions share one extension.
+     */
+    fun generateFunctionBody(spec: SwiftAsyncSequenceSpec): String {
+        validate(spec)
+        return generateFunctionBodyInternal(spec)
+    }
+
+    /**
+     * Internal function body generation.
+     */
+    private fun generateFunctionBodyInternal(spec: SwiftAsyncSequenceSpec): String = buildString {
+        val elementTypeStr = spec.elementType.swiftRepresentation
+        val streamType = "AsyncStream<$elementTypeStr>"
+        val indent = "    "
+
+        if (spec.isProperty) {
+            // Property
+            append(spec.accessLevel.swiftKeyword)
+            append(" var ")
+            append(spec.name)
+            append(": ")
+            appendLine("$streamType {")
+
+            appendLine("${indent}return AsyncStream { continuation in")
+            appendLine("$indent    let collector = SwiftifyFlowCollector<$elementTypeStr>(")
+            appendLine("$indent        onEmit: { value in")
+            appendLine("$indent            continuation.yield(value)")
+            appendLine("$indent        },")
+            appendLine("$indent        onComplete: {")
+            appendLine("$indent            continuation.finish()")
+            appendLine("$indent        },")
+            appendLine("$indent        onError: { _ in")
+            appendLine("$indent            continuation.finish()")
+            appendLine("$indent        }")
+            appendLine("$indent    )")
+            appendLine("$indent    self.${spec.name}Flow.collect(collector: collector, completionHandler: { _ in })")
+            appendLine("$indent}")
+            append("}")
+        } else {
+            // Function
+            append(spec.accessLevel.swiftKeyword)
+            append(" func ")
+            append(spec.name)
+            if (spec.typeParameters.isNotEmpty()) {
+                append("<")
+                append(spec.typeParameters.joinToString(", "))
+                append(">")
+            }
+            append("(")
+            append(spec.parameters.joinToString(", ") { param ->
+                buildString {
+                    if (param.externalName == "_") append("_ ")
+                    else if (param.externalName != null) append("${param.externalName} ")
+                    append("${param.name}: ${param.type.swiftRepresentation}")
+                    if (param.defaultValue != null) append(" = ${param.defaultValue}")
+                }
+            })
+            append(")")
+            append(" -> ")
+            appendLine("$streamType {")
+
+            appendLine("${indent}return AsyncStream { continuation in")
+            appendLine("$indent    let collector = SwiftifyFlowCollector<$elementTypeStr>(")
+            appendLine("$indent        onEmit: { value in")
+            appendLine("$indent            continuation.yield(value)")
+            appendLine("$indent        },")
+            appendLine("$indent        onComplete: {")
+            appendLine("$indent            continuation.finish()")
+            appendLine("$indent        },")
+            appendLine("$indent        onError: { _ in")
+            appendLine("$indent            continuation.finish()")
+            appendLine("$indent        }")
+            appendLine("$indent    )")
+            append("$indent    self.${spec.name}Flow(")
+            spec.parameters.forEachIndexed { index, param ->
+                if (index > 0) append(", ")
+                append("${param.name}: ${param.name}")
+            }
+            appendLine(").collect(collector: collector, completionHandler: { _ in })")
+            appendLine("$indent}")
+            append("}")
+        }
+    }
+
     private fun generateImplementation(spec: SwiftAsyncSequenceSpec, className: String?): String = buildString {
         val elementTypeStr = spec.elementType.swiftRepresentation
         val streamType = "AsyncStream<$elementTypeStr>"
+
+        // Wrap in extension if class name provided
+        if (className != null) {
+            appendLine("extension $className {")
+        }
 
         if (spec.isProperty) {
             generatePropertyImplementation(spec, streamType, className)
         } else {
             generateFunctionImplementation(spec, streamType, className)
+        }
+
+        // Close extension
+        if (className != null) {
+            appendLine()
+            append("}")
         }
     }
 
@@ -115,8 +212,10 @@ class SwiftAsyncSequenceGenerator {
         className: String?
     ) {
         val elementTypeStr = spec.elementType.swiftRepresentation
-        val indent = "    "
+        val baseIndent = if (className != null) "    " else ""
+        val indent = "$baseIndent    "
 
+        append(baseIndent)
         append(spec.accessLevel.swiftKeyword)
         append(" var ")
         append(spec.name)
@@ -136,13 +235,15 @@ class SwiftAsyncSequenceGenerator {
         appendLine("$indent        }")
         appendLine("$indent    )")
 
-        // Call the Kotlin property
+        // Call the Kotlin property (Flow property accessed via self)
         append("$indent    ")
         if (className != null) {
             append("self.")
         }
-        appendLine("__${spec.name}.collect(collector: collector, completionHandler: { _ in })")
+        // The Kotlin Flow property - use actual name, not __prefixed
+        appendLine("${spec.name}Flow.collect(collector: collector, completionHandler: { _ in })")
         appendLine("$indent}")
+        append(baseIndent)
         append("}")
     }
 
@@ -175,9 +276,11 @@ class SwiftAsyncSequenceGenerator {
         className: String?
     ) {
         val elementTypeStr = spec.elementType.swiftRepresentation
-        val indent = "    "
+        val baseIndent = if (className != null) "    " else ""
+        val indent = "$baseIndent    "
 
         // Signature
+        append(baseIndent)
         generateFunctionSignature(spec, streamType)
         appendLine(" {")
 
@@ -194,18 +297,20 @@ class SwiftAsyncSequenceGenerator {
         appendLine("$indent        }")
         appendLine("$indent    )")
 
-        // Call the Kotlin function
+        // Call the Kotlin function (Flow function returns Flow, call collect on it)
         append("$indent    ")
         if (className != null) {
             append("self.")
         }
-        append("__${spec.name}(")
+        // Call the Kotlin Flow function with parameters
+        append("${spec.name}Flow(")
         spec.parameters.forEachIndexed { index, param ->
             if (index > 0) append(", ")
             append("${param.name}: ${param.name}")
         }
         appendLine(").collect(collector: collector, completionHandler: { _ in })")
         appendLine("$indent}")
+        append(baseIndent)
         append("}")
     }
 

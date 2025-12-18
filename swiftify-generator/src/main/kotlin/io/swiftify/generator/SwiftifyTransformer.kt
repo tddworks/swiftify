@@ -73,28 +73,90 @@ class SwiftifyTransformer {
         val swiftCodeParts = mutableListOf<String>()
         var transformedCount = 0
 
-        declarations.forEach { declaration ->
-            when (declaration) {
-                is SealedClassDeclaration -> {
-                    if (config.defaults.transformSealedClassesToEnums) {
-                        val swiftCode = transformSealedClass(declaration, config, options)
-                        swiftCodeParts += swiftCode
-                        transformedCount++
+        // Separate sealed classes (they don't need grouping)
+        val sealedClasses = declarations.filterIsInstance<SealedClassDeclaration>()
+
+        // Group functions by containing class for cleaner extension generation
+        val suspendFunctions = declarations.filterIsInstance<SuspendFunctionDeclaration>()
+        val flowFunctions = declarations.filterIsInstance<FlowFunctionDeclaration>()
+
+        // Transform sealed classes
+        sealedClasses.forEach { declaration ->
+            if (config.defaults.transformSealedClassesToEnums) {
+                val swiftCode = transformSealedClass(declaration, config, options)
+                swiftCodeParts += swiftCode
+                transformedCount++
+            }
+        }
+
+        // Group functions by class and generate merged extensions
+        if (options.generateImplementations) {
+            val functionsByClass = (suspendFunctions + flowFunctions).groupBy { decl ->
+                when (decl) {
+                    is SuspendFunctionDeclaration -> decl.containingClassName
+                    is FlowFunctionDeclaration -> decl.containingClassName
+                    else -> null
+                }
+            }
+
+            functionsByClass.forEach { (className, funcs) ->
+                val functionBodies = mutableListOf<String>()
+
+                funcs.forEach { declaration ->
+                    when (declaration) {
+                        is SuspendFunctionDeclaration -> {
+                            if (config.defaults.transformSuspendToAsync) {
+                                val body = transformSuspendFunctionBody(declaration, config)
+                                functionBodies += body
+                                transformedCount++
+                            }
+                        }
+                        is FlowFunctionDeclaration -> {
+                            if (config.defaults.transformFlowToAsyncSequence) {
+                                val body = transformFlowFunctionBody(declaration, config)
+                                functionBodies += body
+                                transformedCount++
+                            }
+                        }
+                        is SealedClassDeclaration -> { /* already handled */ }
                     }
                 }
-                is SuspendFunctionDeclaration -> {
-                    if (config.defaults.transformSuspendToAsync) {
-                        val swiftCode = transformSuspendFunction(declaration, config, options)
-                        swiftCodeParts += swiftCode
-                        transformedCount++
+
+                if (functionBodies.isNotEmpty()) {
+                    if (className != null) {
+                        // Wrap all functions in a single extension
+                        val extensionCode = buildString {
+                            appendLine("extension $className {")
+                            append(functionBodies.joinToString("\n\n") { "    $it".replace("\n", "\n    ").trimEnd() })
+                            appendLine()
+                            append("}")
+                        }
+                        swiftCodeParts += extensionCode
+                    } else {
+                        // Top-level functions, no extension needed
+                        swiftCodeParts += functionBodies.joinToString("\n\n")
                     }
                 }
-                is FlowFunctionDeclaration -> {
-                    if (config.defaults.transformFlowToAsyncSequence) {
-                        val swiftCode = transformFlowFunction(declaration, config, options)
-                        swiftCodeParts += swiftCode
-                        transformedCount++
+            }
+        } else {
+            // Signature-only mode (for preview)
+            declarations.forEach { declaration ->
+                when (declaration) {
+                    is SuspendFunctionDeclaration -> {
+                        if (config.defaults.transformSuspendToAsync) {
+                            val swiftCode = transformSuspendFunction(declaration, config, options)
+                            swiftCodeParts += swiftCode
+                            transformedCount++
+                        }
                     }
+                    is FlowFunctionDeclaration -> {
+                        if (config.defaults.transformFlowToAsyncSequence) {
+                            val swiftCode = transformFlowFunction(declaration, config, options)
+                            swiftCodeParts += swiftCode
+                            transformedCount++
+                        }
+                    }
+                    else -> { /* already handled */ }
                 }
             }
         }
@@ -178,14 +240,17 @@ class SwiftifyTransformer {
         // Use overloads if there are default parameters
         val hasDefaultParams = parameters.any { it.defaultValue != null }
 
+        // Use the containing class name from the declaration
+        val className = declaration.containingClassName
+
         return if (options.generateImplementations) {
             // Generate full implementations with bridging code
             if (hasDefaultParams) {
                 asyncFunctionGenerator.generateWithOverloadsAndImplementation(
-                    spec, options.className, config.defaults.maxDefaultArguments
+                    spec, className, config.defaults.maxDefaultArguments
                 )
             } else {
-                asyncFunctionGenerator.generateWithImplementation(spec, options.className)
+                asyncFunctionGenerator.generateWithImplementation(spec, className)
             }
         } else {
             // Generate signatures only (for preview)
@@ -217,11 +282,72 @@ class SwiftifyTransformer {
             isProperty = declaration.isProperty
         )
 
+        // Use the containing class name from the declaration
+        val className = declaration.containingClassName
+
         return if (options.generateImplementations) {
-            asyncSequenceGenerator.generateWithImplementation(spec, options.className)
+            asyncSequenceGenerator.generateWithImplementation(spec, className)
         } else {
             asyncSequenceGenerator.generate(spec)
         }
+    }
+
+    /**
+     * Transform suspend function to just the function body (no extension wrapper).
+     * Used for grouped extension generation.
+     */
+    private fun transformSuspendFunctionBody(
+        declaration: SuspendFunctionDeclaration,
+        config: SwiftifySpec
+    ): String {
+        val isThrowing = declaration.isThrowing ||
+                config.suspendFunctionRules.any { it.throwing }
+
+        val parameters = declaration.parameters.map { param ->
+            SwiftParameter(
+                name = param.name,
+                type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
+                defaultValue = param.defaultValue
+            )
+        }
+
+        val spec = SwiftAsyncFunctionSpec(
+            name = declaration.name,
+            typeParameters = declaration.typeParameters,
+            parameters = parameters,
+            returnType = mapKotlinTypeToSwift(declaration.returnTypeName, false),
+            isThrowing = isThrowing
+        )
+
+        // Generate function body only (without extension wrapper)
+        return asyncFunctionGenerator.generateFunctionBody(spec)
+    }
+
+    /**
+     * Transform flow function to just the function body (no extension wrapper).
+     * Used for grouped extension generation.
+     */
+    private fun transformFlowFunctionBody(
+        declaration: FlowFunctionDeclaration,
+        config: SwiftifySpec
+    ): String {
+        val parameters = declaration.parameters.map { param ->
+            SwiftParameter(
+                name = param.name,
+                type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
+                defaultValue = param.defaultValue
+            )
+        }
+
+        val spec = SwiftAsyncSequenceSpec(
+            name = declaration.name,
+            parameters = parameters,
+            elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
+            isProperty = declaration.isProperty
+        )
+
+        // Generate function body only (without extension wrapper)
+        return asyncSequenceGenerator.generateFunctionBody(spec)
     }
 
     private fun mapKotlinTypeToSwift(kotlinType: String, isNullable: Boolean): SwiftType {
