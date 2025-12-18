@@ -2,6 +2,7 @@ rootProject.name = "swiftify"
 
 pluginManagement {
     repositories {
+        mavenLocal()
         gradlePluginPortal()
         mavenCentral()
         google()
@@ -29,3 +30,6 @@ include(":swiftify-runtime")
 include(":swiftify-tests:unit")
 include(":swiftify-tests:integration")
 include(":swiftify-tests:acceptance")
+
+// Sample project
+include(":sample")

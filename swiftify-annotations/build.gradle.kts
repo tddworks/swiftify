@@ -1,7 +1,18 @@
 plugins {
-    kotlin("jvm")
+    kotlin("multiplatform")
 }
 
-dependencies {
-    implementation(kotlin("stdlib"))
+kotlin {
+    jvm()
+    iosArm64()
+    iosSimulatorArm64()
+    iosX64()
+    macosArm64()
+    macosX64()
+
+    sourceSets {
+        commonMain.dependencies {
+            // No dependencies needed for annotations
+        }
+    }
 }

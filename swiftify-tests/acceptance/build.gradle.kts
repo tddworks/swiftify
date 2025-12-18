@@ -5,6 +5,9 @@ plugins {
 dependencies {
     implementation(kotlin("stdlib"))
 
+    testImplementation(project(":swiftify-common"))
+    testImplementation(project(":swiftify-generator"))
+    testImplementation(project(":swiftify-analyzer"))
     testImplementation(project(":swiftify-gradle-plugin"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
     testImplementation(gradleTestKit())

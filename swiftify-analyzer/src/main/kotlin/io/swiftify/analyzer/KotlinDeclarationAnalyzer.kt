@@ -19,10 +19,13 @@ class KotlinDeclarationAnalyzer {
         """object\s+(\w+)\s*:\s*(\w+)"""
     )
     private val suspendFunctionPattern = Regex(
-        """(@SwiftAsync\s*\([^)]*\)\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)\s*:\s*(\S+)"""
+        """(@SwiftAsync\s*\([^)]*\)\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?"""
     )
     private val flowFunctionPattern = Regex(
-        """fun\s+(\w+)\s*\(([^)]*)\)\s*:\s*Flow<(\w+)>"""
+        """fun\s+(\w+)\s*\(([^)]*)\)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
+    )
+    private val flowPropertyPattern = Regex(
+        """val\s+(\w+)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
     )
     private val propertyPattern = Regex(
         """val\s+(\w+)\s*:\s*(\w+\??(?:<[^>]+>)?)"""
@@ -164,7 +167,8 @@ class KotlinDeclarationAnalyzer {
                 ?.map { it.trim() }
                 ?: emptyList()
             val paramsStr = match.groupValues[4]
-            val returnType = match.groupValues[5]
+            // Return type is optional - if not specified, it's Unit
+            val returnType = match.groupValues.getOrNull(5)?.takeIf { it.isNotBlank() } ?: "Unit"
 
             // Parse annotation if present
             val swiftAsyncMatch = swiftAsyncAnnotationPattern.find(annotation)
@@ -209,6 +213,7 @@ class KotlinDeclarationAnalyzer {
     private fun analyzeFlowFunctions(source: String, packageName: String): List<FlowFunctionDeclaration> {
         val results = mutableListOf<FlowFunctionDeclaration>()
 
+        // Analyze Flow-returning functions
         flowFunctionPattern.findAll(source).forEach { match ->
             val funcName = match.groupValues[1]
             val paramsStr = match.groupValues[2]
@@ -222,7 +227,24 @@ class KotlinDeclarationAnalyzer {
                 packageName = packageName,
                 name = funcName,
                 parameters = parameters,
-                elementTypeName = elementType
+                elementTypeName = elementType.removeSuffix("?"),
+                isProperty = false
+            )
+        }
+
+        // Analyze Flow properties
+        flowPropertyPattern.findAll(source).forEach { match ->
+            val propName = match.groupValues[1]
+            val elementType = match.groupValues[2]
+
+            results += FlowFunctionDeclaration(
+                qualifiedName = if (packageName.isNotEmpty()) "$packageName.$propName" else propName,
+                simpleName = propName,
+                packageName = packageName,
+                name = propName,
+                parameters = emptyList(),
+                elementTypeName = elementType.removeSuffix("?"),
+                isProperty = true
             )
         }
 

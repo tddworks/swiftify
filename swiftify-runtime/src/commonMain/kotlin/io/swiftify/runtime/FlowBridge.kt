@@ -16,6 +16,11 @@ object FlowBridge {
     var defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
 
     /**
+     * Dispatcher for callbacks. Defaults to Main dispatcher.
+     */
+    var callbackDispatcher: CoroutineDispatcher = Dispatchers.Main
+
+    /**
      * Collects a Flow and calls handlers for each emission.
      *
      * @param flow The Flow to collect
@@ -35,18 +40,18 @@ object FlowBridge {
         val job = scope.launch {
             try {
                 flow.collect { value ->
-                    withContext(Dispatchers.Main) {
+                    withContext(callbackDispatcher) {
                         onEach(value)
                     }
                 }
-                withContext(Dispatchers.Main) {
+                withContext(callbackDispatcher) {
                     onComplete()
                 }
             } catch (e: CancellationException) {
                 // Cancelled, don't call handlers
                 throw e
             } catch (e: Throwable) {
-                withContext(Dispatchers.Main) {
+                withContext(callbackDispatcher) {
                     onError(e)
                 }
             }

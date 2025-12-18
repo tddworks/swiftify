@@ -1,7 +1,6 @@
 package io.swiftify.runtime
 
 import kotlinx.coroutines.*
-import kotlin.coroutines.CoroutineContext
 
 /**
  * Bridge for calling Kotlin suspend functions from Swift.
@@ -16,6 +15,11 @@ object SuspendBridge {
      * Can be overridden for testing.
      */
     var defaultDispatcher: CoroutineDispatcher = Dispatchers.Default
+
+    /**
+     * Dispatcher for callbacks. Defaults to Main dispatcher.
+     */
+    var callbackDispatcher: CoroutineDispatcher = Dispatchers.Main
 
     /**
      * Launches a suspend function and calls the completion handler when done.
@@ -35,14 +39,14 @@ object SuspendBridge {
         val job = scope.launch {
             try {
                 val result = block()
-                withContext(Dispatchers.Main) {
+                withContext(callbackDispatcher) {
                     onSuccess(result)
                 }
             } catch (e: CancellationException) {
                 // Cancelled, don't call error handler
                 throw e
             } catch (e: Throwable) {
-                withContext(Dispatchers.Main) {
+                withContext(callbackDispatcher) {
                     onError(e)
                 }
             }

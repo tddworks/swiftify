@@ -106,24 +106,24 @@ class SwiftifyPlugin : Plugin<Project> {
     }
 
     private fun registerProcessManifestTask(project: Project, extension: SwiftifyExtension): TaskProvider<SwiftifyProcessManifestTask> {
-        return project.tasks.register("swiftifyProcessManifest", SwiftifyProcessManifestTask::class.java) { task ->
+        val taskProvider = project.tasks.register("swiftifyProcessManifest", SwiftifyProcessManifestTask::class.java) { task ->
             task.group = "swiftify"
             task.description = "Process KSP manifest and generate Swift code"
             task.outputDirectory.set(extension.outputDirectory)
 
-            // Configure manifest file location from KSP output
-            project.afterEvaluate {
-                val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
-                task.manifestFile.set(
-                    kspOutputDir.map { it.file("main/resources/swiftify-manifest.txt") }
-                )
-            }
-
-            // Depend on KSP task if it exists
-            project.tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach { kspTask ->
-                task.dependsOn(kspTask)
-            }
+            // Configure manifest file location from KSP output using lazy provider
+            val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
+            task.manifestFile.set(
+                kspOutputDir.map { it.file("main/resources/swiftify-manifest.txt") }
+            )
         }
+
+        // Depend on KSP task if it exists (outside task configuration block)
+        project.tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach { kspTask ->
+            taskProvider.configure { it.dependsOn(kspTask) }
+        }
+
+        return taskProvider
     }
 
     private fun configureSwiftifyIntegration(project: Project, extension: SwiftifyExtension) {
@@ -196,31 +196,15 @@ class SwiftifyPlugin : Plugin<Project> {
                 extension.outputDirectory.map { it.dir("$targetName/linked") }
             )
 
-            // Try to find and depend on the framework task
-            project.tasks.matching { it.name.contains(targetName, ignoreCase = true) && it.name.contains("Framework") }
-                .configureEach { frameworkTask ->
-                    task.dependsOn(frameworkTask)
-
-                    // Try to set framework directory from task output
-                    try {
-                        val outputsMethod = frameworkTask.javaClass.getMethod("getOutputs")
-                        val outputs = outputsMethod.invoke(frameworkTask)
-                        val filesMethod = outputs.javaClass.getMethod("getFiles")
-                        val files = filesMethod.invoke(outputs)
-                        if (files is Iterable<*>) {
-                            files.filterIsInstance<File>().firstOrNull { it.extension == "framework" }?.let { framework ->
-                                task.frameworkDirectory.set(framework)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        project.logger.debug("Swiftify: Could not auto-configure framework directory for $targetName")
-                    }
-                }
-
             // Configure manifest file from KSP output
             val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
             task.manifestFile.set(
                 kspOutputDir.map { it.file("${targetName}Main/resources/swiftify-manifest.txt") }
+            )
+
+            // Set default framework directory based on convention
+            task.frameworkDirectory.set(
+                project.layout.buildDirectory.dir("bin/$targetName/debugFramework")
             )
         }
     }

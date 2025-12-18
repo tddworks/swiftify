@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm")
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 dependencies {
@@ -20,5 +21,11 @@ gradlePlugin {
             id = "io.swiftify"
             implementationClass = "io.swiftify.gradle.SwiftifyPlugin"
         }
+    }
+}
+
+publishing {
+    repositories {
+        mavenLocal()
     }
 }
