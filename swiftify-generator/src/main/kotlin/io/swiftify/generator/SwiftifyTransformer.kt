@@ -18,6 +18,7 @@ class SwiftifyTransformer {
     private val analyzer = KotlinDeclarationAnalyzer()
     private val enumGenerator = SwiftEnumGenerator()
     private val asyncFunctionGenerator = SwiftAsyncFunctionGenerator()
+    private val asyncSequenceGenerator = SwiftAsyncSequenceGenerator()
 
     /**
      * Transform Kotlin source code to Swift with default configuration.
@@ -52,7 +53,8 @@ class SwiftifyTransformer {
                 }
                 is FlowFunctionDeclaration -> {
                     if (config.defaults.transformFlowToAsyncSequence) {
-                        // TODO: Implement Flow transformation
+                        val swiftCode = transformFlowFunction(declaration, config)
+                        swiftCodeParts += swiftCode
                         transformedCount++
                     }
                 }
@@ -126,6 +128,24 @@ class SwiftifyTransformer {
         )
 
         return asyncFunctionGenerator.generate(spec)
+    }
+
+    private fun transformFlowFunction(declaration: FlowFunctionDeclaration, config: SwiftifySpec): String {
+        val parameters = declaration.parameters.map { param ->
+            SwiftParameter(
+                name = param.name,
+                type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
+                defaultValue = param.defaultValue
+            )
+        }
+
+        val spec = SwiftAsyncSequenceSpec(
+            name = declaration.name,
+            parameters = parameters,
+            elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false)
+        )
+
+        return asyncSequenceGenerator.generate(spec)
     }
 
     private fun mapKotlinTypeToSwift(kotlinType: String, isNullable: Boolean): SwiftType {

@@ -175,4 +175,51 @@ class SwiftifyTransformationIntegrationTest {
         assertTrue(results[0].swiftCode.contains("enum Result"))
         assertTrue(results[1].swiftCode.contains("func process"))
     }
+
+    @Test
+    fun `transforms Flow to AsyncSequence`() {
+        val kotlinSource = """
+            package com.example
+
+            fun observeUpdates(): Flow<Update>
+
+            fun watchState(userId: String): Flow<UserState>
+        """.trimIndent()
+
+        val result = transformer.transform(kotlinSource)
+
+        assertContains(result.swiftCode, "func observeUpdates() -> AsyncStream<Update>")
+        assertContains(result.swiftCode, "func watchState(userId: String) -> AsyncStream<UserState>")
+    }
+
+    @Test
+    fun `transforms all declaration types together`() {
+        val kotlinSource = """
+            package com.example
+
+            sealed class AppState {
+                object Loading : AppState()
+                data class Loaded(val data: String) : AppState()
+                data class Error(val message: String) : AppState()
+            }
+
+            suspend fun loadData(): AppState
+
+            fun observeState(): Flow<AppState>
+        """.trimIndent()
+
+        val result = transformer.transform(kotlinSource)
+
+        // Enum
+        assertContains(result.swiftCode, "public enum AppState")
+        assertContains(result.swiftCode, "case loading")
+        assertContains(result.swiftCode, "case loaded")
+        assertContains(result.swiftCode, "case error")
+
+        // Async function
+        assertContains(result.swiftCode, "func loadData() async throws -> AppState")
+
+        // AsyncSequence
+        assertContains(result.swiftCode, "func observeState() -> AsyncStream<AppState>")
+    }
 }

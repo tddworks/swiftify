@@ -82,5 +82,6 @@ data class FlowFunctionDeclaration(
     val name: String,
     val parameters: List<ParameterDeclaration>,
     val elementTypeName: String,
-    val hasSwiftFlowAnnotation: Boolean = false
+    val hasSwiftFlowAnnotation: Boolean = false,
+    val isProperty: Boolean = false
 ) : KotlinDeclaration
