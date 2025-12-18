@@ -56,7 +56,8 @@ class SwiftAsyncSequenceGeneratorTest {
 
         val result = generator.generate(spec)
 
-        assertTrue(result.contains("var updates: AsyncStream<Update>"))
+        // Property name gets "Stream" suffix to avoid collision with Kotlin property
+        assertTrue(result.contains("var updatesStream: AsyncStream<Update>"))
     }
 
     @Test
@@ -101,7 +102,8 @@ class SwiftAsyncSequenceGeneratorTest {
         val result = generator.generate(spec)
 
         // StateFlow generates a property that can be observed
-        assertTrue(result.contains("var state:"))
+        // Property name gets "Stream" suffix to avoid collision with Kotlin property
+        assertTrue(result.contains("var stateStream:"))
         assertTrue(result.contains("AppState"))
     }
 
@@ -130,5 +132,23 @@ class SwiftAsyncSequenceGeneratorTest {
         val result = generator.generate(spec)
 
         assertTrue(result.contains("AsyncStream<[Item]>"))
+    }
+
+    @Test
+    fun `generateFunctionBody adds Stream suffix to property name`() {
+        val spec = SwiftAsyncSequenceSpec(
+            name = "currentUser",
+            parameters = emptyList(),
+            elementType = SwiftType.Named("User"),
+            isProperty = true
+        )
+
+        val result = generator.generateFunctionBody(spec)
+        println("Generated body:\n$result")
+
+        // Property name must have "Stream" suffix to avoid collision with Kotlin property
+        assertTrue(result.contains("var currentUserStream:"), "Expected 'currentUserStream' but got:\n$result")
+        // The internal call should use the original name to access the Kotlin property
+        assertTrue(result.contains("self.currentUser.collect"), "Expected 'self.currentUser.collect' but got:\n$result")
     }
 }

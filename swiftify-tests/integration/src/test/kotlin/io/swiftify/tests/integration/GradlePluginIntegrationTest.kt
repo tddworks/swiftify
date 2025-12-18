@@ -34,8 +34,9 @@ class SwiftifyTransformationIntegrationTest {
         val result = transformer.transform(kotlinSource)
 
         assertContains(result.swiftCode, "public enum NetworkResult<T>")
-        assertContains(result.swiftCode, "case success(data: T, statusCode: Int)")
-        assertContains(result.swiftCode, "case failure(error: Error, statusCode: Int)")
+        // Kotlin Int maps to Swift Int32 in Kotlin/Native
+        assertContains(result.swiftCode, "case success(data: T, statusCode: Int32)")
+        assertContains(result.swiftCode, "case failure(error: Error, statusCode: Int32)")
         assertContains(result.swiftCode, "case loading")
         assertContains(result.swiftCode, "case idle")
     }
@@ -54,8 +55,9 @@ class SwiftifyTransformationIntegrationTest {
 
         val result = transformer.transform(kotlinSource)
 
-        assertContains(result.swiftCode, "func fetchUser(id: Int) async throws -> User")
-        assertContains(result.swiftCode, "func fetchUsers(ids: [Int]) async throws -> [User]")
+        // Kotlin Int maps to Swift Int32 in Kotlin/Native
+        assertContains(result.swiftCode, "func fetchUser(id: Int32) async throws -> User")
+        assertContains(result.swiftCode, "func fetchUsers(ids: [Int32]) async throws -> [User]")
         // Note: Unit returns become void (no return type)
     }
 

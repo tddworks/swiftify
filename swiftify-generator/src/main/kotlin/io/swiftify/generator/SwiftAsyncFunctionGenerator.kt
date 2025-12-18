@@ -217,10 +217,11 @@ class SwiftAsyncFunctionGenerator {
         val returnType = spec.returnType
 
         if (returnType is SwiftType.Void) {
+            // Need explicit generic type for Void since Swift can't infer it
             if (spec.isThrowing) {
-                appendLine("${indent}try await withCheckedThrowingContinuation { continuation in")
+                appendLine("${indent}try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in")
             } else {
-                appendLine("${indent}await withCheckedContinuation { continuation in")
+                appendLine("${indent}await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in")
             }
 
             append("$indent    self.${spec.name}(")

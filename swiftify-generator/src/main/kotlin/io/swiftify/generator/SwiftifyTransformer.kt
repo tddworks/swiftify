@@ -353,7 +353,8 @@ class SwiftifyTransformer {
     private fun mapKotlinTypeToSwift(kotlinType: String, isNullable: Boolean): SwiftType {
         val baseType = when (kotlinType) {
             "String" -> SwiftType.Named("String")
-            "Int" -> SwiftType.Named("Int")
+            // Kotlin Int exports as Int32 in Kotlin/Native Swift interop
+            "Int" -> SwiftType.Named("Int32")
             "Long" -> SwiftType.Named("Int64")
             "Float" -> SwiftType.Named("Float")
             "Double" -> SwiftType.Named("Double")

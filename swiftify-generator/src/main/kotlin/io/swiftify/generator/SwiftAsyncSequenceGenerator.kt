@@ -108,10 +108,11 @@ class SwiftAsyncSequenceGenerator {
         val indent = "    "
 
         if (spec.isProperty) {
-            // Property
+            // Property - add "Stream" suffix to avoid naming collision with Kotlin property
+            val swiftPropertyName = "${spec.name}Stream"
             append(spec.accessLevel.swiftKeyword)
             append(" var ")
-            append(spec.name)
+            append(swiftPropertyName)
             append(": ")
             appendLine("$streamType {")
 
@@ -127,7 +128,7 @@ class SwiftAsyncSequenceGenerator {
             appendLine("$indent            continuation.finish()")
             appendLine("$indent        }")
             appendLine("$indent    )")
-            // Call the Kotlin Flow property (same name, returns Flow)
+            // Call the Kotlin Flow property (original name, returns Flow)
             appendLine("$indent    self.${spec.name}.collect(collector: collector, completionHandler: { _ in })")
             appendLine("$indent}")
             append("}")
@@ -201,9 +202,11 @@ class SwiftAsyncSequenceGenerator {
     }
 
     private fun StringBuilder.generatePropertySignature(spec: SwiftAsyncSequenceSpec, streamType: String) {
+        // Add "Stream" suffix to avoid naming collision with Kotlin property
+        val swiftPropertyName = "${spec.name}Stream"
         append(spec.accessLevel.swiftKeyword)
         append(" var ")
-        append(spec.name)
+        append(swiftPropertyName)
         append(": ")
         append(streamType)
     }
@@ -216,11 +219,13 @@ class SwiftAsyncSequenceGenerator {
         val elementTypeStr = spec.elementType.swiftRepresentation
         val baseIndent = if (className != null) "    " else ""
         val indent = "$baseIndent    "
+        // Add "Stream" suffix to avoid naming collision with Kotlin property
+        val swiftPropertyName = "${spec.name}Stream"
 
         append(baseIndent)
         append(spec.accessLevel.swiftKeyword)
         append(" var ")
-        append(spec.name)
+        append(swiftPropertyName)
         append(": ")
         appendLine("$streamType {")
 

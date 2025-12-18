@@ -109,7 +109,7 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
 
         // Generate runtime support file (needed for Flow bridging)
         val runtimeFile = File(outputDir, SwiftRuntimeSupport.FILENAME)
-        runtimeFile.writeText(SwiftRuntimeSupport.generate())
+        runtimeFile.writeText(SwiftRuntimeSupport.generate(fwName))
         logger.lifecycle("Swiftify: Generated runtime support: ${runtimeFile.absolutePath}")
 
         // Write combined file if multiple sources

@@ -9,15 +9,19 @@ object SwiftRuntimeSupport {
 
     /**
      * Generate the complete runtime support Swift code.
+     *
+     * @param frameworkName The name of the Kotlin framework to import
      */
-    fun generate(): String = """
+    fun generate(frameworkName: String = "SharedKit"): String = """
         |// MARK: - Swiftify Runtime Support
         |// Helper classes for Kotlin/Swift bridging
         |
         |import Foundation
+        |import $frameworkName
         |
         |/// Collector for bridging Kotlin Flow to Swift AsyncStream
-        |public class SwiftifyFlowCollector<T>: NSObject {
+        |/// Conforms to Kotlin's FlowCollector protocol
+        |public class SwiftifyFlowCollector<T: AnyObject>: NSObject, Kotlinx_coroutines_coreFlowCollector {
         |    private let onEmit: (T) -> Void
         |    private let onComplete: () -> Void
         |    private let onError: (Error) -> Void
@@ -32,16 +36,12 @@ object SwiftRuntimeSupport {
         |        self.onError = onError
         |    }
         |
-        |    public func emit(_ value: T) {
-        |        onEmit(value)
-        |    }
-        |
-        |    public func complete() {
-        |        onComplete()
-        |    }
-        |
-        |    public func error(_ error: Error) {
-        |        onError(error)
+        |    /// FlowCollector protocol implementation
+        |    public func emit(value: Any?, completionHandler: @escaping (Error?) -> Void) {
+        |        if let typedValue = value as? T {
+        |            onEmit(typedValue)
+        |        }
+        |        completionHandler(nil)
         |    }
         |}
         |

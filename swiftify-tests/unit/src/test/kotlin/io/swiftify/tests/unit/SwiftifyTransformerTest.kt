@@ -44,7 +44,8 @@ class SwiftifyTransformerTest {
 
         val result = transformer.transform(kotlinSource)
 
-        assertContains(result.swiftCode, "public func fetchUser(id: Int) async throws -> User")
+        // Kotlin Int maps to Swift Int32 in Kotlin/Native
+        assertContains(result.swiftCode, "public func fetchUser(id: Int32) async throws -> User")
     }
 
     @Test
