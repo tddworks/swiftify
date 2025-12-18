@@ -80,12 +80,16 @@ class SwiftifyTransformer {
         val suspendFunctions = declarations.filterIsInstance<SuspendFunctionDeclaration>()
         val flowFunctions = declarations.filterIsInstance<FlowFunctionDeclaration>()
 
-        // Transform sealed classes
-        sealedClasses.forEach { declaration ->
-            if (config.defaults.transformSealedClassesToEnums) {
-                val swiftCode = transformSealedClass(declaration, config, options)
-                swiftCodeParts += swiftCode
-                transformedCount++
+        // Transform sealed classes (only for preview mode, not for implementation)
+        // When generating implementations, Kotlin/Native already exports the sealed classes
+        // and we would create type conflicts by regenerating them as Swift enums
+        if (!options.generateImplementations) {
+            sealedClasses.forEach { declaration ->
+                if (config.defaults.transformSealedClassesToEnums) {
+                    val swiftCode = transformSealedClass(declaration, config, options)
+                    swiftCodeParts += swiftCode
+                    transformedCount++
+                }
             }
         }
 

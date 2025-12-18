@@ -21,7 +21,7 @@ object SwiftRuntimeSupport {
         |
         |/// Collector for bridging Kotlin Flow to Swift AsyncStream
         |/// Conforms to Kotlin's FlowCollector protocol
-        |public class SwiftifyFlowCollector<T: AnyObject>: NSObject, Kotlinx_coroutines_coreFlowCollector {
+        |public class SwiftifyFlowCollector<T>: NSObject, Kotlinx_coroutines_coreFlowCollector {
         |    private let onEmit: (T) -> Void
         |    private let onComplete: () -> Void
         |    private let onError: (Error) -> Void
