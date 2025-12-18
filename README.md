@@ -1,158 +1,431 @@
 # Swiftify
 
-**Kotlin-to-Swift Interface Enhancer** - A user-centric framework for generating idiomatic Swift APIs from Kotlin Multiplatform code.
+**Transform Kotlin Multiplatform APIs into idiomatic Swift**
 
-## Philosophy
-
-Swiftify is designed with a **Swift-first mental model**:
-
-1. **Declare what you want** - Instead of configuring transformations, you declare your desired Swift output
-2. **Convention over configuration** - Sensible defaults that work out of the box
-3. **Preview before compile** - See generated Swift code before building
-
-## Quick Start
-
-```kotlin
-// build.gradle.kts
-plugins {
-    id("io.swiftify") version "1.0.0"
-}
-
-// That's it! Swiftify works with sensible defaults
-```
+Swiftify automatically generates Swift-friendly wrappers for your Kotlin Multiplatform code, bridging the gap between Kotlin coroutines and Swift concurrency.
 
 ## Features
 
-### Sealed Classes → Swift Enums
+| Kotlin | Swift | Status |
+|--------|-------|--------|
+| `suspend fun` | `async throws` | ✅ |
+| `Flow<T>` | `AsyncStream<T>` | ✅ |
+| `StateFlow<T>` | `AsyncStream<T>` | ✅ |
+| Default parameters | Preserved | ✅ |
+| Sealed classes | Swift enums | 🚧 Preview |
+
+## Quick Start
+
+### 1. Add the Plugin
 
 ```kotlin
-// Kotlin
-sealed class NetworkResult {
-    data class Success(val data: String) : NetworkResult()
-    data class Failure(val error: Throwable) : NetworkResult()
-    object Loading : NetworkResult()
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+    }
+}
+
+// build.gradle.kts
+plugins {
+    kotlin("multiplatform")
+    id("io.swiftify") version "0.1.0-SNAPSHOT"
 }
 ```
 
-Generates:
+### 2. Write Your Kotlin Code
 
-```swift
-// Swift
-@frozen
-public enum NetworkResult: Hashable {
-    case success(data: String)
-    case failure(error: Error)
-    case loading
+```kotlin
+class UserRepository {
+    @SwiftAsync
+    suspend fun fetchUser(id: String): User { ... }
+
+    @SwiftFlow
+    fun getUserUpdates(userId: String): Flow<User> = flow { ... }
 }
 ```
 
-### Suspend Functions → Async/Await
+### 3. Generate & Use
 
-```kotlin
-// Kotlin
-suspend fun fetchUser(id: Int): User
+```bash
+./gradlew swiftifyGenerate
 ```
-
-Generates:
 
 ```swift
-// Swift
-public func fetchUser(id: Int) async throws -> User
+// Swift - just works!
+let user = try await repository.fetchUser(id: "123")
+
+for await update in repository.getUserUpdates(userId: "123") {
+    print("Updated: \(update.name)")
+}
 ```
 
-### Flow → AsyncSequence
+---
+
+## Configuration Guide
+
+Swiftify offers **two ways** to configure transformations. Choose the approach that fits your needs:
+
+### Option 1: Zero Config (Recommended)
+
+**Best for:** Most projects
+
+By default, Swiftify transforms ALL annotated declarations automatically:
 
 ```kotlin
-// Kotlin
-fun observeUpdates(): Flow<Update>
+plugins {
+    id("io.swiftify") version "0.1.0-SNAPSHOT"
+}
+
+// Just add annotations to your Kotlin code
+class MyRepository {
+    @SwiftAsync
+    suspend fun getData(): Data { ... }
+}
 ```
 
-Generates Swift AsyncSequence support.
+### Option 2: Annotations Only
 
-### Default Arguments
+**Best for:** Fine-grained control over specific APIs
+
+Use annotations to mark exactly which declarations to transform:
 
 ```kotlin
-// Kotlin
-fun search(query: String, limit: Int = 10, offset: Int = 0): List<Result>
+import io.swiftify.annotations.*
+
+class UserRepository {
+    // This WILL be transformed
+    @SwiftAsync
+    suspend fun fetchUser(id: String): User
+
+    // This will NOT be transformed (no annotation)
+    suspend fun internalFetch(): Data
+
+    @SwiftFlow
+    val currentUser: StateFlow<User>  // Transformed
+
+    val internalState: StateFlow<Int>  // NOT transformed
+}
 ```
 
-Generates Swift overloads with default values.
+### Option 3: Global Defaults via DSL
 
-## Configuration
-
-### DSL Configuration (Optional)
+**Best for:** When you want ALL suspend/Flow to transform without annotations
 
 ```kotlin
 swiftify {
-    sealedClasses {
-        transformToEnum(exhaustive = true)
-    }
+    frameworkName.set("MyKit")
+
+    // Transform ALL suspend functions (no @SwiftAsync needed)
     suspendFunctions {
         transformToAsync(throwing = true)
     }
+
+    // Transform ALL Flow types (no @SwiftFlow needed)
     flowTypes {
         transformToAsyncSequence()
     }
 }
 ```
 
-### Annotation-Based
+### Configuration Comparison
+
+| Approach | Annotations Needed | Scope | Use Case |
+|----------|-------------------|-------|----------|
+| **Zero Config** | Yes (`@SwiftAsync`, `@SwiftFlow`) | Marked only | Most projects |
+| **DSL Global** | No | Everything | Transform all APIs |
+| **Mixed** | Optional | Flexible | Fine-tuned control |
+
+---
+
+## Annotations Reference
+
+### @SwiftAsync
+
+Transforms a `suspend` function to Swift `async throws`.
 
 ```kotlin
-@SwiftEnum(name = "AppResult", exhaustive = true)
-sealed class Result { ... }
-
 @SwiftAsync
-suspend fun fetchData(): Data
+suspend fun login(username: String, password: String): AuthResult
 ```
 
-## Preview
+**Generated Swift:**
+```swift
+public func login(username: String, password: String) async throws -> AuthResult {
+    return try await withCheckedThrowingContinuation { continuation in
+        self.login(username: username, password: password) { result, error in
+            if let error = error {
+                continuation.resume(throwing: error)
+            } else if let result = result {
+                continuation.resume(returning: result)
+            }
+        }
+    }
+}
+```
+
+### @SwiftFlow
+
+Transforms a `Flow`-returning function or property to `AsyncStream`.
+
+```kotlin
+@SwiftFlow
+fun watchMessages(chatId: String): Flow<Message>
+
+@SwiftFlow
+val connectionState: StateFlow<ConnectionState>
+```
+
+**Generated Swift:**
+```swift
+public func watchMessages(chatId: String) -> AsyncStream<Message> {
+    return AsyncStream { continuation in
+        let collector = SwiftifyFlowCollector<Message>(
+            onEmit: { value in continuation.yield(value) },
+            onComplete: { continuation.finish() },
+            onError: { _ in continuation.finish() }
+        )
+        self.watchMessages(chatId: chatId).collect(collector: collector) { _ in }
+    }
+}
+
+// Properties get "Stream" suffix to avoid conflicts
+public var connectionStateStream: AsyncStream<ConnectionState> { ... }
+```
+
+### @SwiftEnum (Preview)
+
+Transforms a `sealed class` to a Swift `enum`.
+
+```kotlin
+@SwiftEnum(name = "NetworkResult")
+sealed class NetworkResult<out T> {
+    data class Success<T>(val data: T) : NetworkResult<T>()
+    data class Error(val message: String) : NetworkResult<Nothing>()
+    object Loading : NetworkResult<Nothing>()
+}
+```
+
+**Generated Swift:**
+```swift
+@frozen
+public enum NetworkResult<T> {
+    case success(data: T)
+    case error(message: String)
+    case loading
+}
+```
+
+> **Note:** Sealed class transformation is currently preview-only and not included in implementation builds to avoid type conflicts with Kotlin-exported classes.
+
+---
+
+## Type Mappings
+
+| Kotlin | Swift | Notes |
+|--------|-------|-------|
+| `String` | `String` | |
+| `Int` | `Int32` | Kotlin/Native exports as Int32 |
+| `Long` | `Int64` | |
+| `Double` | `Double` | |
+| `Float` | `Float` | |
+| `Boolean` | `Bool` | |
+| `List<T>` | `[T]` | |
+| `T?` | `T?` | `null` → `nil` |
+| `Unit` | `Void` | |
+
+### Default Parameters
+
+Kotlin default parameters are preserved:
+
+```kotlin
+@SwiftAsync
+suspend fun getProducts(
+    page: Int = 1,
+    pageSize: Int = 20,
+    category: String? = null
+): ProductPage
+```
+
+```swift
+public func getProducts(
+    page: Int32 = 1,
+    pageSize: Int32 = 20,
+    category: String? = nil  // null → nil
+) async throws -> ProductPage
+```
+
+---
+
+## Project Structure
+
+```
+your-project/
+├── src/commonMain/kotlin/
+│   └── com/example/
+│       └── UserRepository.kt       # Your Kotlin code with annotations
+├── build/generated/swiftify/
+│   ├── Swiftify.swift              # Combined generated extensions
+│   ├── SwiftifyRuntime.swift       # Runtime helpers (FlowCollector, etc.)
+│   └── YourFramework.apinotes      # API notes for Xcode
+└── build.gradle.kts
+```
+
+---
+
+## Gradle Tasks
+
+| Task | Description |
+|------|-------------|
+| `swiftifyGenerate` | Generate Swift code |
+| `swiftifyPreview` | Preview without writing files |
 
 ```bash
-./gradlew swiftifyPreview
-./gradlew swiftifyPreview --class=com.example.NetworkResult
+# Generate Swift wrappers
+./gradlew swiftifyGenerate
+
+# Preview specific class
+./gradlew swiftifyPreview --class=com.example.UserRepository
 ```
+
+---
+
+## Complete Example
+
+### Kotlin Code
+
+```kotlin
+// src/commonMain/kotlin/com/example/ChatRepository.kt
+package com.example
+
+import io.swiftify.annotations.SwiftAsync
+import io.swiftify.annotations.SwiftFlow
+import kotlinx.coroutines.flow.*
+
+class ChatRepository {
+    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+
+    @SwiftFlow
+    val connectionState: StateFlow<ConnectionState> = _connectionState
+
+    @SwiftAsync
+    suspend fun connect(): ConnectionState {
+        _connectionState.value = ConnectionState.CONNECTING
+        delay(500)
+        _connectionState.value = ConnectionState.CONNECTED
+        return ConnectionState.CONNECTED
+    }
+
+    @SwiftAsync
+    suspend fun sendMessage(chatId: String, content: String): Message {
+        delay(100)
+        return Message(id = "msg_123", content = content)
+    }
+
+    @SwiftFlow
+    fun watchMessages(chatId: String): Flow<Message> = flow {
+        while (true) {
+            delay(3000)
+            emit(Message(id = "...", content = "New message"))
+        }
+    }
+}
+
+enum class ConnectionState {
+    DISCONNECTED, CONNECTING, CONNECTED
+}
+```
+
+### Swift Usage
+
+```swift
+import SampleKit
+import SwiftUI
+
+class ChatViewModel: ObservableObject {
+    @Published var isConnected = false
+    @Published var messages: [Message] = []
+
+    private let repository = ChatRepository()
+
+    func connect() async {
+        do {
+            let state = try await repository.connect()
+            await MainActor.run {
+                isConnected = true
+            }
+        } catch {
+            print("Failed: \(error)")
+        }
+    }
+
+    func send(_ text: String) async {
+        do {
+            let msg = try await repository.sendMessage(chatId: "chat_1", content: text)
+            await MainActor.run {
+                messages.append(msg)
+            }
+        } catch {
+            print("Send failed: \(error)")
+        }
+    }
+
+    func watchMessages() async {
+        for await message in repository.watchMessages(chatId: "chat_1") {
+            await MainActor.run {
+                messages.append(message)
+            }
+        }
+    }
+}
+```
+
+---
 
 ## Module Structure
 
 ```
 swiftify/
-├── swiftify-annotations/       # @SwiftEnum, @SwiftAsync, etc.
-├── swiftify-common/            # Core types (SwiftType, SwiftEnumSpec, etc.)
-├── swiftify-dsl/               # User-facing DSL
-├── swiftify-analyzer/          # KSP-based Kotlin analyzer
-├── swiftify-generator/         # Swift code generator
-├── swiftify-linker/            # Kotlin compiler linker plugin
-├── swiftify-gradle-plugin/     # Gradle plugin
-├── swiftify-runtime/           # Runtime support
-└── swiftify-tests/             # Test suites
+├── swiftify-annotations/    # @SwiftAsync, @SwiftFlow, @SwiftEnum
+├── swiftify-common/         # Core types (SwiftType, specs)
+├── swiftify-dsl/            # Gradle DSL (swiftify { ... })
+├── swiftify-analyzer/       # Kotlin source analyzer
+├── swiftify-generator/      # Swift code generator
+├── swiftify-linker/         # Compiler linker plugin
+├── swiftify-gradle-plugin/  # Gradle plugin
+├── swiftify-runtime/        # Kotlin runtime support
+└── sample/                  # Demo project with macOS app
 ```
+
+---
+
+## Requirements
+
+- Kotlin 2.0+
+- Gradle 8.0+
+- Xcode 15+
+- macOS 13+ / iOS 16+
+
+---
 
 ## Development
 
-Built with TDD (Test-Driven Development):
-
 ```bash
+# Build everything
+./gradlew build
+
 # Run tests
 ./gradlew test
 
-# Build
-./gradlew build
+# Publish to local Maven
+./gradlew publishToMavenLocal
 
-# Preview Swift output
-./gradlew swiftifyPreview
+# Generate sample Swift code
+./gradlew :sample:swiftifyGenerate
 ```
 
-## Test Coverage
-
-- **81 tests** across unit and integration:
-  - Swift type representations (14 tests)
-  - Enum spec and generation (14 tests)
-  - Async function spec and generation (20 tests)
-  - DSL configuration (10 tests)
-  - Kotlin declaration analysis (10 tests)
-  - End-to-end transformation (7 tests)
-  - Integration tests (8 tests)
+---
 
 ## License
 
