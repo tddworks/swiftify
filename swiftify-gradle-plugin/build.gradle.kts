@@ -9,7 +9,6 @@ dependencies {
     implementation(project(":swiftify-dsl"))
     implementation(project(":swiftify-analyzer"))
     implementation(project(":swiftify-generator"))
-    implementation(project(":swiftify-linker"))
 
     compileOnly(gradleApi())
 }

@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":swiftify-dsl"))
     implementation(project(":swiftify-annotations"))
     implementation(project(":swiftify-generator"))
+    implementation(project(":swiftify-analyzer"))
 
     // Test dependencies
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
