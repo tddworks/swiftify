@@ -84,10 +84,13 @@ class SwiftEnumGenerator {
         append(" enum ")
         append(spec.name)
 
-        // Add type parameters if present
+        // Add type parameters if present (strip Kotlin variance modifiers)
         if (spec.typeParameters.isNotEmpty()) {
             append("<")
-            append(spec.typeParameters.joinToString(", "))
+            append(spec.typeParameters.joinToString(", ") { param ->
+                // Remove 'out' and 'in' variance modifiers for Swift
+                param.removePrefix("out ").removePrefix("in ").trim()
+            })
             append(">")
         }
 
