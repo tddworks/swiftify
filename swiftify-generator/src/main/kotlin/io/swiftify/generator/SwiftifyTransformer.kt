@@ -6,6 +6,26 @@ import io.swiftify.dsl.SwiftifySpec
 import io.swiftify.dsl.swiftify
 
 /**
+ * Configuration for the transformer.
+ */
+data class TransformOptions(
+    /**
+     * Whether to generate full implementations (true) or just signatures (false).
+     */
+    val generateImplementations: Boolean = false,
+
+    /**
+     * The Kotlin class name for extension methods (if applicable).
+     */
+    val className: String? = null,
+
+    /**
+     * Framework name for imports.
+     */
+    val frameworkName: String? = null
+)
+
+/**
  * Main transformation engine that converts Kotlin declarations to Swift code.
  *
  * This orchestrates the full pipeline:
@@ -31,6 +51,24 @@ class SwiftifyTransformer {
      * Transform Kotlin source code to Swift with custom configuration.
      */
     fun transform(kotlinSource: String, config: SwiftifySpec): TransformResult {
+        return transform(kotlinSource, config, TransformOptions())
+    }
+
+    /**
+     * Transform Kotlin source code to Swift with transform options only (uses default DSL config).
+     */
+    fun transform(kotlinSource: String, options: TransformOptions): TransformResult {
+        return transform(kotlinSource, swiftify { }, options)
+    }
+
+    /**
+     * Transform Kotlin source code to Swift with full configuration.
+     */
+    fun transform(
+        kotlinSource: String,
+        config: SwiftifySpec,
+        options: TransformOptions
+    ): TransformResult {
         val declarations = analyzer.analyze(kotlinSource)
         val swiftCodeParts = mutableListOf<String>()
         var transformedCount = 0
@@ -39,21 +77,21 @@ class SwiftifyTransformer {
             when (declaration) {
                 is SealedClassDeclaration -> {
                     if (config.defaults.transformSealedClassesToEnums) {
-                        val swiftCode = transformSealedClass(declaration, config)
+                        val swiftCode = transformSealedClass(declaration, config, options)
                         swiftCodeParts += swiftCode
                         transformedCount++
                     }
                 }
                 is SuspendFunctionDeclaration -> {
                     if (config.defaults.transformSuspendToAsync) {
-                        val swiftCode = transformSuspendFunction(declaration, config)
+                        val swiftCode = transformSuspendFunction(declaration, config, options)
                         swiftCodeParts += swiftCode
                         transformedCount++
                     }
                 }
                 is FlowFunctionDeclaration -> {
                     if (config.defaults.transformFlowToAsyncSequence) {
-                        val swiftCode = transformFlowFunction(declaration, config)
+                        val swiftCode = transformFlowFunction(declaration, config, options)
                         swiftCodeParts += swiftCode
                         transformedCount++
                     }
@@ -68,7 +106,11 @@ class SwiftifyTransformer {
         )
     }
 
-    private fun transformSealedClass(declaration: SealedClassDeclaration, config: SwiftifySpec): String {
+    private fun transformSealedClass(
+        declaration: SealedClassDeclaration,
+        config: SwiftifySpec,
+        options: TransformOptions
+    ): String {
         // Determine configuration from annotation or DSL
         val swiftName = declaration.swiftEnumName ?: declaration.simpleName
         val isExhaustive = declaration.isExhaustive ||
@@ -104,10 +146,16 @@ class SwiftifyTransformer {
             isExhaustive = isExhaustive
         )
 
+        // Enums are data types - they don't need bridging implementations
+        // The enum definition itself is complete
         return enumGenerator.generate(spec)
     }
 
-    private fun transformSuspendFunction(declaration: SuspendFunctionDeclaration, config: SwiftifySpec): String {
+    private fun transformSuspendFunction(
+        declaration: SuspendFunctionDeclaration,
+        config: SwiftifySpec,
+        options: TransformOptions
+    ): String {
         val isThrowing = declaration.isThrowing ||
                 config.suspendFunctionRules.any { it.throwing }
 
@@ -127,10 +175,33 @@ class SwiftifyTransformer {
             isThrowing = isThrowing
         )
 
-        return asyncFunctionGenerator.generate(spec)
+        // Use overloads if there are default parameters
+        val hasDefaultParams = parameters.any { it.defaultValue != null }
+
+        return if (options.generateImplementations) {
+            // Generate full implementations with bridging code
+            if (hasDefaultParams) {
+                asyncFunctionGenerator.generateWithOverloadsAndImplementation(
+                    spec, options.className, config.defaults.maxDefaultArguments
+                )
+            } else {
+                asyncFunctionGenerator.generateWithImplementation(spec, options.className)
+            }
+        } else {
+            // Generate signatures only (for preview)
+            if (hasDefaultParams) {
+                asyncFunctionGenerator.generateWithOverloads(spec, config.defaults.maxDefaultArguments)
+            } else {
+                asyncFunctionGenerator.generate(spec)
+            }
+        }
     }
 
-    private fun transformFlowFunction(declaration: FlowFunctionDeclaration, config: SwiftifySpec): String {
+    private fun transformFlowFunction(
+        declaration: FlowFunctionDeclaration,
+        config: SwiftifySpec,
+        options: TransformOptions
+    ): String {
         val parameters = declaration.parameters.map { param ->
             SwiftParameter(
                 name = param.name,
@@ -142,10 +213,15 @@ class SwiftifyTransformer {
         val spec = SwiftAsyncSequenceSpec(
             name = declaration.name,
             parameters = parameters,
-            elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false)
+            elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
+            isProperty = declaration.isProperty
         )
 
-        return asyncSequenceGenerator.generate(spec)
+        return if (options.generateImplementations) {
+            asyncSequenceGenerator.generateWithImplementation(spec, options.className)
+        } else {
+            asyncSequenceGenerator.generate(spec)
+        }
     }
 
     private fun mapKotlinTypeToSwift(kotlinType: String, isNullable: Boolean): SwiftType {

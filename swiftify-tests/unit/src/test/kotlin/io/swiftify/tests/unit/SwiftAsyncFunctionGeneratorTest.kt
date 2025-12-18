@@ -6,6 +6,7 @@ import io.swiftify.common.SwiftType
 import io.swiftify.generator.SwiftAsyncFunctionGenerator
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -186,5 +187,122 @@ class SwiftAsyncFunctionGeneratorTest {
 
         val expected = "public func findUser(id: Int) async -> User?"
         assertEquals(expected, result.trim())
+    }
+
+    // Tests for generateWithOverloads (Swift default parameters)
+
+    @Test
+    fun `generates single function with default parameter`() {
+        val spec = SwiftAsyncFunctionSpec(
+            name = "fetchUser",
+            parameters = listOf(
+                SwiftParameter(name = "id", type = SwiftType.Named("String")),
+                SwiftParameter(
+                    name = "includeProfile",
+                    type = SwiftType.Named("Bool"),
+                    defaultValue = "true"
+                )
+            ),
+            returnType = SwiftType.Named("User"),
+            isThrowing = true
+        )
+
+        val result = generator.generateWithOverloads(spec)
+
+        // Should generate single function with Swift default parameter
+        assertTrue(result.contains("func fetchUser(id: String, includeProfile: Bool = true) async throws -> User"))
+        // Only one function, not multiple overloads
+        assertEquals(1, result.lines().filter { it.contains("func fetchUser") }.size)
+    }
+
+    @Test
+    fun `generates single function with multiple default parameters`() {
+        val spec = SwiftAsyncFunctionSpec(
+            name = "search",
+            parameters = listOf(
+                SwiftParameter(name = "query", type = SwiftType.Named("String")),
+                SwiftParameter(
+                    name = "limit",
+                    type = SwiftType.Named("Int"),
+                    defaultValue = "10"
+                ),
+                SwiftParameter(
+                    name = "offset",
+                    type = SwiftType.Named("Int"),
+                    defaultValue = "0"
+                )
+            ),
+            returnType = SwiftType.Array(SwiftType.Named("Result")),
+            isThrowing = true
+        )
+
+        val result = generator.generateWithOverloads(spec)
+
+        // Should generate single function with all Swift default parameters
+        assertTrue(result.contains("func search(query: String, limit: Int = 10, offset: Int = 0) async throws -> [Result]"))
+        // Only one function
+        assertEquals(1, result.lines().filter { it.contains("func search") }.size)
+    }
+
+    @Test
+    fun `generates single function without defaults when none specified`() {
+        val spec = SwiftAsyncFunctionSpec(
+            name = "simpleFunc",
+            parameters = listOf(
+                SwiftParameter(name = "value", type = SwiftType.Named("Int"))
+            ),
+            returnType = SwiftType.Void
+        )
+
+        val result = generator.generateWithOverloads(spec)
+
+        // Should only have one function
+        assertEquals(1, result.lines().filter { it.contains("func simpleFunc") }.size)
+        assertTrue(result.contains("func simpleFunc(value: Int) async"))
+    }
+
+    @Test
+    fun `generates function with many default parameters`() {
+        val spec = SwiftAsyncFunctionSpec(
+            name = "manyDefaults",
+            parameters = listOf(
+                SwiftParameter(name = "a", type = SwiftType.Named("Int")),
+                SwiftParameter(name = "b", type = SwiftType.Named("Int"), defaultValue = "1"),
+                SwiftParameter(name = "c", type = SwiftType.Named("Int"), defaultValue = "2"),
+                SwiftParameter(name = "d", type = SwiftType.Named("Int"), defaultValue = "3")
+            ),
+            returnType = SwiftType.Void
+        )
+
+        val result = generator.generateWithOverloads(spec)
+
+        // Should generate single function with all defaults
+        assertTrue(result.contains("a: Int"))
+        assertTrue(result.contains("b: Int = 1"))
+        assertTrue(result.contains("c: Int = 2"))
+        assertTrue(result.contains("d: Int = 3"))
+        // Only one function
+        assertEquals(1, result.lines().filter { it.contains("func manyDefaults") }.size)
+    }
+
+    @Test
+    fun `includes default values in Swift signature`() {
+        val spec = SwiftAsyncFunctionSpec(
+            name = "withDefault",
+            parameters = listOf(
+                SwiftParameter(name = "x", type = SwiftType.Named("Int")),
+                SwiftParameter(
+                    name = "y",
+                    type = SwiftType.Named("Int"),
+                    defaultValue = "42"
+                )
+            ),
+            returnType = SwiftType.Void
+        )
+
+        val result = generator.generateWithOverloads(spec)
+
+        // Swift default parameter should include the default value
+        assertTrue(result.contains("y: Int = 42"))
     }
 }
