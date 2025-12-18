@@ -63,10 +63,15 @@ abstract class SwiftifyPreviewTask : DefaultTask() {
                 return@forEach
             }
 
-            val result = transformer.transform(source)
+            try {
+                val result = transformer.transform(source)
 
-            if (result.declarationsTransformed > 0) {
-                logger.lifecycle(buildPreview(file.name, source, result.swiftCode))
+                if (result.declarationsTransformed > 0) {
+                    logger.lifecycle(buildPreview(file.name, source, result.swiftCode))
+                }
+            } catch (e: Exception) {
+                logger.warn("Swiftify: Warning - could not transform ${file.name}: ${e.message}")
+                logger.debug("Swiftify: Full error", e)
             }
         }
 
