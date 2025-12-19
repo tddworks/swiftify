@@ -17,14 +17,19 @@ class SwiftEmbedderTest {
     private lateinit var analyzer: FrameworkAnalyzer
     private lateinit var compiler: SwiftCompiler
     private lateinit var merger: BinaryMerger
+    private lateinit var moduleInstaller: SwiftModuleInstaller
     private lateinit var embedder: SwiftEmbedder
+    private lateinit var swiftModuleDir: File
 
     @BeforeEach
     fun setup() {
         analyzer = mockk()
         compiler = mockk()
         merger = mockk()
-        embedder = SwiftEmbedder(analyzer, compiler, merger)
+        moduleInstaller = mockk()
+        embedder = SwiftEmbedder(analyzer, compiler, merger, moduleInstaller)
+        swiftModuleDir = File(tempDir, "swiftmodule")
+        swiftModuleDir.mkdirs()
     }
 
     @Test
@@ -42,8 +47,9 @@ class SwiftEmbedderTest {
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
-        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile))
+        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile), swiftModuleDir)
         every { merger.merge(any(), any()) } returns MergeResult.Success(frameworkInfo.binaryPath)
+        every { moduleInstaller.install(any(), any(), any()) } returns InstallResult.Success(File(framework, "Modules"))
 
         val result = embedder.embed(framework, listOf(swiftFile))
 
@@ -51,6 +57,7 @@ class SwiftEmbedderTest {
         verify { analyzer.analyze(framework) }
         verify { compiler.compile(listOf(swiftFile), any()) }
         verify { merger.merge(listOf(objectFile), any()) }
+        verify { moduleInstaller.install(swiftModuleDir, framework, any()) }
     }
 
     @Test
@@ -102,7 +109,7 @@ class SwiftEmbedderTest {
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
-        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile))
+        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile), swiftModuleDir)
         every { merger.merge(any(), any()) } returns MergeResult.Error("Merge failed")
 
         val result = embedder.embed(framework, listOf(swiftFile))
@@ -126,8 +133,9 @@ class SwiftEmbedderTest {
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
-        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile))
+        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile), swiftModuleDir)
         every { merger.merge(any(), any()) } returns MergeResult.Success(frameworkInfo.binaryPath)
+        every { moduleInstaller.install(any(), any(), any()) } returns InstallResult.Success(File(framework, "Modules"))
 
         embedder.embed(framework, listOf(swiftFile))
 
@@ -153,8 +161,9 @@ class SwiftEmbedderTest {
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
-        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile))
+        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile), swiftModuleDir)
         every { merger.merge(any(), any()) } returns MergeResult.Success(frameworkInfo.binaryPath)
+        every { moduleInstaller.install(any(), any(), any()) } returns InstallResult.Success(File(framework, "Modules"))
 
         embedder.embed(framework, listOf(swiftFile))
 
@@ -189,8 +198,9 @@ class SwiftEmbedderTest {
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
-        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile))
+        every { compiler.compile(any(), any()) } returns CompileResult.Success(listOf(objectFile), swiftModuleDir)
         every { merger.merge(any(), any()) } returns MergeResult.Success(frameworkInfo.binaryPath)
+        every { moduleInstaller.install(any(), any(), any()) } returns InstallResult.Success(File(framework, "Modules"))
 
         val config = EmbedConfig(dryRun = true)
         embedder.embed(framework, listOf(swiftFile), config)
@@ -198,6 +208,7 @@ class SwiftEmbedderTest {
         verify {
             compiler.compile(any(), match { it.dryRun })
             merger.merge(any(), match { it.dryRun })
+            moduleInstaller.install(any(), any(), match { it.dryRun })
         }
     }
 

@@ -9,13 +9,15 @@ import java.io.File
  *
  * Flow:
  * 1. Analyze framework (FrameworkAnalyzer)
- * 2. Compile Swift to .o files (SwiftCompiler)
+ * 2. Compile Swift to .o files + .swiftmodule (SwiftCompiler)
  * 3. Merge .o files into framework binary (BinaryMerger)
+ * 4. Install .swiftmodule into framework (SwiftModuleInstaller)
  */
 class SwiftEmbedder(
     private val analyzer: FrameworkAnalyzer = FrameworkAnalyzer(),
     private val compiler: SwiftCompiler = SwiftCompiler(),
-    private val merger: BinaryMerger = BinaryMerger()
+    private val merger: BinaryMerger = BinaryMerger(),
+    private val moduleInstaller: SwiftModuleInstaller = SwiftModuleInstaller()
 ) {
 
     /**
@@ -44,7 +46,7 @@ class SwiftEmbedder(
 
         config.logger?.invoke("Analyzed framework: ${frameworkInfo.name} (${frameworkInfo.platform}, ${frameworkInfo.targetTriple})")
 
-        // Step 2: Compile Swift to object files
+        // Step 2: Compile Swift to object files and module interface
         val compileConfig = CompileConfig(
             frameworkPath = frameworkDir,
             targetTriple = frameworkInfo.targetTriple,
@@ -59,8 +61,10 @@ class SwiftEmbedder(
             return EmbedResult.Error("Compilation failed: ${compileResult.message}")
         }
 
-        val objectFiles = (compileResult as CompileResult.Success).objectFiles
-        config.logger?.invoke("Compiled ${objectFiles.size} object files")
+        val successResult = compileResult as CompileResult.Success
+        val objectFiles = successResult.objectFiles
+        val swiftModuleDir = successResult.swiftModuleDir
+        config.logger?.invoke("Compiled ${objectFiles.size} object files with Swift module")
 
         // Step 3: Merge object files into framework binary
         val mergeConfig = MergeConfig(
@@ -77,6 +81,19 @@ class SwiftEmbedder(
 
         val outputBinary = (mergeResult as MergeResult.Success).outputBinary
         config.logger?.invoke("Embedded Swift into ${outputBinary.absolutePath}")
+
+        // Step 4: Install Swift module into framework
+        val installConfig = InstallConfig(
+            dryRun = config.dryRun,
+            logger = config.logger
+        )
+
+        val installResult = moduleInstaller.install(swiftModuleDir, frameworkDir, installConfig)
+        if (installResult is InstallResult.Error) {
+            return EmbedResult.Error("Module installation failed: ${installResult.message}")
+        }
+
+        config.logger?.invoke("Installed Swift module interface")
 
         return EmbedResult.Success(
             frameworkName = frameworkInfo.name,

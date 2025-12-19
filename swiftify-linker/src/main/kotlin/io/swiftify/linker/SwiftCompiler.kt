@@ -3,14 +3,14 @@ package io.swiftify.linker
 import java.io.File
 
 /**
- * Compiles Swift source files into object files (.o).
+ * Compiles Swift source files into object files (.o) and Swift module interfaces.
  *
- * Single Responsibility: Swift compilation to object files.
+ * Single Responsibility: Swift compilation to object files and module interfaces.
  */
 class SwiftCompiler {
 
     /**
-     * Compiles Swift source files to object files.
+     * Compiles Swift source files to object files and module interfaces.
      *
      * @param sourceFiles List of Swift source files to compile
      * @param config Compilation configuration
@@ -28,11 +28,15 @@ class SwiftCompiler {
 
         val command = buildCommand(sourceFiles, config)
         val outputFile = getOutputFile(sourceFiles.first(), config)
+        val swiftModuleDir = getSwiftModuleDir(config)
 
         if (config.dryRun) {
             config.logger?.invoke("Would run: ${command.joinToString(" ")}")
-            return CompileResult.Success(listOf(outputFile))
+            return CompileResult.Success(listOf(outputFile), swiftModuleDir)
         }
+
+        // Ensure output directory exists
+        config.outputDirectory?.mkdirs()
 
         return try {
             val process = ProcessBuilder(command)
@@ -46,8 +50,8 @@ class SwiftCompiler {
             if (exitCode != 0) {
                 CompileResult.Error("Compilation failed: $output")
             } else {
-                config.logger?.invoke("Compiled ${sourceFiles.size} Swift files")
-                CompileResult.Success(listOf(outputFile))
+                config.logger?.invoke("Compiled ${sourceFiles.size} Swift files with module interface")
+                CompileResult.Success(listOf(outputFile), swiftModuleDir)
             }
         } catch (e: Exception) {
             CompileResult.Error("Compilation failed: ${e.message}")
@@ -60,18 +64,27 @@ class SwiftCompiler {
      */
     fun buildCommand(sourceFiles: List<File>, config: CompileConfig): List<String> {
         val frameworkName = config.frameworkPath.nameWithoutExtension
+        val moduleName = "${frameworkName}Swiftify"
         val outputFile = getOutputFile(sourceFiles.first(), config)
+        val swiftModuleDir = getSwiftModuleDir(config)
 
         return buildList {
             add("swiftc")
 
             // Module configuration
             add("-module-name")
-            add("${frameworkName}Swiftify")
+            add(moduleName)
 
-            // Emit single object file using whole module optimization
+            // Emit object file AND module interface
             add("-emit-object")
+            add("-emit-module")
+            add("-emit-module-interface")
+            add("-enable-library-evolution")
             add("-whole-module-optimization")
+
+            // Module output paths
+            add("-emit-module-path")
+            add(File(swiftModuleDir, "$moduleName.swiftmodule").absolutePath)
 
             // Target triple
             add("-target")
@@ -104,6 +117,11 @@ class SwiftCompiler {
         val outputDir = config.outputDirectory ?: sourceFile.parentFile
         return File(outputDir, "${sourceFile.nameWithoutExtension}.o")
     }
+
+    private fun getSwiftModuleDir(config: CompileConfig): File {
+        val outputDir = config.outputDirectory ?: File(".")
+        return File(outputDir, "swiftmodule")
+    }
 }
 
 /**
@@ -130,8 +148,11 @@ data class CompileConfig(
  * Result of Swift compilation.
  */
 sealed class CompileResult {
-    /** Successful compilation with list of output object files */
-    data class Success(val objectFiles: List<File>) : CompileResult()
+    /** Successful compilation with list of output object files and Swift module directory */
+    data class Success(
+        val objectFiles: List<File>,
+        val swiftModuleDir: File
+    ) : CompileResult()
     /** Compilation failed with error message */
     data class Error(val message: String) : CompileResult()
 }
