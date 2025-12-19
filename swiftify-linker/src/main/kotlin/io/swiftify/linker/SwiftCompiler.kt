@@ -39,9 +39,9 @@ class SwiftCompiler {
         config.outputDirectory?.mkdirs()
         swiftModuleDir.mkdirs()
 
-        // Create the .swiftmodule bundle directory
+        // Create the .swiftmodule bundle directory (same name as framework)
         val frameworkName = config.frameworkPath.nameWithoutExtension
-        File(swiftModuleDir, "${frameworkName}Swiftify.swiftmodule").mkdirs()
+        File(swiftModuleDir, "$frameworkName.swiftmodule").mkdirs()
 
         return try {
             val process = ProcessBuilder(command)
@@ -69,8 +69,8 @@ class SwiftCompiler {
      */
     fun buildCommand(sourceFiles: List<File>, config: CompileConfig): List<String> {
         val frameworkName = config.frameworkPath.nameWithoutExtension
-        // Use Swiftify suffix to avoid conflicts with the Objective-C module
-        val moduleName = "${frameworkName}Swiftify"
+        // Use same name as framework - Swift overlay pattern
+        val moduleName = frameworkName
         val outputFile = getOutputFile(sourceFiles.first(), config)
         val swiftModuleDir = getSwiftModuleDir(config)
 
@@ -80,9 +80,14 @@ class SwiftCompiler {
         return buildList {
             add("swiftc")
 
-            // Module configuration
+            // Module configuration - use same name as framework
             add("-module-name")
             add(moduleName)
+
+            // Import the underlying Objective-C module (the Kotlin framework)
+            // This allows Swift extensions to reference types from the framework
+            // without module name conflicts
+            add("-import-underlying-module")
 
             // Emit object file AND module interface
             add("-emit-object")
@@ -108,10 +113,6 @@ class SwiftCompiler {
             // Framework search path (parent directory of .framework)
             add("-F")
             add(config.frameworkPath.parentFile.absolutePath)
-
-            // Link against the original Kotlin framework
-            add("-framework")
-            add(frameworkName)
 
             // Output file (with WMO, multiple sources -> single .o)
             add("-o")

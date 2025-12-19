@@ -48,6 +48,10 @@ class SwiftModuleInstaller {
         }
 
         return try {
+            val frameworkName = frameworkDir.name.removeSuffix(".framework")
+            // Use same name as framework for Swift overlay
+            val swiftModuleName = frameworkName
+
             // Copy all Swift module files to framework's Modules directory
             val copiedFiles = mutableListOf<File>()
             swiftModuleDir.listFiles()?.forEach { file ->
@@ -69,6 +73,22 @@ class SwiftModuleInstaller {
                         innerFile.copyTo(destFile, overwrite = true)
                         config.logger?.invoke("Installed: ${file.name}/$destName")
                     }
+
+                    // Also copy .swiftinterface files from parent directory
+                    val swiftInterfaceFile = File(swiftModuleDir.parentFile, "$swiftModuleName.swiftinterface")
+                    if (swiftInterfaceFile.exists() && archPrefix != null) {
+                        val destInterface = File(destBundle, "$archPrefix.swiftinterface")
+                        swiftInterfaceFile.copyTo(destInterface, overwrite = true)
+                        config.logger?.invoke("Installed: ${file.name}/$archPrefix.swiftinterface")
+                    }
+
+                    val privateSwiftInterfaceFile = File(swiftModuleDir.parentFile, "$swiftModuleName.private.swiftinterface")
+                    if (privateSwiftInterfaceFile.exists() && archPrefix != null) {
+                        val destPrivateInterface = File(destBundle, "$archPrefix.private.swiftinterface")
+                        privateSwiftInterfaceFile.copyTo(destPrivateInterface, overwrite = true)
+                        config.logger?.invoke("Installed: ${file.name}/$archPrefix.private.swiftinterface")
+                    }
+
                     copiedFiles.add(destBundle)
                 } else {
                     val destFile = File(modulesDir, file.name)
@@ -82,24 +102,8 @@ class SwiftModuleInstaller {
                 return InstallResult.Error("No Swift module files found to install")
             }
 
-            // Update module.modulemap to include the Swift module
-            val modulemapFile = File(modulesDir, "module.modulemap")
-            if (modulemapFile.exists()) {
-                val frameworkName = frameworkDir.name.removeSuffix(".framework")
-                val swiftModuleName = "${frameworkName}Swiftify"
-                val modulemapContent = modulemapFile.readText()
-
-                // Only add if not already present
-                if (!modulemapContent.contains("module \"$swiftModuleName\"")) {
-                    val swiftModuleDecl = """
-
-module "$swiftModuleName" {
-}
-"""
-                    modulemapFile.appendText(swiftModuleDecl)
-                    config.logger?.invoke("Updated module.modulemap with $swiftModuleName")
-                }
-            }
+            // No need to modify modulemap - Swift overlay is discovered automatically
+            // when .swiftmodule bundle has same name as framework
 
             config.logger?.invoke("Installed ${copiedFiles.size} Swift module files")
             InstallResult.Success(modulesDir)
