@@ -243,63 +243,46 @@ class SwiftifyPlugin : Plugin<Project> {
     private fun configureAppleTarget(project: Project, extension: SwiftifyExtension, targetName: String) {
         project.logger.info("Swiftify: Configuring Apple target: $targetName")
 
-        // Hook into KMP framework link tasks to auto-generate Swift code
-        // This makes ./gradlew linkDebugFrameworkMacosArm64 automatically run swiftifyGenerate
-        hookIntoFrameworkLinkTasks(project, targetName)
+        // Register target-specific embed tasks for each build type
+        registerTargetEmbedTasks(project, extension, targetName)
     }
 
     /**
-     * Hook swiftifyEmbed into framework link tasks.
-     * Swift code is auto-generated and embedded when building frameworks.
-     *
-     * When you run: ./gradlew linkDebugFrameworkMacosArm64
-     * Swiftify will automatically:
-     * 1. Generate Swift code (swiftifyGenerate)
-     * 2. Embed it into the framework binary (swiftifyEmbed)
+     * Register embed tasks for a specific target.
+     * Creates tasks like: swiftifyEmbedDebugMacosArm64, swiftifyEmbedReleaseMacosArm64
      */
-    private fun hookIntoFrameworkLinkTasks(
+    private fun registerTargetEmbedTasks(
         project: Project,
+        extension: SwiftifyExtension,
         targetName: String
     ) {
-        // Match tasks like: linkDebugFrameworkMacosArm64, linkReleaseFrameworkIosArm64
-        val linkTaskPatterns = listOf(
-            "linkDebugFramework${targetName.replaceFirstChar { it.uppercase() }}",
-            "linkReleaseFramework${targetName.replaceFirstChar { it.uppercase() }}",
-            "link.*Framework${targetName.replaceFirstChar { it.uppercase() }}"
-        )
+        val capitalizedTarget = targetName.replaceFirstChar { it.uppercase() }
 
-        project.tasks.configureEach { task ->
-            val taskName = task.name
-            val isFrameworkLinkTask = linkTaskPatterns.any { pattern ->
-                if (pattern.contains(".*")) {
-                    taskName.matches(Regex(pattern))
-                } else {
-                    taskName == pattern
-                }
+        listOf("Debug", "Release").forEach { buildType ->
+            val linkTaskName = "link${buildType}Framework$capitalizedTarget"
+            val embedTaskName = "swiftifyEmbed${buildType}$capitalizedTarget"
+
+            // Register embed task for this target/buildType
+            val embedTaskProvider = project.tasks.register(embedTaskName, SwiftifyEmbedTask::class.java) { embedTask ->
+                embedTask.group = "swiftify"
+                embedTask.description = "Embed Swift extensions into $buildType framework for $targetName"
+                embedTask.swiftSourceDirectory.set(extension.outputDirectory)
+
+                // Set framework directory based on KMP convention
+                val frameworkDir = project.layout.buildDirectory.dir(
+                    "bin/$targetName/${buildType.lowercase()}Framework/${extension.frameworkName.get()}.framework"
+                )
+                embedTask.frameworkDirectory.set(frameworkDir)
+
+                // Depend on swiftifyGenerate
+                embedTask.dependsOn("swiftifyGenerate")
             }
 
-            if (isFrameworkLinkTask) {
-                // Configure swiftifyEmbed with the framework directory from the link task
-                project.tasks.named("swiftifyEmbed", SwiftifyEmbedTask::class.java).configure { embedTask ->
-                    // Set framework directory from link task output
-                    try {
-                        val outputDir = task.javaClass.getMethod("getOutputDirectory").invoke(task)
-                        if (outputDir != null) {
-                            val dirProperty = outputDir.javaClass.getMethod("get").invoke(outputDir)
-                            val asFile = dirProperty.javaClass.getMethod("getAsFile").invoke(dirProperty) as? java.io.File
-                            if (asFile != null) {
-                                embedTask.frameworkDirectory.set(asFile)
-                            }
-                        }
-                    } catch (e: Exception) {
-                        project.logger.debug("Swiftify: Could not auto-configure framework directory: ${e.message}")
-                    }
-                }
-
-                // Run swiftifyEmbed after the framework is linked
-                // swiftifyEmbed already depends on swiftifyGenerate
-                task.finalizedBy("swiftifyEmbed")
-                project.logger.info("Swiftify: Hooked into $taskName - Swift will be auto-generated and embedded")
+            // Hook into the link task when it's configured
+            project.tasks.matching { it.name == linkTaskName }.configureEach { linkTask ->
+                // Run embed after framework is linked and Swift is generated
+                linkTask.finalizedBy(embedTaskName)
+                project.logger.info("Swiftify: Hooked $embedTaskName into $linkTaskName")
             }
         }
     }

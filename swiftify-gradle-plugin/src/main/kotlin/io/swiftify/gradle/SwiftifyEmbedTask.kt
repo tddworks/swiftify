@@ -21,8 +21,10 @@ abstract class SwiftifyEmbedTask : DefaultTask() {
 
     /**
      * The framework directory to embed into.
+     * If not set, the task will skip embedding.
      */
     @get:InputDirectory
+    @get:Optional
     abstract val frameworkDirectory: DirectoryProperty
 
     /**
@@ -56,7 +58,12 @@ abstract class SwiftifyEmbedTask : DefaultTask() {
 
     @TaskAction
     fun embed() {
-        val frameworkDir = frameworkDirectory.get().asFile
+        val frameworkDir = frameworkDirectory.orNull?.asFile
+        if (frameworkDir == null) {
+            logger.lifecycle("Swiftify: No framework directory configured. Skipping embedding.")
+            logger.lifecycle("Swiftify: Embedding happens automatically when building a framework (e.g., linkDebugFrameworkMacosArm64)")
+            return
+        }
         if (!frameworkDir.exists()) {
             logger.lifecycle("Swiftify: Framework not found at ${frameworkDir.absolutePath}")
             return
@@ -68,7 +75,12 @@ abstract class SwiftifyEmbedTask : DefaultTask() {
             return
         }
 
-        val swiftFiles = swiftDir.listFiles { file -> file.extension == "swift" }?.toList()
+        // Only include the combined file and runtime, not individual files (which are duplicates)
+        val swiftFiles = swiftDir.listFiles { file ->
+            file.extension == "swift" &&
+                (file.name == "Swiftify.swift" || file.name == "SwiftifyRuntime.swift")
+        }?.toList()
+
         if (swiftFiles.isNullOrEmpty()) {
             logger.lifecycle("Swiftify: No Swift files to embed")
             return

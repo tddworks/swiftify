@@ -69,8 +69,9 @@ class SwiftCompiler {
             add("-module-name")
             add("${frameworkName}Swiftify")
 
-            // Emit object file (not executable)
+            // Emit single object file using whole module optimization
             add("-emit-object")
+            add("-whole-module-optimization")
 
             // Target triple
             add("-target")
@@ -90,7 +91,7 @@ class SwiftCompiler {
             add("-framework")
             add(frameworkName)
 
-            // Output file
+            // Output file (with WMO, multiple sources -> single .o)
             add("-o")
             add(outputFile.absolutePath)
 

@@ -41,7 +41,8 @@ class FrameworkAnalyzer {
 
         val platform = detectPlatform(frameworkDir)
         val arch = detectArchitecture(frameworkDir)
-        val targetTriple = buildTargetTriple(platform, arch)
+        val deploymentTarget = detectDeploymentTarget(frameworkDir, platform)
+        val targetTriple = buildTargetTriple(platform, arch, deploymentTarget)
 
         return FrameworkInfo(
             name = name,
@@ -102,7 +103,44 @@ class FrameworkAnalyzer {
         }
     }
 
-    private fun buildTargetTriple(platform: Platform, arch: Architecture): String {
+    /**
+     * Detect deployment target from framework's Info.plist.
+     */
+    private fun detectDeploymentTarget(frameworkDir: File, platform: Platform): String {
+        // Try to read from Info.plist (check multiple locations)
+        val possiblePaths = listOf(
+            File(frameworkDir, "Info.plist"),
+            File(frameworkDir, "Resources/Info.plist"),
+            File(frameworkDir, "Versions/A/Resources/Info.plist")
+        )
+        val infoPlist = possiblePaths.firstOrNull { it.exists() }
+        if (infoPlist != null) {
+            try {
+                val content = infoPlist.readText()
+                // Look for MinimumOSVersion or similar keys
+                val versionRegex = when (platform) {
+                    Platform.MACOS -> Regex("""<key>LSMinimumSystemVersion</key>\s*<string>([^<]+)</string>""")
+                    else -> Regex("""<key>MinimumOSVersion</key>\s*<string>([^<]+)</string>""")
+                }
+                val match = versionRegex.find(content)
+                if (match != null) {
+                    return match.groupValues[1]
+                }
+            } catch (e: Exception) {
+                // Fall through to defaults
+            }
+        }
+
+        // Sensible defaults if not found
+        return when (platform) {
+            Platform.IOS -> "14.0"
+            Platform.MACOS -> "11.0"
+            Platform.WATCHOS -> "7.0"
+            Platform.TVOS -> "14.0"
+        }
+    }
+
+    private fun buildTargetTriple(platform: Platform, arch: Architecture, deploymentTarget: String): String {
         val archString = when (arch) {
             Architecture.ARM64 -> "arm64"
             Architecture.X64 -> "x86_64"
@@ -110,10 +148,10 @@ class FrameworkAnalyzer {
         }
 
         val osString = when (platform) {
-            Platform.IOS -> "apple-ios"
-            Platform.MACOS -> "apple-macos"
-            Platform.WATCHOS -> "apple-watchos"
-            Platform.TVOS -> "apple-tvos"
+            Platform.IOS -> "apple-ios$deploymentTarget"
+            Platform.MACOS -> "apple-macos$deploymentTarget"
+            Platform.WATCHOS -> "apple-watchos$deploymentTarget"
+            Platform.TVOS -> "apple-tvos$deploymentTarget"
         }
 
         return "$archString-$osString"
