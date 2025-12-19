@@ -141,7 +141,7 @@ class SwiftifyPlugin : Plugin<Project> {
     }
 
     private fun configureKmpIntegration(project: Project, extension: SwiftifyExtension) {
-        // Try to find Apple targets
+        // Try to find Apple targets and auto-detect framework name
         try {
             val kotlin = project.extensions.getByName("kotlin")
 
@@ -150,15 +150,70 @@ class SwiftifyPlugin : Plugin<Project> {
             val targets = targetsMethod.invoke(kotlin)
 
             if (targets is Iterable<*>) {
+                var frameworkNameDetected: String? = null
+
                 targets.filterNotNull().forEach { target ->
                     val targetName = target.javaClass.getMethod("getName").invoke(target) as? String
                     if (targetName != null && isAppleTarget(targetName)) {
                         configureAppleTarget(project, extension, targetName)
+
+                        // Auto-detect framework name from first Apple target's framework binary
+                        if (frameworkNameDetected == null) {
+                            frameworkNameDetected = detectFrameworkName(target)
+                        }
                     }
+                }
+
+                // Set auto-detected framework name if user didn't explicitly set one
+                // Check both the explicit flag and whether the value differs from convention
+                val defaultConvention = project.name.replaceFirstChar { it.uppercase() }
+                val currentValue = extension.frameworkName.orNull
+                val wasExplicitlySet = extension.frameworkNameExplicitlySet ||
+                    (currentValue != null && currentValue != defaultConvention)
+
+                if (frameworkNameDetected != null && !wasExplicitlySet) {
+                    extension.frameworkName.set(frameworkNameDetected)
+                    project.logger.lifecycle("Swiftify: Auto-detected framework name: $frameworkNameDetected")
+                } else if (frameworkNameDetected != null && wasExplicitlySet && currentValue != frameworkNameDetected) {
+                    project.logger.warn("Swiftify: Framework name '$currentValue' was set, but detected '$frameworkNameDetected' from KMP config. " +
+                        "Consider removing frameworkName.set() as Swiftify auto-detects it.")
                 }
             }
         } catch (e: Exception) {
             project.logger.debug("Swiftify: Could not configure KMP targets: ${e.message}")
+        }
+    }
+
+    /**
+     * Auto-detect framework name from a KMP Apple target's binary configuration.
+     * Looks for: target.binaries.framework.baseName
+     */
+    private fun detectFrameworkName(target: Any): String? {
+        return try {
+            // Get binaries container
+            val binariesMethod = target.javaClass.getMethod("getBinaries")
+            val binaries = binariesMethod.invoke(target) ?: return null
+
+            // Try to find a framework binary
+            val frameworks = if (binaries is Iterable<*>) {
+                binaries.filterNotNull().filter { binary ->
+                    binary.javaClass.simpleName.contains("Framework")
+                }
+            } else {
+                emptyList()
+            }
+
+            // Get baseName from first framework
+            frameworks.firstOrNull()?.let { framework ->
+                try {
+                    val baseNameMethod = framework.javaClass.getMethod("getBaseName")
+                    baseNameMethod.invoke(framework) as? String
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -213,6 +268,24 @@ class SwiftifyPlugin : Plugin<Project> {
 
 /**
  * Swiftify extension for Gradle DSL configuration.
+ *
+ * The framework name is auto-detected from your Kotlin Multiplatform configuration:
+ * ```kotlin
+ * kotlin {
+ *     iosArm64().binaries.framework {
+ *         baseName = "MyKit"  // <- This is auto-detected
+ *     }
+ * }
+ * ```
+ *
+ * You only need to configure transformation rules:
+ * ```kotlin
+ * swiftify {
+ *     sealedClasses { transformToEnum(exhaustive = true) }
+ *     suspendFunctions { transformToAsync(throwing = true) }
+ *     flowTypes { transformToAsyncSequence() }
+ * }
+ * ```
  */
 abstract class SwiftifyExtension(private val project: Project) {
 
@@ -227,9 +300,19 @@ abstract class SwiftifyExtension(private val project: Project) {
     abstract val outputDirectory: DirectoryProperty
 
     /**
-     * Framework name for imports. Defaults to project name with first letter capitalized.
+     * Framework name for imports.
+     *
+     * This is auto-detected from your KMP framework configuration.
+     * Only set this manually if you have a non-standard setup.
      */
     abstract val frameworkName: Property<String>
+
+    /**
+     * Tracks if frameworkName was explicitly set by user.
+     * If false, we'll auto-detect from KMP configuration.
+     */
+    internal var frameworkNameExplicitlySet: Boolean = false
+        private set
 
     /**
      * Configuration for sealed class transformations.
@@ -248,7 +331,17 @@ abstract class SwiftifyExtension(private val project: Project) {
 
     init {
         enabled.convention(true)
+        // Default convention - will be overridden by auto-detection if available
         frameworkName.convention(project.name.replaceFirstChar { it.uppercase() })
+    }
+
+    /**
+     * Explicitly set the framework name.
+     * Note: This is usually not needed as Swiftify auto-detects it from KMP config.
+     */
+    fun frameworkName(name: String) {
+        frameworkName.set(name)
+        frameworkNameExplicitlySet = true
     }
 
     /**

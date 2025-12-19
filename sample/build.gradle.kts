@@ -28,8 +28,8 @@ kotlin {
 }
 
 // Swiftify DSL configuration
+// Note: frameworkName is auto-detected from KMP's baseName = "SampleKit"
 swiftify {
-    frameworkName.set("SampleKit")
     sealedClasses {
         transformToEnum(exhaustive = true)
     }

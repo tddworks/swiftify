@@ -65,77 +65,68 @@ for await update in repository.getUserUpdates(userId: "123") {
 
 ## Configuration Guide
 
-Swiftify offers **two ways** to configure transformations. Choose the approach that fits your needs:
+Swiftify **auto-detects** your framework name from the Kotlin Multiplatform configuration - no manual setup required.
 
-### Option 1: Zero Config (Recommended)
+### Zero Config (Recommended)
 
-**Best for:** Most projects
-
-By default, Swiftify transforms ALL annotated declarations automatically:
+Just apply the plugin and add annotations to your Kotlin code:
 
 ```kotlin
 plugins {
+    kotlin("multiplatform")
     id("io.swiftify") version "0.1.0-SNAPSHOT"
 }
 
-// Just add annotations to your Kotlin code
+kotlin {
+    iosArm64().binaries.framework {
+        baseName = "MyKit"  // <- Swiftify auto-detects this
+    }
+}
+
+// That's it! Add annotations to your code:
 class MyRepository {
     @SwiftAsync
     suspend fun getData(): Data { ... }
 }
 ```
 
-### Option 2: Annotations Only
+### Custom Transformation Rules (Optional)
 
-**Best for:** Fine-grained control over specific APIs
-
-Use annotations to mark exactly which declarations to transform:
-
-```kotlin
-import io.swiftify.annotations.*
-
-class UserRepository {
-    // This WILL be transformed
-    @SwiftAsync
-    suspend fun fetchUser(id: String): User
-
-    // This will NOT be transformed (no annotation)
-    suspend fun internalFetch(): Data
-
-    @SwiftFlow
-    val currentUser: StateFlow<User>  // Transformed
-
-    val internalState: StateFlow<Int>  // NOT transformed
-}
-```
-
-### Option 3: Global Defaults via DSL
-
-**Best for:** When you want ALL suspend/Flow to transform without annotations
+If you want to customize how transformations work:
 
 ```kotlin
 swiftify {
-    frameworkName.set("MyKit")
+    // Framework name is auto-detected - no need to set it!
 
-    // Transform ALL suspend functions (no @SwiftAsync needed)
+    sealedClasses {
+        transformToEnum(exhaustive = true)
+    }
     suspendFunctions {
         transformToAsync(throwing = true)
     }
-
-    // Transform ALL Flow types (no @SwiftFlow needed)
     flowTypes {
         transformToAsyncSequence()
     }
 }
 ```
 
-### Configuration Comparison
+### Annotations vs DSL
 
-| Approach | Annotations Needed | Scope | Use Case |
-|----------|-------------------|-------|----------|
-| **Zero Config** | Yes (`@SwiftAsync`, `@SwiftFlow`) | Marked only | Most projects |
-| **DSL Global** | No | Everything | Transform all APIs |
-| **Mixed** | Optional | Flexible | Fine-tuned control |
+| Approach | How it Works |
+|----------|-------------|
+| **Annotations** | Add `@SwiftAsync`, `@SwiftFlow` to specific declarations |
+| **DSL Rules** | Configure global behavior for all declarations |
+| **Mixed** | Use both for fine-tuned control |
+
+```kotlin
+class UserRepository {
+    @SwiftAsync  // Explicitly marked - will be transformed
+    suspend fun fetchUser(id: String): User
+
+    // No annotation - NOT transformed (keeps original KMP behavior)
+    suspend fun internalFetch(): Data
+}
+```
 
 ---
 
