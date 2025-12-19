@@ -1,740 +1,1475 @@
 import SwiftUI
 import SampleKit
 
-// MARK: - Demo Types
+// MARK: - Design System
 
-enum Demo: String, CaseIterable, Identifiable {
-    case user = "User Repository"
-    case products = "E-commerce"
-    case chat = "Chat/Messaging"
+struct SwiftifyTheme {
+    // Colors
+    static let background = Color(hex: "0D0D0D")
+    static let surface = Color(hex: "1A1A1A")
+    static let surfaceElevated = Color(hex: "252525")
+    static let accent = Color(hex: "FF6B35") // Warm orange
+    static let accentGlow = Color(hex: "FF6B35").opacity(0.3)
+    static let success = Color(hex: "4ADE80")
+    static let info = Color(hex: "60A5FA")
+    static let textPrimary = Color.white
+    static let textSecondary = Color(hex: "A0A0A0")
+    static let textMuted = Color(hex: "606060")
+    static let border = Color(hex: "333333")
+    static let kotlin = Color(hex: "7F52FF") // Kotlin purple
+    static let swift = Color(hex: "FF6B35")  // Swift orange
 
-    var id: String { rawValue }
+    // Fonts
+    static let displayFont = Font.custom("SF Pro Display", size: 48).weight(.bold)
+    static let headlineFont = Font.custom("SF Pro Display", size: 24).weight(.semibold)
+    static let titleFont = Font.custom("SF Pro Display", size: 18).weight(.medium)
+    static let bodyFont = Font.custom("SF Pro Text", size: 14)
+    static let codeFont = Font.custom("SF Mono", size: 13)
+    static let codeFontSmall = Font.custom("SF Mono", size: 12)
+}
 
-    var icon: String {
-        switch self {
-        case .user: return "person.circle"
-        case .products: return "cart.circle"
-        case .chat: return "message.circle"
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 6:
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8:
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
         }
-    }
-
-    var description: String {
-        switch self {
-        case .user: return "Basic async/await demo"
-        case .products: return "Cart, checkout, price watching"
-        case .chat: return "Real-time messaging"
-        }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
 
-// MARK: - Main Content View
+// MARK: - Main App View
 
 struct ContentView: View {
-    @State private var selectedDemo: Demo? = .user
+    @State private var selectedSection: Section = .overview
+
+    enum Section: String, CaseIterable {
+        case overview = "Overview"
+        case asyncAwait = "Async/Await"
+        case defaultParams = "Default Parameters"
+        case asyncStream = "AsyncStream"
+        case liveDemo = "Live Demo"
+    }
 
     var body: some View {
-        NavigationSplitView {
-            // Sidebar
-            List(Demo.allCases, selection: $selectedDemo) { demo in
-                NavigationLink(value: demo) {
-                    Label {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(demo.rawValue)
-                                .font(.headline)
-                            Text(demo.description)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: demo.icon)
-                            .font(.title2)
-                            .foregroundColor(.accentColor)
+        ZStack {
+            // Background gradient
+            LinearGradient(
+                colors: [
+                    SwiftifyTheme.background,
+                    Color(hex: "0A0A0A")
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            // Subtle grid pattern
+            GeometryReader { geo in
+                Path { path in
+                    let spacing: CGFloat = 50
+                    for i in stride(from: 0, to: geo.size.width, by: spacing) {
+                        path.move(to: CGPoint(x: i, y: 0))
+                        path.addLine(to: CGPoint(x: i, y: geo.size.height))
                     }
-                    .padding(.vertical, 4)
+                    for i in stride(from: 0, to: geo.size.height, by: spacing) {
+                        path.move(to: CGPoint(x: 0, y: i))
+                        path.addLine(to: CGPoint(x: geo.size.width, y: i))
+                    }
                 }
+                .stroke(SwiftifyTheme.border.opacity(0.2), lineWidth: 0.5)
             }
-            .listStyle(.sidebar)
-            .navigationSplitViewColumnWidth(min: 200, ideal: 250)
-        } detail: {
-            // Detail View
-            if let demo = selectedDemo {
-                switch demo {
-                case .user:
-                    UserDemoView()
-                case .products:
-                    ProductDemoView()
-                case .chat:
-                    ChatDemoView()
+            .ignoresSafeArea()
+
+            HStack(spacing: 0) {
+                // Sidebar
+                SidebarView(selectedSection: $selectedSection)
+
+                // Divider
+                Rectangle()
+                    .fill(SwiftifyTheme.border)
+                    .frame(width: 1)
+
+                // Main content
+                ScrollView {
+                    VStack(spacing: 0) {
+                        switch selectedSection {
+                        case .overview:
+                            OverviewSection()
+                        case .asyncAwait:
+                            AsyncAwaitSection()
+                        case .defaultParams:
+                            DefaultParamsSection()
+                        case .asyncStream:
+                            AsyncStreamSection()
+                        case .liveDemo:
+                            LiveDemoSection()
+                        }
+                    }
+                    .padding(40)
                 }
-            } else {
-                Text("Select a demo from the sidebar")
-                    .foregroundColor(.secondary)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(minWidth: 900, minHeight: 600)
+        .preferredColorScheme(.dark)
+        .frame(minWidth: 1200, minHeight: 800)
     }
 }
 
-// MARK: - User Demo
+// MARK: - Sidebar
 
-struct UserDemoView: View {
-    @State private var isLoading = false
-    @State private var logs: [LogEntry] = []
+struct SidebarView: View {
+    @Binding var selectedSection: ContentView.Section
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Logo
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(
+                            LinearGradient(
+                                colors: [SwiftifyTheme.kotlin, SwiftifyTheme.swift],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "swift")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Swiftify")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(SwiftifyTheme.textPrimary)
+                    Text("Kotlin → Swift")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(SwiftifyTheme.textMuted)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 24)
+
+            Divider()
+                .background(SwiftifyTheme.border)
+
+            // Navigation
+            VStack(spacing: 4) {
+                ForEach(ContentView.Section.allCases, id: \.self) { section in
+                    SidebarItem(
+                        title: section.rawValue,
+                        icon: iconFor(section),
+                        isSelected: selectedSection == section
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedSection = section
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 16)
+
+            Spacer()
+
+            // Footer
+            VStack(alignment: .leading, spacing: 8) {
+                Divider()
+                    .background(SwiftifyTheme.border)
+
+                HStack {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundColor(SwiftifyTheme.success)
+                    Text("v1.0.0")
+                        .font(SwiftifyTheme.codeFontSmall)
+                        .foregroundColor(SwiftifyTheme.textMuted)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+        }
+        .frame(width: 220)
+        .background(SwiftifyTheme.surface)
+    }
+
+    func iconFor(_ section: ContentView.Section) -> String {
+        switch section {
+        case .overview: return "sparkles"
+        case .asyncAwait: return "arrow.triangle.2.circlepath"
+        case .defaultParams: return "slider.horizontal.3"
+        case .asyncStream: return "waveform.path"
+        case .liveDemo: return "play.circle.fill"
+        }
+    }
+}
+
+struct SidebarItem: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isSelected ? SwiftifyTheme.accent : SwiftifyTheme.textSecondary)
+                    .frame(width: 24)
+
+                Text(title)
+                    .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                    .foregroundColor(isSelected ? SwiftifyTheme.textPrimary : SwiftifyTheme.textSecondary)
+
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(isSelected ? SwiftifyTheme.accent.opacity(0.15) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? SwiftifyTheme.accent.opacity(0.3) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Overview Section
+
+struct OverviewSection: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 48) {
+            // Hero
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 16) {
+                    LanguageBadge(name: "Kotlin", color: SwiftifyTheme.kotlin)
+                    Image(systemName: "arrow.right")
+                        .foregroundColor(SwiftifyTheme.textMuted)
+                    LanguageBadge(name: "Swift", color: SwiftifyTheme.swift)
+                }
+
+                Text("Seamless\nKotlin Multiplatform")
+                    .font(.system(size: 56, weight: .bold))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+                    .lineSpacing(4)
+
+                Text("Transform Kotlin suspend functions and Flows into native Swift async/await and AsyncStream. Write idiomatic Swift code while sharing business logic with Kotlin.")
+                    .font(.system(size: 18, weight: .regular))
+                    .foregroundColor(SwiftifyTheme.textSecondary)
+                    .lineSpacing(6)
+                    .frame(maxWidth: 600, alignment: .leading)
+            }
+
+            // Feature cards
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20),
+                GridItem(.flexible(), spacing: 20)
+            ], spacing: 20) {
+                FeatureCard(
+                    icon: "arrow.triangle.2.circlepath",
+                    title: "Async/Await",
+                    description: "Kotlin suspend functions become native Swift async/await. No more completion handlers.",
+                    color: SwiftifyTheme.info
+                )
+
+                FeatureCard(
+                    icon: "slider.horizontal.3",
+                    title: "Default Parameters",
+                    description: "Convenience overloads preserve Kotlin default values in Swift.",
+                    color: SwiftifyTheme.success
+                )
+
+                FeatureCard(
+                    icon: "waveform.path",
+                    title: "AsyncStream",
+                    description: "Kotlin Flows transform to AsyncStream for reactive Swift code.",
+                    color: SwiftifyTheme.accent
+                )
+            }
+
+            // Code comparison preview
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Before & After")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+
+                HStack(spacing: 24) {
+                    CodeBlock(
+                        title: "Without Swiftify",
+                        language: "Swift",
+                        code: """
+                        // Callback-based API
+                        repository.getProducts(
+                            page: 1,
+                            pageSize: 20,
+                            category: nil,
+                            completionHandler: { result, error in
+                                if let error = error {
+                                    // Handle error
+                                    return
+                                }
+                                guard let products = result else {
+                                    return
+                                }
+                                // Use products
+                            }
+                        )
+                        """,
+                        accentColor: SwiftifyTheme.textMuted
+                    )
+
+                    CodeBlock(
+                        title: "With Swiftify",
+                        language: "Swift",
+                        code: """
+                        // Native async/await + defaults
+                        let products = try await repository.getProducts()
+
+                        // Or with parameters
+                        let filtered = try await repository.getProducts(
+                            page: 2,
+                            category: "Electronics"
+                        )
+
+                        // Real-time updates
+                        for await update in repository.cartStream {
+                            updateUI(cart: update)
+                        }
+                        """,
+                        accentColor: SwiftifyTheme.accent,
+                        highlighted: true
+                    )
+                }
+            }
+        }
+    }
+}
+
+struct LanguageBadge: View {
+    let name: String
+    let color: Color
+
+    var body: some View {
+        Text(name)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(color.opacity(0.15))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(color.opacity(0.3), lineWidth: 1)
+            )
+    }
+}
+
+struct FeatureCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let color: Color
+
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 48, height: 48)
+
+                Image(systemName: icon)
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(color)
+            }
+
+            Text(title)
+                .font(.system(size: 18, weight: .bold))
+                .foregroundColor(SwiftifyTheme.textPrimary)
+
+            Text(description)
+                .font(.system(size: 14))
+                .foregroundColor(SwiftifyTheme.textSecondary)
+                .lineSpacing(4)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(SwiftifyTheme.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(
+                    isHovered ? color.opacity(0.5) : SwiftifyTheme.border,
+                    lineWidth: 1
+                )
+        )
+        .scaleEffect(isHovered ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isHovered)
+        .onHover { isHovered = $0 }
+    }
+}
+
+// MARK: - Code Block
+
+struct CodeBlock: View {
+    let title: String
+    let language: String
+    let code: String
+    let accentColor: Color
+    var highlighted: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(accentColor)
+
+                Spacer()
+
+                Text(language)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(SwiftifyTheme.textMuted)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(SwiftifyTheme.surfaceElevated)
+                    )
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(SwiftifyTheme.surfaceElevated)
+
+            // Code
+            ScrollView(.horizontal, showsIndicators: false) {
+                Text(code)
+                    .font(SwiftifyTheme.codeFont)
+                    .foregroundColor(SwiftifyTheme.textPrimary.opacity(0.9))
+                    .lineSpacing(6)
+                    .padding(16)
+            }
+        }
+        .background(SwiftifyTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    highlighted ? accentColor.opacity(0.5) : SwiftifyTheme.border,
+                    lineWidth: highlighted ? 2 : 1
+                )
+        )
+        .shadow(color: highlighted ? accentColor.opacity(0.2) : .clear, radius: 20)
+    }
+}
+
+// MARK: - Async/Await Section
+
+struct AsyncAwaitSection: View {
+    @State private var demoOutput: [String] = []
+    @State private var isRunning = false
     private let repository = UserRepository()
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            DemoHeader(
-                title: "User Repository Demo",
-                subtitle: "Demonstrates suspend → async/await bridging"
+        VStack(alignment: .leading, spacing: 40) {
+            SectionHeader(
+                title: "Async/Await",
+                subtitle: "Kotlin suspend functions become native Swift async/await"
             )
 
-            Divider()
+            // Explanation
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Kotlin suspend functions are automatically transformed to Swift async functions. Swiftify generates the bridging code, but since Kotlin 1.8+, the compiler provides async/await natively. Swiftify adds convenience overloads for default parameters.")
+                    .font(.system(size: 16))
+                    .foregroundColor(SwiftifyTheme.textSecondary)
+                    .lineSpacing(6)
+            }
 
-            HStack(spacing: 20) {
-                // Controls
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Actions").font(.headline)
-
-                    ActionButton(title: "Fetch User", icon: "person.fill", color: .blue) {
-                        await testFetchUser()
+            // Code comparison
+            HStack(alignment: .top, spacing: 24) {
+                CodeBlock(
+                    title: "Kotlin",
+                    language: "Kotlin",
+                    code: """
+                    @SwiftAsync
+                    suspend fun fetchUser(id: String): User {
+                        delay(100)
+                        return User(id, "John Doe", "john@example.com")
                     }
 
-                    ActionButton(title: "Login", icon: "arrow.right.circle.fill", color: .green) {
-                        await testLogin()
+                    @SwiftAsync
+                    suspend fun login(
+                        username: String,
+                        password: String
+                    ): NetworkResult<User> {
+                        // Authentication logic
+                    }
+                    """,
+                    accentColor: SwiftifyTheme.kotlin
+                )
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(SwiftifyTheme.accent)
+                    .padding(.top, 60)
+
+                CodeBlock(
+                    title: "Swift",
+                    language: "Swift",
+                    code: """
+                    // Native async/await - no callbacks!
+                    let user = try await repository.fetchUser(id: "123")
+                    print("User: \\(user.name)")
+
+                    // Works perfectly with Swift concurrency
+                    let result = try await repository.login(
+                        username: "john",
+                        password: "secret"
+                    )
+
+                    // Error handling with try/catch
+                    do {
+                        let user = try await repository.fetchUser(id: "456")
+                    } catch {
+                        print("Failed: \\(error)")
+                    }
+                    """,
+                    accentColor: SwiftifyTheme.swift,
+                    highlighted: true
+                )
+            }
+
+            // Interactive demo
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Try It")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+
+                HStack(spacing: 16) {
+                    DemoButton(title: "Fetch User", icon: "person.fill", isLoading: isRunning) {
+                        await runDemo {
+                            let user = try await repository.fetchUser(id: "user_123")
+                            return "Fetched: \(user.name) (\(user.email))"
+                        }
                     }
 
-                    ActionButton(title: "Logout", icon: "arrow.left.circle.fill", color: .orange) {
-                        await testLogout()
+                    DemoButton(title: "Login", icon: "arrow.right.circle.fill", isLoading: isRunning) {
+                        await runDemo {
+                            let result = try await repository.login(username: "john", password: "pass")
+                            return "Login result: \(result)"
+                        }
                     }
 
-                    ActionButton(title: "Subscribe Updates", icon: "bell.fill", color: .purple) {
-                        await subscribeToUpdates()
+                    DemoButton(title: "Logout", icon: "arrow.left.circle.fill", isLoading: isRunning) {
+                        await runDemo {
+                            try await repository.logout()
+                            return "Logged out successfully"
+                        }
                     }
-
-                    Spacer()
                 }
-                .frame(width: 200)
-                .padding()
 
-                Divider()
-
-                // Log view
-                LogView(logs: logs, isLoading: isLoading)
+                DemoOutput(lines: demoOutput)
             }
         }
     }
 
-    func testFetchUser() async {
-        log("Fetching user...")
-        isLoading = true
+    func runDemo(_ action: @escaping () async throws -> String) async {
+        isRunning = true
+        demoOutput.append("⏳ Running...")
         do {
-            let user = try await repository.fetchUser(id: "user123")
-            log("User: \(user.name) (\(user.email))", type: .success)
+            let result = try await action()
+            demoOutput.append("✅ \(result)")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            demoOutput.append("❌ Error: \(error.localizedDescription)")
         }
-        isLoading = false
-    }
-
-    func testLogin() async {
-        log("Logging in...")
-        isLoading = true
-        do {
-            let result = try await repository.login(username: "john", password: "pass")
-            log("Login result: \(result)", type: .success)
-        } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
-        }
-        isLoading = false
-    }
-
-    func testLogout() async {
-        log("Logging out...")
-        isLoading = true
-        do {
-            try await repository.logout()
-            log("Logged out successfully", type: .success)
-        } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
-        }
-        isLoading = false
-    }
-
-    func subscribeToUpdates() async {
-        log("Subscribing to user updates (Flow → AsyncStream)...")
-        isLoading = true
-        var count = 0
-        for await user in repository.getUserUpdates(userId: "user123") {
-            count += 1
-            log("Update #\(count): \(user.name)", type: .info)
-            if count >= 3 { break }
-        }
-        log("Received \(count) updates", type: .success)
-        isLoading = false
-    }
-
-    func log(_ message: String, type: LogEntry.LogType = .info) {
-        logs.insert(LogEntry(message: message, type: type), at: 0)
+        isRunning = false
     }
 }
 
-// MARK: - Product Demo
+// MARK: - Default Parameters Section
 
-struct ProductDemoView: View {
-    @State private var isLoading = false
-    @State private var logs: [LogEntry] = []
-    @State private var products: [Product] = []
-    @State private var cartItems: Int = 0
-    @State private var cartTotal: Double = 0
+struct DefaultParamsSection: View {
+    @State private var demoOutput: [String] = []
+    @State private var isRunning = false
     private let repository = ProductRepository()
 
     var body: some View {
-        VStack(spacing: 0) {
-            DemoHeader(
-                title: "E-commerce Demo",
-                subtitle: "Products, cart, checkout with real-time price updates"
+        VStack(alignment: .leading, spacing: 40) {
+            SectionHeader(
+                title: "Default Parameters",
+                subtitle: "Kotlin default values preserved as Swift convenience overloads"
             )
 
-            Divider()
+            // Explanation
+            InfoBanner(
+                icon: "lightbulb.fill",
+                text: "Kotlin preserves default parameters in Swift, but you need to specify all parameters when calling. Swiftify generates convenience overloads so you can call methods with just the required parameters."
+            )
 
-            HStack(spacing: 0) {
-                // Controls
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Products").font(.headline)
+            // Code comparison
+            HStack(alignment: .top, spacing: 24) {
+                CodeBlock(
+                    title: "Kotlin",
+                    language: "Kotlin",
+                    code: """
+                    @SwiftAsync
+                    suspend fun getProducts(
+                        page: Int = 1,
+                        pageSize: Int = 20,
+                        category: String? = null
+                    ): ProductPage
 
-                    ActionButton(title: "Load Products", icon: "square.grid.2x2", color: .blue) {
-                        await loadProducts()
+                    @SwiftAsync
+                    suspend fun searchProducts(
+                        query: String,
+                        minPrice: Double = 0.0,
+                        maxPrice: Double = 1000.0,
+                        inStockOnly: Boolean = false
+                    ): List<Product>
+                    """,
+                    accentColor: SwiftifyTheme.kotlin
+                )
+
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(SwiftifyTheme.accent)
+                    .padding(.top, 60)
+
+                CodeBlock(
+                    title: "Swift (Generated by Swiftify)",
+                    language: "Swift",
+                    code: """
+                    // Convenience overloads generated!
+
+                    // No parameters needed
+                    let products = try await repo.getProducts()
+
+                    // Just page
+                    let page2 = try await repo.getProducts(page: 2)
+
+                    // Page and pageSize
+                    let custom = try await repo.getProducts(
+                        page: 1,
+                        pageSize: 50
+                    )
+
+                    // All parameters (Kotlin provides this)
+                    let full = try await repo.getProducts(
+                        page: 1,
+                        pageSize: 20,
+                        category: "Electronics"
+                    )
+                    """,
+                    accentColor: SwiftifyTheme.swift,
+                    highlighted: true
+                )
+            }
+
+            // Generated code explanation
+            VStack(alignment: .leading, spacing: 12) {
+                Text("What Swiftify Generates")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+
+                CodeBlock(
+                    title: "Generated Extension",
+                    language: "Swift",
+                    code: """
+                    extension ProductRepository {
+                        // Overload: no parameters
+                        public func getProducts() async throws -> ProductPage {
+                            return try await getProducts(page: 1, pageSize: 20, category: nil)
+                        }
+
+                        // Overload: just page
+                        public func getProducts(page: Int32) async throws -> ProductPage {
+                            return try await getProducts(page: page, pageSize: 20, category: nil)
+                        }
+
+                        // Overload: page + pageSize
+                        public func getProducts(page: Int32, pageSize: Int32) async throws -> ProductPage {
+                            return try await getProducts(page: page, pageSize: pageSize, category: nil)
+                        }
+                    }
+                    """,
+                    accentColor: SwiftifyTheme.success
+                )
+            }
+
+            // Demo
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Try It")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+
+                HStack(spacing: 16) {
+                    DemoButton(title: "getProducts()", icon: "square.grid.2x2", isLoading: isRunning) {
+                        await runDemo {
+                            let page = try await repository.getProducts()
+                            return "Loaded \(page.products.count) products (page \(page.currentPage))"
+                        }
                     }
 
-                    ActionButton(title: "Search", icon: "magnifyingglass", color: .blue) {
-                        await searchProducts()
+                    DemoButton(title: "getProducts(page: 2)", icon: "2.circle", isLoading: isRunning) {
+                        await runDemo {
+                            let page = try await repository.getProducts(page: 2)
+                            return "Loaded page \(page.currentPage) of \(page.totalPages)"
+                        }
                     }
 
-                    Divider().padding(.vertical, 8)
-
-                    Text("Cart").font(.headline)
-
-                    HStack {
-                        Image(systemName: "cart")
-                        Text("\(cartItems) items")
-                        Spacer()
-                        Text("$\(String(format: "%.2f", cartTotal))")
-                            .fontWeight(.bold)
-                    }
-                    .padding(8)
-                    .background(Color.blue.opacity(0.1))
-                    .cornerRadius(8)
-
-                    ActionButton(title: "Add to Cart", icon: "plus.circle", color: .green) {
-                        await addToCart()
-                    }
-
-                    ActionButton(title: "Checkout", icon: "creditcard", color: .orange) {
-                        await checkout()
-                    }
-
-                    Divider().padding(.vertical, 8)
-
-                    Text("Real-time").font(.headline)
-
-                    ActionButton(title: "Watch Prices", icon: "chart.line.uptrend.xyaxis", color: .purple) {
-                        await watchPrices()
-                    }
-
-                    Spacer()
-                }
-                .frame(width: 200)
-                .padding()
-
-                Divider()
-
-                // Products list
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Products").font(.headline).padding(.horizontal)
-
-                    if products.isEmpty {
-                        Spacer()
-                        Text("Click 'Load Products' to fetch data")
-                            .foregroundColor(.secondary)
-                            .frame(maxWidth: .infinity)
-                        Spacer()
-                    } else {
-                        List(products, id: \.id) { product in
-                            HStack {
-                                VStack(alignment: .leading) {
-                                    Text(product.name).font(.headline)
-                                    Text(product.category).font(.caption).foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Text("$\(String(format: "%.2f", product.price))")
-                                    .fontWeight(.semibold)
-                                Circle()
-                                    .fill(product.inStock ? Color.green : Color.red)
-                                    .frame(width: 10, height: 10)
-                            }
-                            .padding(.vertical, 4)
+                    DemoButton(title: "searchProducts(\"iPhone\")", icon: "magnifyingglass", isLoading: isRunning) {
+                        await runDemo {
+                            let results = try await repository.searchProducts(query: "iPhone")
+                            return "Found \(results.count) products"
                         }
                     }
                 }
-                .frame(minWidth: 250)
 
-                Divider()
-
-                // Log view
-                LogView(logs: logs, isLoading: isLoading)
+                DemoOutput(lines: demoOutput)
             }
         }
     }
 
-    func loadProducts() async {
-        log("Loading products...")
-        isLoading = true
+    func runDemo(_ action: @escaping () async throws -> String) async {
+        isRunning = true
+        demoOutput.append("⏳ Running...")
         do {
-            let page = try await repository.getProducts(page: 1, pageSize: 5, category: nil)
-            products = page.products
-            log("Loaded \(page.products.count) products (page \(page.currentPage)/\(page.totalPages))", type: .success)
+            let result = try await action()
+            demoOutput.append("✅ \(result)")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            demoOutput.append("❌ Error: \(error.localizedDescription)")
         }
-        isLoading = false
-    }
-
-    func searchProducts() async {
-        log("Searching for 'iPhone'...")
-        isLoading = true
-        do {
-            let results = try await repository.searchProducts(query: "iPhone", minPrice: 0, maxPrice: 100, inStockOnly: false)
-            products = results
-            log("Found \(results.count) products", type: .success)
-        } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
-        }
-        isLoading = false
-    }
-
-    func addToCart() async {
-        log("Adding to cart...")
-        isLoading = true
-        do {
-            let cart = try await repository.addToCart(productId: "prod_1", quantity: 1)
-            cartItems = Int(cart.items.count)
-            cartTotal = cart.total
-            log("Cart updated: \(cartItems) items, $\(String(format: "%.2f", cartTotal))", type: .success)
-        } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
-        }
-        isLoading = false
-    }
-
-    func checkout() async {
-        log("Processing checkout...")
-        isLoading = true
-        do {
-            let result = try await repository.checkout(paymentMethod: "credit_card")
-            log("Order result: \(result)", type: .success)
-            cartItems = 0
-            cartTotal = 0
-        } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
-        }
-        isLoading = false
-    }
-
-    func watchPrices() async {
-        log("Watching price changes (Flow → AsyncStream)...")
-        isLoading = true
-        var count = 0
-        for await update in repository.watchPriceChanges(productId: "prod_1") {
-            count += 1
-            log("Price: $\(String(format: "%.2f", update.oldPrice)) → $\(String(format: "%.2f", update.newPrice))", type: .info)
-            if count >= 3 { break }
-        }
-        log("Received \(count) price updates", type: .success)
-        isLoading = false
-    }
-
-    func log(_ message: String, type: LogEntry.LogType = .info) {
-        logs.insert(LogEntry(message: message, type: type), at: 0)
+        isRunning = false
     }
 }
 
-// MARK: - Chat Demo
+// MARK: - AsyncStream Section
 
-struct ChatDemoView: View {
-    @State private var isLoading = false
-    @State private var logs: [LogEntry] = []
-    @State private var isConnected = false
-    @State private var conversations: [Conversation] = []
-    @State private var messages: [Message] = []
-    private let repository = ChatRepository()
+struct AsyncStreamSection: View {
+    @State private var streamOutput: [String] = []
+    @State private var isStreaming = false
+    @State private var streamTask: Task<Void, Never>?
+    private let repository = ProductRepository()
+    private let chatRepository = ChatRepository()
 
     var body: some View {
-        VStack(spacing: 0) {
-            DemoHeader(
-                title: "Chat/Messaging Demo",
-                subtitle: "Real-time messaging with connection state"
+        VStack(alignment: .leading, spacing: 40) {
+            SectionHeader(
+                title: "AsyncStream",
+                subtitle: "Kotlin Flows become native Swift AsyncStream"
             )
 
-            Divider()
+            // Explanation
+            Text("Kotlin Flows are powerful for reactive programming, but Swift has its own concurrency model. Swiftify transforms Flows into AsyncStream, letting you use Swift's `for await` syntax for real-time updates.")
+                .font(.system(size: 16))
+                .foregroundColor(SwiftifyTheme.textSecondary)
+                .lineSpacing(6)
 
-            HStack(spacing: 0) {
-                // Controls
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Connection").font(.headline)
-
-                    HStack {
-                        Circle()
-                            .fill(isConnected ? Color.green : Color.red)
-                            .frame(width: 10, height: 10)
-                        Text(isConnected ? "Connected" : "Disconnected")
-                    }
-                    .padding(8)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-
-                    HStack(spacing: 8) {
-                        ActionButton(title: "Connect", icon: "wifi", color: .green, compact: true) {
-                            await connect()
-                        }
-                        ActionButton(title: "Disconnect", icon: "wifi.slash", color: .red, compact: true) {
-                            await disconnect()
+            // Code comparison
+            HStack(alignment: .top, spacing: 24) {
+                CodeBlock(
+                    title: "Kotlin",
+                    language: "Kotlin",
+                    code: """
+                    @SwiftFlow
+                    fun watchPriceChanges(productId: String): Flow<PriceUpdate> = flow {
+                        while (true) {
+                            delay(2000)
+                            emit(PriceUpdate(
+                                productId = productId,
+                                oldPrice = currentPrice,
+                                newPrice = newPrice
+                            ))
                         }
                     }
 
-                    Divider().padding(.vertical, 8)
+                    @SwiftFlow
+                    val cart: StateFlow<Cart>
+                    """,
+                    accentColor: SwiftifyTheme.kotlin
+                )
 
-                    Text("Messages").font(.headline)
+                Image(systemName: "arrow.right.circle.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(SwiftifyTheme.accent)
+                    .padding(.top, 60)
 
-                    ActionButton(title: "Load Conversations", icon: "bubble.left.and.bubble.right", color: .blue) {
-                        await loadConversations()
+                CodeBlock(
+                    title: "Swift",
+                    language: "Swift",
+                    code: """
+                    // Real-time price updates with for-await
+                    for await update in repository.watchPriceChanges(productId: "123") {
+                        print("Price changed: $\\(update.oldPrice) → $\\(update.newPrice)")
+                        updatePriceLabel(update.newPrice)
                     }
 
-                    ActionButton(title: "Load Messages", icon: "text.bubble", color: .blue) {
-                        await loadMessages()
+                    // Cart updates as AsyncStream property
+                    for await cart in repository.cartStream {
+                        updateCartBadge(count: cart.items.count)
+                        updateCartTotal(cart.total)
                     }
+                    """,
+                    accentColor: SwiftifyTheme.swift,
+                    highlighted: true
+                )
+            }
 
-                    ActionButton(title: "Send Message", icon: "paperplane.fill", color: .green) {
-                        await sendMessage()
+            // What gets generated
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Generated AsyncStream Wrapper")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+
+                CodeBlock(
+                    title: "Generated Extension",
+                    language: "Swift",
+                    code: """
+                    extension ProductRepository {
+                        public func watchPriceChanges(productId: String) -> AsyncStream<PriceUpdate> {
+                            return AsyncStream { continuation in
+                                let collector = SwiftifyFlowCollector<PriceUpdate>(
+                                    onEmit: { value in continuation.yield(value) },
+                                    onComplete: { continuation.finish() },
+                                    onError: { _ in continuation.finish() }
+                                )
+                                self.watchPriceChanges(productId: productId)
+                                    .collect(collector: collector, completionHandler: { _ in })
+                            }
+                        }
+
+                        public var cartStream: AsyncStream<Cart> { ... }
                     }
+                    """,
+                    accentColor: SwiftifyTheme.success
+                )
+            }
 
-                    Divider().padding(.vertical, 8)
-
-                    Text("Real-time").font(.headline)
-
-                    ActionButton(title: "Watch Messages", icon: "bell.badge", color: .purple) {
-                        await watchMessages()
-                    }
-
-                    ActionButton(title: "Watch Typing", icon: "ellipsis.bubble", color: .purple) {
-                        await watchTyping()
-                    }
+            // Live demo
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text("Live Stream Demo")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(SwiftifyTheme.textPrimary)
 
                     Spacer()
-                }
-                .frame(width: 200)
-                .padding()
 
-                Divider()
-
-                // Conversations & Messages
-                VStack(spacing: 0) {
-                    // Conversations
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Conversations").font(.headline).padding(.horizontal)
-                        if conversations.isEmpty {
-                            Text("No conversations loaded")
-                                .foregroundColor(.secondary)
-                                .padding()
-                        } else {
-                            List(conversations, id: \.id) { conv in
-                                HStack {
-                                    Circle()
-                                        .fill(conv.isOnline ? Color.green : Color.gray)
-                                        .frame(width: 8, height: 8)
-                                    VStack(alignment: .leading) {
-                                        Text(conv.participantName).font(.headline)
-                                        Text(conv.lastMessage).font(.caption).foregroundColor(.secondary)
-                                    }
-                                    Spacer()
-                                    if conv.unreadCount > 0 {
-                                        Text("\(conv.unreadCount)")
-                                            .font(.caption)
-                                            .padding(4)
-                                            .background(Color.blue)
-                                            .foregroundColor(.white)
-                                            .cornerRadius(8)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .frame(height: 180)
-
-                    Divider()
-
-                    // Messages
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Messages").font(.headline).padding(.horizontal)
-                        if messages.isEmpty {
-                            Text("No messages loaded")
-                                .foregroundColor(.secondary)
-                                .padding()
-                            Spacer()
-                        } else {
-                            ScrollView {
-                                VStack(spacing: 8) {
-                                    ForEach(messages.prefix(10), id: \.id) { msg in
-                                        HStack {
-                                            if msg.senderId == "me" { Spacer() }
-                                            Text(msg.content)
-                                                .padding(8)
-                                                .background(msg.senderId == "me" ? Color.blue : Color.gray.opacity(0.3))
-                                                .foregroundColor(msg.senderId == "me" ? .white : .primary)
-                                                .cornerRadius(12)
-                                            if msg.senderId != "me" { Spacer() }
-                                        }
-                                    }
-                                }
-                                .padding()
-                            }
+                    if isStreaming {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(SwiftifyTheme.accent)
+                                .frame(width: 8, height: 8)
+                                .opacity(isStreaming ? 1 : 0)
+                                .animation(.easeInOut(duration: 0.5).repeatForever(), value: isStreaming)
+                            Text("STREAMING")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(SwiftifyTheme.accent)
                         }
                     }
                 }
-                .frame(minWidth: 280)
 
-                Divider()
+                HStack(spacing: 16) {
+                    DemoButton(
+                        title: isStreaming ? "Stop Streaming" : "Watch Price Changes",
+                        icon: isStreaming ? "stop.circle.fill" : "waveform.path",
+                        isLoading: false,
+                        color: isStreaming ? .red : SwiftifyTheme.accent
+                    ) {
+                        if isStreaming {
+                            stopStream()
+                        } else {
+                            startPriceStream()
+                        }
+                    }
 
-                // Log view
-                LogView(logs: logs, isLoading: isLoading)
+                    DemoButton(title: "Clear", icon: "trash", isLoading: false, color: SwiftifyTheme.textMuted) {
+                        streamOutput.removeAll()
+                    }
+                }
+
+                StreamOutput(lines: streamOutput, isLive: isStreaming)
             }
         }
     }
 
+    func startPriceStream() {
+        isStreaming = true
+        streamOutput.append("🔴 Starting price stream...")
+
+        streamTask = Task {
+            var count = 0
+            for await update in repository.watchPriceChanges(productId: "prod_1") {
+                count += 1
+                let direction = update.newPrice > update.oldPrice ? "📈" : "📉"
+                streamOutput.append("\(direction) Price: $\(String(format: "%.2f", update.oldPrice)) → $\(String(format: "%.2f", update.newPrice))")
+
+                if count >= 5 {
+                    break
+                }
+            }
+            streamOutput.append("✅ Stream completed (\(count) updates)")
+            isStreaming = false
+        }
+    }
+
+    func stopStream() {
+        streamTask?.cancel()
+        streamTask = nil
+        isStreaming = false
+        streamOutput.append("⏹ Stream stopped")
+    }
+}
+
+// MARK: - Live Demo Section
+
+struct LiveDemoSection: View {
+    @State private var isConnected = false
+    @State private var conversations: [Conversation] = []
+    @State private var messages: [Message] = []
+    @State private var logs: [String] = []
+    @State private var isLoading = false
+    @State private var messageTask: Task<Void, Never>?
+    private let repository = ChatRepository()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 40) {
+            SectionHeader(
+                title: "Live Chat Demo",
+                subtitle: "Full working demo with all Swiftify features"
+            )
+
+            HStack(alignment: .top, spacing: 24) {
+                // Chat UI
+                VStack(spacing: 0) {
+                    // Connection status
+                    HStack {
+                        Circle()
+                            .fill(isConnected ? SwiftifyTheme.success : SwiftifyTheme.textMuted)
+                            .frame(width: 10, height: 10)
+                        Text(isConnected ? "Connected" : "Disconnected")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(isConnected ? SwiftifyTheme.success : SwiftifyTheme.textMuted)
+
+                        Spacer()
+
+                        HStack(spacing: 8) {
+                            Button(action: { Task { await connect() } }) {
+                                Image(systemName: "wifi")
+                                    .foregroundColor(SwiftifyTheme.success)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isConnected)
+
+                            Button(action: { Task { await disconnect() } }) {
+                                Image(systemName: "wifi.slash")
+                                    .foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!isConnected)
+                        }
+                    }
+                    .padding(12)
+                    .background(SwiftifyTheme.surfaceElevated)
+
+                    Divider().background(SwiftifyTheme.border)
+
+                    // Conversations
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            Text("Conversations")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(SwiftifyTheme.textMuted)
+                            Spacer()
+                            Button(action: { Task { await loadConversations() } }) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(SwiftifyTheme.textMuted)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+
+                        if conversations.isEmpty {
+                            Text("Click refresh to load")
+                                .font(.system(size: 12))
+                                .foregroundColor(SwiftifyTheme.textMuted)
+                                .padding(12)
+                        } else {
+                            ForEach(conversations, id: \.id) { conv in
+                                ConversationRow(conversation: conv)
+                            }
+                        }
+                    }
+
+                    Divider().background(SwiftifyTheme.border)
+
+                    // Messages
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack {
+                            Text("Messages")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(SwiftifyTheme.textMuted)
+                            Spacer()
+                            Button(action: { Task { await loadMessages() } }) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(SwiftifyTheme.textMuted)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+
+                        ScrollView {
+                            VStack(spacing: 8) {
+                                ForEach(messages.prefix(8), id: \.id) { msg in
+                                    MessageBubble(message: msg)
+                                }
+                            }
+                            .padding(12)
+                        }
+                        .frame(height: 200)
+                    }
+
+                    Divider().background(SwiftifyTheme.border)
+
+                    // Actions
+                    HStack(spacing: 8) {
+                        Button(action: { Task { await sendMessage() } }) {
+                            HStack {
+                                Image(systemName: "paperplane.fill")
+                                Text("Send")
+                            }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(SwiftifyTheme.accent)
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+
+                        Button(action: { startWatching() }) {
+                            HStack {
+                                Image(systemName: "bell.fill")
+                                Text("Watch Messages")
+                            }
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(SwiftifyTheme.info)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(SwiftifyTheme.info.opacity(0.15))
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(12)
+                }
+                .frame(width: 320)
+                .background(SwiftifyTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(SwiftifyTheme.border, lineWidth: 1)
+                )
+
+                // Activity log
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        Text("Activity Log")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(SwiftifyTheme.textPrimary)
+
+                        Spacer()
+
+                        if isLoading {
+                            ProgressView()
+                                .scaleEffect(0.6)
+                        }
+
+                        Button(action: { logs.removeAll() }) {
+                            Text("Clear")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(SwiftifyTheme.textMuted)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(12)
+                    .background(SwiftifyTheme.surfaceElevated)
+
+                    Divider().background(SwiftifyTheme.border)
+
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(Array(logs.enumerated()), id: \.offset) { _, log in
+                                Text(log)
+                                    .font(SwiftifyTheme.codeFontSmall)
+                                    .foregroundColor(logColor(for: log))
+                            }
+                        }
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .background(SwiftifyTheme.surface)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(SwiftifyTheme.border, lineWidth: 1)
+                )
+            }
+
+            // Code being executed
+            CodeBlock(
+                title: "Code Being Executed",
+                language: "Swift",
+                code: """
+                // All using Swiftify-generated APIs!
+
+                // Connect with async/await
+                let state = try await repository.connect()
+
+                // Load conversations with convenience overload
+                let conversations = try await repository.getConversations()  // Uses defaults
+
+                // Load messages with some parameters
+                let messages = try await repository.getMessages(conversationId: "conv_1")
+
+                // Send message
+                let sent = try await repository.sendMessage(conversationId: "conv_1", content: "Hello!")
+
+                // Watch for new messages with AsyncStream
+                for await message in repository.watchMessages(conversationId: "conv_1") {
+                    // Real-time updates!
+                    messages.insert(message, at: 0)
+                }
+                """,
+                accentColor: SwiftifyTheme.accent,
+                highlighted: true
+            )
+        }
+    }
+
+    func log(_ message: String) {
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        logs.insert("[\(timestamp)] \(message)", at: 0)
+    }
+
+    func logColor(for log: String) -> Color {
+        if log.contains("✅") || log.contains("Success") { return SwiftifyTheme.success }
+        if log.contains("❌") || log.contains("Error") { return .red }
+        if log.contains("📨") || log.contains("→") { return SwiftifyTheme.info }
+        return SwiftifyTheme.textSecondary
+    }
+
     func connect() async {
-        log("Connecting...")
+        log("⏳ Connecting...")
         isLoading = true
         do {
             let state = try await repository.connect()
             isConnected = true
-            log("Connected: \(state)", type: .success)
+            log("✅ Connected: \(state)")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            log("❌ Error: \(error.localizedDescription)")
         }
         isLoading = false
     }
 
     func disconnect() async {
-        log("Disconnecting...")
+        log("⏳ Disconnecting...")
         isLoading = true
         do {
             try await repository.disconnect()
             isConnected = false
-            log("Disconnected", type: .success)
+            log("✅ Disconnected")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            log("❌ Error: \(error.localizedDescription)")
         }
         isLoading = false
     }
 
     func loadConversations() async {
-        log("Loading conversations...")
+        log("⏳ Loading conversations... (using convenience overload)")
         isLoading = true
         do {
-            conversations = try await repository.getConversations(page: 1, includeArchived: false)
-            log("Loaded \(conversations.count) conversations", type: .success)
+            // Using convenience overload - no parameters needed!
+            conversations = try await repository.getConversations()
+            log("✅ Loaded \(conversations.count) conversations")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            log("❌ Error: \(error.localizedDescription)")
         }
         isLoading = false
     }
 
     func loadMessages() async {
-        log("Loading messages...")
+        log("⏳ Loading messages... (using convenience overload)")
         isLoading = true
         do {
-            let page = try await repository.getMessages(conversationId: "conv_1", beforeMessageId: nil, limit: 10)
+            // Using convenience overload - just conversationId
+            let page = try await repository.getMessages(conversationId: "conv_1")
             messages = page.messages
-            log("Loaded \(page.messages.count) messages", type: .success)
+            log("✅ Loaded \(messages.count) messages")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            log("❌ Error: \(error.localizedDescription)")
         }
         isLoading = false
     }
 
     func sendMessage() async {
-        log("Sending message...")
+        log("⏳ Sending message...")
         isLoading = true
         do {
             let msg = try await repository.sendMessage(conversationId: "conv_1", content: "Hello from Swift!")
             messages.insert(msg, at: 0)
-            log("Message sent: \(msg.id)", type: .success)
+            log("✅ Sent: \(msg.content)")
         } catch {
-            log("Error: \(error.localizedDescription)", type: .error)
+            log("❌ Error: \(error.localizedDescription)")
         }
         isLoading = false
     }
 
-    func watchMessages() async {
-        log("Watching for new messages (Flow → AsyncStream)...")
-        isLoading = true
-        var count = 0
-        for await msg in repository.watchMessages(conversationId: "conv_1") {
-            count += 1
-            messages.insert(msg, at: 0)
-            log("New message: \(msg.content)", type: .info)
-            if count >= 3 { break }
+    func startWatching() {
+        log("🔴 Starting message stream (AsyncStream)...")
+        messageTask?.cancel()
+        messageTask = Task {
+            var count = 0
+            for await msg in repository.watchMessages(conversationId: "conv_1") {
+                count += 1
+                messages.insert(msg, at: 0)
+                log("📨 New message: \(msg.content)")
+                if count >= 3 { break }
+            }
+            log("✅ Stream completed (\(count) messages)")
         }
-        log("Received \(count) messages", type: .success)
-        isLoading = false
-    }
-
-    func watchTyping() async {
-        log("Watching typing status...")
-        isLoading = true
-        var count = 0
-        for await typing in repository.watchTypingStatus(conversationId: "conv_1") {
-            count += 1
-            let status = typing.isTyping ? "\(typing.userName) is typing..." : "\(typing.userName) stopped typing"
-            log(status, type: .info)
-            if count >= 2 { break }
-        }
-        isLoading = false
-    }
-
-    func log(_ message: String, type: LogEntry.LogType = .info) {
-        logs.insert(LogEntry(message: message, type: type), at: 0)
     }
 }
 
-// MARK: - Shared Components
+// MARK: - Supporting Views
 
-struct DemoHeader: View {
+struct SectionHeader: View {
     let title: String
     let subtitle: String
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.title2)
-                .fontWeight(.bold)
+                .font(.system(size: 36, weight: .bold))
+                .foregroundColor(SwiftifyTheme.textPrimary)
+
             Text(subtitle)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(.system(size: 18))
+                .foregroundColor(SwiftifyTheme.textSecondary)
         }
-        .padding()
     }
 }
 
-struct ActionButton: View {
+struct InfoBanner: View {
+    let icon: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 18))
+                .foregroundColor(SwiftifyTheme.info)
+
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundColor(SwiftifyTheme.textSecondary)
+                .lineSpacing(4)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(SwiftifyTheme.info.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(SwiftifyTheme.info.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+struct DemoButton: View {
     let title: String
     let icon: String
-    let color: Color
-    var compact: Bool = false
+    let isLoading: Bool
+    var color: Color = SwiftifyTheme.accent
     let action: () async -> Void
 
     var body: some View {
-        Button {
-            Task { await action() }
-        } label: {
-            if compact {
-                Image(systemName: icon)
-                    .foregroundColor(color)
-            } else {
-                HStack {
-                    Image(systemName: icon)
-                        .foregroundColor(color)
-                    Text(title)
-                        .foregroundColor(.primary)
-                    Spacer()
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(compact ? 8 : 10)
-        .background(color.opacity(0.1))
-        .cornerRadius(8)
-    }
-}
-
-struct LogEntry: Identifiable {
-    let id = UUID()
-    let timestamp = Date()
-    let message: String
-    let type: LogType
-
-    enum LogType {
-        case info, success, error
-
-        var color: Color {
-            switch self {
-            case .info: return .primary
-            case .success: return .green
-            case .error: return .red
-            }
-        }
-
-        var icon: String {
-            switch self {
-            case .info: return "info.circle"
-            case .success: return "checkmark.circle"
-            case .error: return "xmark.circle"
-            }
-        }
-    }
-}
-
-struct LogView: View {
-    let logs: [LogEntry]
-    let isLoading: Bool
-
-    private let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm:ss"
-        return f
-    }()
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Activity Log")
-                    .font(.headline)
-                Spacer()
+        Button(action: { Task { await action() } }) {
+            HStack(spacing: 8) {
                 if isLoading {
                     ProgressView()
                         .scaleEffect(0.7)
+                } else {
+                    Image(systemName: icon)
                 }
+                Text(title)
             }
-            .padding(.horizontal)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundColor(color)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(color.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(color.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(isLoading)
+    }
+}
 
-            if logs.isEmpty {
-                Spacer()
-                Text("No activity yet")
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity)
-                Spacer()
-            } else {
-                List(logs) { entry in
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: entry.type.icon)
-                            .foregroundColor(entry.type.color)
-                            .font(.caption)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.message)
-                                .font(.caption)
-                                .foregroundColor(entry.type.color)
-                            Text(timeFormatter.string(from: entry.timestamp))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                .listStyle(.plain)
+struct DemoOutput: View {
+    let lines: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(lines.suffix(5).enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(SwiftifyTheme.codeFontSmall)
+                    .foregroundColor(lineColor(for: line))
             }
         }
-        .frame(minWidth: 280)
-        .padding(.top)
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 80, alignment: .topLeading)
+        .background(SwiftifyTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(SwiftifyTheme.border, lineWidth: 1)
+        )
+    }
+
+    func lineColor(for line: String) -> Color {
+        if line.contains("✅") { return SwiftifyTheme.success }
+        if line.contains("❌") { return .red }
+        if line.contains("⏳") { return SwiftifyTheme.textMuted }
+        return SwiftifyTheme.textSecondary
+    }
+}
+
+struct StreamOutput: View {
+    let lines: [String]
+    let isLive: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(Array(lines.suffix(8).enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(SwiftifyTheme.codeFontSmall)
+                    .foregroundColor(lineColor(for: line))
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+        .background(SwiftifyTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isLive ? SwiftifyTheme.accent : SwiftifyTheme.border, lineWidth: isLive ? 2 : 1)
+        )
+        .animation(.easeInOut, value: isLive)
+    }
+
+    func lineColor(for line: String) -> Color {
+        if line.contains("✅") { return SwiftifyTheme.success }
+        if line.contains("❌") || line.contains("⏹") { return .red }
+        if line.contains("📈") { return SwiftifyTheme.success }
+        if line.contains("📉") { return .red }
+        if line.contains("🔴") { return SwiftifyTheme.accent }
+        return SwiftifyTheme.textSecondary
+    }
+}
+
+struct ConversationRow: View {
+    let conversation: Conversation
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(conversation.isOnline ? SwiftifyTheme.success : SwiftifyTheme.textMuted)
+                .frame(width: 8, height: 8)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(conversation.participantName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(SwiftifyTheme.textPrimary)
+                Text(conversation.lastMessage)
+                    .font(.system(size: 11))
+                    .foregroundColor(SwiftifyTheme.textMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            if conversation.unreadCount > 0 {
+                Text("\(conversation.unreadCount)")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(SwiftifyTheme.accent)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+}
+
+struct MessageBubble: View {
+    let message: Message
+
+    var isMe: Bool { message.senderId == "me" }
+
+    var body: some View {
+        HStack {
+            if isMe { Spacer() }
+
+            Text(message.content)
+                .font(.system(size: 13))
+                .foregroundColor(isMe ? .white : SwiftifyTheme.textPrimary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(isMe ? SwiftifyTheme.accent : SwiftifyTheme.surfaceElevated)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+            if !isMe { Spacer() }
+        }
     }
 }
 
