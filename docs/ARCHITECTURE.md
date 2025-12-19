@@ -240,10 +240,10 @@ SwiftifyTransformer
       │
       ├── Generate convenience overloads
       ├── Generate AsyncStream wrappers
-      └── Generate runtime helpers
+      └── Generate Swift helpers (FlowCollector)
       │
       ▼
-Swiftify.swift + SwiftifyRuntime.swift
+Swiftify.swift + SwiftifyRuntime.swift (pure Swift)
 ```
 
 ### 4. Embedding Phase
@@ -269,8 +269,8 @@ Framework with embedded Swift
 
 ```
 build/generated/swiftify/
-├── Swiftify.swift           # All generated extensions
-├── SwiftifyRuntime.swift    # FlowCollector bridge
+├── Swiftify.swift           # All generated Swift extensions
+├── SwiftifyRuntime.swift    # Swift helpers (FlowCollector for AsyncStream)
 └── SampleKit.apinotes       # Xcode API notes
 
 build/bin/macosArm64/releaseFramework/

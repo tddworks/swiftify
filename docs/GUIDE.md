@@ -277,11 +277,13 @@ After building, Swiftify generates these files in `build/generated/swiftify/`:
 ```
 build/generated/swiftify/
 ├── Swiftify.swift           # Combined extensions for all annotated declarations
-├── SwiftifyRuntime.swift    # Runtime helpers (FlowCollector bridge)
+├── SwiftifyRuntime.swift    # Swift helpers (FlowCollector for AsyncStream)
 └── YourFramework.apinotes   # API notes for Xcode
 ```
 
 These files are automatically embedded into your framework during the link phase.
+
+> **Note:** All runtime support is pure Swift - no Kotlin bridge code is needed since Kotlin 2.0+ natively exports suspend functions as Swift async/await.
 
 ---
 

@@ -328,8 +328,8 @@ your-project/
 │   └── com/example/
 │       └── UserRepository.kt       # Your Kotlin code with annotations
 ├── build/generated/swiftify/
-│   ├── Swiftify.swift              # Combined generated extensions
-│   ├── SwiftifyRuntime.swift       # Runtime helpers (FlowCollector, etc.)
+│   ├── Swiftify.swift              # Generated Swift extensions
+│   ├── SwiftifyRuntime.swift       # Generated Swift helpers (FlowCollector)
 │   └── YourFramework.apinotes      # API notes for Xcode
 └── build.gradle.kts
 ```
@@ -443,11 +443,12 @@ swiftify/
 ├── swiftify-dsl/            # Gradle DSL (swiftify { ... })
 ├── swiftify-analyzer/       # Kotlin source analyzer
 ├── swiftify-generator/      # Swift code generator
-├── swiftify-linker/         # Compiler linker plugin
+├── swiftify-linker/         # Framework linker (embeds Swift into framework)
 ├── swiftify-gradle-plugin/  # Gradle plugin
-├── swiftify-runtime/        # Kotlin runtime support
 └── sample/                  # Demo project with macOS app
 ```
+
+> **Note:** Kotlin 2.0+ natively exports suspend functions as Swift async/await. No Kotlin runtime bridge is needed - Swift helpers are generated at build time.
 
 ---
 
@@ -496,8 +497,8 @@ sample/
 │   └── macApp/
 │       └── ContentView.swift  # Before/after comparison UI
 └── build/generated/swiftify/
-    ├── Swiftify.swift         # Combined generated extensions
-    ├── SwiftifyRuntime.swift  # FlowCollector helper
+    ├── Swiftify.swift         # Generated Swift extensions
+    ├── SwiftifyRuntime.swift  # Generated Swift helpers (FlowCollector)
     └── SampleKit.apinotes     # API notes for Xcode
 ```
 
