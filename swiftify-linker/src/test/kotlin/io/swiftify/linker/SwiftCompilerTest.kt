@@ -50,7 +50,7 @@ class SwiftCompilerTest {
     }
 
     @Test
-    fun `links against original framework`() {
+    fun `imports underlying module for Swift overlay`() {
         val compiler = SwiftCompiler()
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
         val frameworkPath = File(tempDir, "SampleKit.framework")
@@ -62,8 +62,8 @@ class SwiftCompilerTest {
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
-        assertTrue(command.contains("-framework"))
-        assertTrue(command.contains("SampleKit"))
+        // Uses -import-underlying-module instead of -framework for Swift overlay pattern
+        assertTrue(command.contains("-import-underlying-module"))
     }
 
     @Test
@@ -85,7 +85,7 @@ class SwiftCompilerTest {
     }
 
     @Test
-    fun `sets module name based on framework`() {
+    fun `sets module name same as framework for Swift overlay`() {
         val compiler = SwiftCompiler()
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
         val config = CompileConfig(
@@ -96,7 +96,8 @@ class SwiftCompilerTest {
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
         assertTrue(command.contains("-module-name"))
-        assertTrue(command.contains("MyKitSwiftify"))
+        // Module name matches framework name for Swift overlay pattern
+        assertTrue(command.contains("MyKit"))
     }
 
     @Test
