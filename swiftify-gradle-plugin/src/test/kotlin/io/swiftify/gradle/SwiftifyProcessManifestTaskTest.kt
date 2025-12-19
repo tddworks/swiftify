@@ -39,7 +39,7 @@ class SwiftifyProcessManifestTaskTest {
     fun `processManifest task has correct description`() {
         val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
 
-        assertEquals("Process KSP manifest and generate Swift code", task.description)
+        assertEquals("Process KSP manifest and generate Swift code (KSP mode)", task.description)
     }
 
     @Test

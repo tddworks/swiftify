@@ -5,7 +5,23 @@ import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.TaskProvider
-import java.io.File
+
+/**
+ * Analysis mode for Swiftify.
+ */
+enum class AnalysisMode {
+    /**
+     * Use regex-based source analysis (default).
+     * Simple, fast, no additional dependencies.
+     */
+    REGEX,
+
+    /**
+     * Use KSP (Kotlin Symbol Processing) for analysis.
+     * More accurate, handles all edge cases, requires KSP plugin.
+     */
+    KSP,
+}
 
 /**
  * Swiftify Gradle Plugin.
@@ -23,7 +39,9 @@ import java.io.File
  * }
  *
  * swiftify {
- *     // Optional configuration - sensible defaults work out of the box
+ *     // Choose analysis mode (default: REGEX)
+ *     analysisMode(AnalysisMode.REGEX)  // or AnalysisMode.KSP
+ *
  *     sealedClasses {
  *         transformToEnum(exhaustive = true)
  *     }
@@ -62,12 +80,13 @@ class SwiftifyPlugin : Plugin<Project> {
         registerProcessManifestTask(project, extension)
         registerEmbedTask(project, extension)
 
-        // Configure KSP if available
-        configureKsp(project, extension)
-
         // Configure after evaluation to ensure KMP plugin is applied
         project.afterEvaluate {
             if (extension.enabled.get()) {
+                // Configure KSP if KSP mode is selected
+                if (extension.analysisMode.get() == AnalysisMode.KSP) {
+                    configureKsp(project, extension)
+                }
                 configureSwiftifyIntegration(project, extension)
             }
         }
@@ -77,32 +96,38 @@ class SwiftifyPlugin : Plugin<Project> {
         project: Project,
         extension: SwiftifyExtension,
     ) {
-        // Wait for KSP plugin to be applied
-        project.plugins.withId("com.google.devtools.ksp") {
-            project.logger.info("Swiftify: KSP plugin detected, configuring processor")
+        // Check if KSP plugin is applied
+        if (!project.plugins.hasPlugin("com.google.devtools.ksp")) {
+            project.logger.warn(
+                "Swiftify: KSP analysis mode selected but KSP plugin not found. " +
+                    "Add 'id(\"com.google.devtools.ksp\")' to your plugins block, or use analysisMode(AnalysisMode.REGEX).",
+            )
+            return
+        }
 
-            // Add KSP processor dependency
-            project.dependencies.add("ksp", project.project(":swiftify-analyzer"))
+        project.logger.info("Swiftify: Configuring KSP-based analysis")
 
-            // Configure KSP options
-            project.afterEvaluate {
-                try {
-                    val kspExtension = project.extensions.findByName("ksp")
-                    if (kspExtension != null) {
-                        val argMethod = kspExtension.javaClass.getMethod("arg", String::class.java, String::class.java)
-                        argMethod.invoke(
-                            kspExtension,
-                            "swiftify.outputDir",
-                            extension.outputDirectory
-                                .get()
-                                .asFile.absolutePath,
-                        )
-                        argMethod.invoke(kspExtension, "swiftify.enabled", extension.enabled.get().toString())
-                    }
-                } catch (e: Exception) {
-                    project.logger.debug("Swiftify: Could not configure KSP options: ${e.message}")
-                }
+        // Add KSP processor dependency
+        try {
+            project.dependencies.add("ksp", "$PROCESSOR_ARTIFACT:${project.version}")
+        } catch (e: Exception) {
+            project.logger.debug("Swiftify: Could not add KSP processor: ${e.message}")
+        }
+
+        // Configure KSP options
+        try {
+            val kspExtension = project.extensions.findByName("ksp")
+            if (kspExtension != null) {
+                val argMethod = kspExtension.javaClass.getMethod("arg", String::class.java, String::class.java)
+                argMethod.invoke(
+                    kspExtension,
+                    "swiftify.outputDir",
+                    extension.outputDirectory.get().asFile.absolutePath,
+                )
+                argMethod.invoke(kspExtension, "swiftify.enabled", extension.enabled.get().toString())
             }
+        } catch (e: Exception) {
+            project.logger.debug("Swiftify: Could not configure KSP options: ${e.message}")
         }
     }
 
@@ -119,9 +144,12 @@ class SwiftifyPlugin : Plugin<Project> {
         extension: SwiftifyExtension,
     ): TaskProvider<SwiftifyGenerateTask> = project.tasks.register("swiftifyGenerate", SwiftifyGenerateTask::class.java) { task ->
         task.group = "swiftify"
-        task.description = "Generate Swift code from Kotlin declarations"
+        task.description = "Generate Swift code from Kotlin declarations (regex mode)"
         task.outputDirectory.set(extension.outputDirectory)
         task.frameworkName.set(extension.frameworkName)
+
+        // Only enable in REGEX mode
+        task.onlyIf { extension.analysisMode.get() == AnalysisMode.REGEX }
     }
 
     private fun registerProcessManifestTask(
@@ -131,17 +159,20 @@ class SwiftifyPlugin : Plugin<Project> {
         val taskProvider =
             project.tasks.register("swiftifyProcessManifest", SwiftifyProcessManifestTask::class.java) { task ->
                 task.group = "swiftify"
-                task.description = "Process KSP manifest and generate Swift code"
+                task.description = "Process KSP manifest and generate Swift code (KSP mode)"
                 task.outputDirectory.set(extension.outputDirectory)
 
-                // Configure manifest file location from KSP output using lazy provider
+                // Configure manifest file location from KSP output
                 val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
                 task.manifestFile.set(
                     kspOutputDir.map { it.file("main/resources/swiftify-manifest.txt") },
                 )
+
+                // Only enable in KSP mode
+                task.onlyIf { extension.analysisMode.get() == AnalysisMode.KSP }
             }
 
-        // Depend on KSP task if it exists (outside task configuration block)
+        // Depend on KSP task if it exists
         project.tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach { kspTask ->
             taskProvider.configure { it.dependsOn(kspTask) }
         }
@@ -157,8 +188,16 @@ class SwiftifyPlugin : Plugin<Project> {
         task.description = "Embed Swift extensions into framework binary"
         task.swiftSourceDirectory.set(extension.outputDirectory)
 
-        // Depend on swiftifyGenerate to ensure Swift files are generated first
-        task.dependsOn("swiftifyGenerate")
+        // Depend on the appropriate generate task based on mode
+        task.dependsOn(
+            project.provider {
+                if (extension.analysisMode.get() == AnalysisMode.KSP) {
+                    "swiftifyProcessManifest"
+                } else {
+                    "swiftifyGenerate"
+                }
+            },
+        )
     }
 
     private fun configureSwiftifyIntegration(
@@ -174,7 +213,8 @@ class SwiftifyPlugin : Plugin<Project> {
             project.logger.warn("Swiftify: Kotlin Multiplatform plugin not found. Some features may not work.")
         }
 
-        project.logger.lifecycle("Swiftify: Configured for project ${project.name}")
+        val mode = extension.analysisMode.get()
+        project.logger.lifecycle("Swiftify: Configured for project ${project.name} (mode: $mode)")
     }
 
     private fun configureKmpIntegration(
@@ -205,7 +245,6 @@ class SwiftifyPlugin : Plugin<Project> {
                 }
 
                 // Set auto-detected framework name if user didn't explicitly set one
-                // Check both the explicit flag and whether the value differs from convention
                 val defaultConvention = project.name.replaceFirstChar { it.uppercase() }
                 val currentValue = extension.frameworkName.orNull
                 val wasExplicitlySet =
@@ -227,17 +266,11 @@ class SwiftifyPlugin : Plugin<Project> {
         }
     }
 
-    /**
-     * Auto-detect framework name from a KMP Apple target's binary configuration.
-     * Looks for: target.binaries.framework.baseName
-     */
     private fun detectFrameworkName(target: Any): String? {
         return try {
-            // Get binaries container
             val binariesMethod = target.javaClass.getMethod("getBinaries")
             val binaries = binariesMethod.invoke(target) ?: return null
 
-            // Try to find a framework binary
             val frameworks =
                 if (binaries is Iterable<*>) {
                     binaries.filterNotNull().filter { binary ->
@@ -247,7 +280,6 @@ class SwiftifyPlugin : Plugin<Project> {
                     emptyList()
                 }
 
-            // Get baseName from first framework
             frameworks.firstOrNull()?.let { framework ->
                 try {
                     val baseNameMethod = framework.javaClass.getMethod("getBaseName")
@@ -264,22 +296,11 @@ class SwiftifyPlugin : Plugin<Project> {
     private fun isAppleTarget(targetName: String): Boolean {
         val appleTargets =
             listOf(
-                "ios",
-                "watchos",
-                "tvos",
-                "macos",
-                "iosArm64",
-                "iosX64",
-                "iosSimulatorArm64",
-                "watchosArm32",
-                "watchosArm64",
-                "watchosX64",
-                "watchosSimulatorArm64",
-                "tvosArm64",
-                "tvosX64",
-                "tvosSimulatorArm64",
-                "macosArm64",
-                "macosX64",
+                "ios", "watchos", "tvos", "macos",
+                "iosArm64", "iosX64", "iosSimulatorArm64",
+                "watchosArm32", "watchosArm64", "watchosX64", "watchosSimulatorArm64",
+                "tvosArm64", "tvosX64", "tvosSimulatorArm64",
+                "macosArm64", "macosX64",
             )
         return appleTargets.any { targetName.contains(it, ignoreCase = true) }
     }
@@ -290,15 +311,9 @@ class SwiftifyPlugin : Plugin<Project> {
         targetName: String,
     ) {
         project.logger.info("Swiftify: Configuring Apple target: $targetName")
-
-        // Register target-specific embed tasks for each build type
         registerTargetEmbedTasks(project, extension, targetName)
     }
 
-    /**
-     * Register embed tasks for a specific target.
-     * Creates tasks like: swiftifyEmbedDebugMacosArm64, swiftifyEmbedReleaseMacosArm64
-     */
     private fun registerTargetEmbedTasks(
         project: Project,
         extension: SwiftifyExtension,
@@ -310,27 +325,31 @@ class SwiftifyPlugin : Plugin<Project> {
             val linkTaskName = "link${buildType}Framework$capitalizedTarget"
             val embedTaskName = "swiftifyEmbed${buildType}$capitalizedTarget"
 
-            // Register embed task for this target/buildType
             val embedTaskProvider =
                 project.tasks.register(embedTaskName, SwiftifyEmbedTask::class.java) { embedTask ->
                     embedTask.group = "swiftify"
                     embedTask.description = "Embed Swift extensions into $buildType framework for $targetName"
                     embedTask.swiftSourceDirectory.set(extension.outputDirectory)
 
-                    // Set framework directory based on KMP convention
                     val frameworkDir =
                         project.layout.buildDirectory.dir(
                             "bin/$targetName/${buildType.lowercase()}Framework/${extension.frameworkName.get()}.framework",
                         )
                     embedTask.frameworkDirectory.set(frameworkDir)
 
-                    // Depend on swiftifyGenerate
-                    embedTask.dependsOn("swiftifyGenerate")
+                    // Depend on appropriate generate task based on mode
+                    embedTask.dependsOn(
+                        project.provider {
+                            if (extension.analysisMode.get() == AnalysisMode.KSP) {
+                                "swiftifyProcessManifest"
+                            } else {
+                                "swiftifyGenerate"
+                            }
+                        },
+                    )
                 }
 
-            // Hook into the link task when it's configured
             project.tasks.matching { it.name == linkTaskName }.configureEach { linkTask ->
-                // Run embed after framework is linked and Swift is generated
                 linkTask.finalizedBy(embedTaskName)
                 project.logger.info("Swiftify: Hooked $embedTaskName into $linkTaskName")
             }
@@ -340,103 +359,58 @@ class SwiftifyPlugin : Plugin<Project> {
 
 /**
  * Swiftify extension for Gradle DSL configuration.
- *
- * The framework name is auto-detected from your Kotlin Multiplatform configuration:
- * ```kotlin
- * kotlin {
- *     iosArm64().binaries.framework {
- *         baseName = "MyKit"  // <- This is auto-detected
- *     }
- * }
- * ```
- *
- * You only need to configure transformation rules:
- * ```kotlin
- * swiftify {
- *     sealedClasses { transformToEnum(exhaustive = true) }
- *     defaultParameters { generateOverloads(maxOverloads = 5) }
- *     flowTypes { transformToAsyncStream() }
- * }
- * ```
  */
 abstract class SwiftifyExtension(
     private val project: Project,
 ) {
-    /**
-     * Whether Swiftify is enabled. Default: true.
-     */
+    /** Whether Swiftify is enabled. Default: true. */
     abstract val enabled: Property<Boolean>
 
-    /**
-     * Output directory for generated Swift files.
-     */
+    /** Output directory for generated Swift files. */
     abstract val outputDirectory: DirectoryProperty
 
-    /**
-     * Framework name for imports.
-     *
-     * This is auto-detected from your KMP framework configuration.
-     * Only set this manually if you have a non-standard setup.
-     */
+    /** Framework name for imports. Auto-detected from KMP config. */
     abstract val frameworkName: Property<String>
 
-    /**
-     * Tracks if frameworkName was explicitly set by user.
-     * If false, we'll auto-detect from KMP configuration.
-     */
+    /** Analysis mode: REGEX (default) or KSP. */
+    abstract val analysisMode: Property<AnalysisMode>
+
     internal var frameworkNameExplicitlySet: Boolean = false
         private set
 
-    /**
-     * Configuration for sealed class transformations.
-     */
     val sealedClassConfig = SealedClassConfig()
-
-    /**
-     * Configuration for default parameter convenience overloads.
-     */
     val defaultParameterConfig = DefaultParameterConfig()
-
-    /**
-     * Configuration for Flow transformations.
-     */
     val flowConfig = FlowConfig()
 
     init {
         enabled.convention(true)
-        // Default convention - will be overridden by auto-detection if available
         frameworkName.convention(project.name.replaceFirstChar { it.uppercase() })
+        analysisMode.convention(AnalysisMode.REGEX)
     }
 
-    /**
-     * Explicitly set the framework name.
-     * Note: This is usually not needed as Swiftify auto-detects it from KMP config.
-     */
+    /** Set the framework name explicitly. */
     fun frameworkName(name: String) {
         frameworkName.set(name)
         frameworkNameExplicitlySet = true
     }
 
     /**
-     * Configure sealed class transformations.
+     * Set the analysis mode.
+     *
+     * @param mode REGEX (default, simple) or KSP (accurate, requires KSP plugin)
      */
+    fun analysisMode(mode: AnalysisMode) {
+        analysisMode.set(mode)
+    }
+
     fun sealedClasses(configure: SealedClassConfig.() -> Unit) {
         sealedClassConfig.apply(configure)
     }
 
-    /**
-     * Configure default parameter convenience overload generation.
-     *
-     * Use this to customize how many convenience overloads are generated
-     * for functions with default parameters.
-     */
     fun defaultParameters(configure: DefaultParameterConfig.() -> Unit) {
         defaultParameterConfig.apply(configure)
     }
 
-    /**
-     * Configure Flow transformations.
-     */
     fun flowTypes(configure: FlowConfig.() -> Unit) {
         flowConfig.apply(configure)
     }
@@ -455,21 +429,9 @@ class SealedClassConfig {
     }
 }
 
-/**
- * Configuration for generating convenience overloads for functions with default parameters.
- *
- * Note: Kotlin 2.0+ already exports suspend functions as Swift async/await automatically.
- * This configuration only controls the generation of convenience overloads that omit
- * trailing default parameters.
- */
 class DefaultParameterConfig {
     var maxOverloads: Int = 5
 
-    /**
-     * Enable generation of convenience overloads for functions with default parameters.
-     *
-     * @param maxOverloads Maximum number of overloads to generate (default: 5)
-     */
     fun generateOverloads(maxOverloads: Int = 5) {
         this.maxOverloads = maxOverloads
     }
@@ -478,9 +440,6 @@ class DefaultParameterConfig {
 class FlowConfig {
     var useAsyncStream: Boolean = true
 
-    /**
-     * Transform Kotlin Flow to Swift AsyncStream.
-     */
     fun transformToAsyncStream() {
         useAsyncStream = true
     }

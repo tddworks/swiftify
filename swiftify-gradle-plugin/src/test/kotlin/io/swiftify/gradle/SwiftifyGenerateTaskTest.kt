@@ -38,7 +38,7 @@ class SwiftifyGenerateTaskTest {
     fun `generate task has correct description`() {
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
 
-        assertEquals("Generate Swift code from Kotlin declarations", task.description)
+        assertEquals("Generate Swift code from Kotlin declarations (regex mode)", task.description)
     }
 
     @Test

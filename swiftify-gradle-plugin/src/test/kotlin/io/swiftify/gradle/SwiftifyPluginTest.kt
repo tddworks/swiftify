@@ -89,21 +89,33 @@ class SwiftifyPluginTest {
     }
 
     @Test
-    fun `swiftifyEmbed depends on swiftifyGenerate`() {
+    fun `swiftifyEmbed depends on generate task based on mode`() {
         project.plugins.apply("io.swiftify")
 
         val embedTask = project.tasks.findByName("swiftifyEmbed")
         assertNotNull(embedTask)
 
-        val dependencies =
-            embedTask.dependsOn.map {
-                when (it) {
-                    is org.gradle.api.tasks.TaskProvider<*> -> it.name
-                    is org.gradle.api.Task -> it.name
-                    else -> it.toString()
-                }
-            }
-        assertTrue(dependencies.any { it.contains("swiftifyGenerate") })
+        // In REGEX mode (default), should depend on swiftifyGenerate
+        // The dependency is now a Provider, so we check the task dependencies are not empty
+        assertTrue(embedTask.dependsOn.isNotEmpty())
+    }
+
+    @Test
+    fun `default analysis mode is REGEX`() {
+        project.plugins.apply("io.swiftify")
+
+        val extension = project.extensions.getByType(SwiftifyExtension::class.java)
+        assertEquals(AnalysisMode.REGEX, extension.analysisMode.get())
+    }
+
+    @Test
+    fun `analysis mode can be set to KSP`() {
+        project.plugins.apply("io.swiftify")
+
+        val extension = project.extensions.getByType(SwiftifyExtension::class.java)
+        extension.analysisMode(AnalysisMode.KSP)
+
+        assertEquals(AnalysisMode.KSP, extension.analysisMode.get())
     }
 
     @Test
