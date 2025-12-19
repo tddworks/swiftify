@@ -231,37 +231,44 @@ class SwiftifyPlugin : Plugin<Project> {
     private fun configureAppleTarget(project: Project, extension: SwiftifyExtension, targetName: String) {
         project.logger.info("Swiftify: Configuring Apple target: $targetName")
 
-        // Register a task to generate Swift for this target
-        val generateTaskName = "swiftifyGenerate${targetName.replaceFirstChar { it.uppercase() }}"
+        // Hook into KMP framework link tasks to auto-generate Swift code
+        // This makes ./gradlew linkDebugFrameworkMacosArm64 automatically run swiftifyGenerate
+        hookIntoFrameworkLinkTasks(project, targetName)
+    }
 
-        project.tasks.register(generateTaskName, SwiftifyGenerateTask::class.java) { task ->
-            task.group = "swiftify"
-            task.description = "Generate Swift code for $targetName"
-            task.outputDirectory.set(
-                extension.outputDirectory.map { it.dir(targetName) }
-            )
-            task.targetName.set(targetName)
-        }
+    /**
+     * Hook swiftifyGenerate into framework link tasks.
+     * Swift code is auto-generated when building frameworks - no separate command needed.
+     *
+     * When you run: ./gradlew linkDebugFrameworkMacosArm64
+     * Swiftify will automatically generate Swift code.
+     */
+    private fun hookIntoFrameworkLinkTasks(
+        project: Project,
+        targetName: String
+    ) {
+        // Match tasks like: linkDebugFrameworkMacosArm64, linkReleaseFrameworkIosArm64
+        val linkTaskPatterns = listOf(
+            "linkDebugFramework${targetName.replaceFirstChar { it.uppercase() }}",
+            "linkReleaseFramework${targetName.replaceFirstChar { it.uppercase() }}",
+            "link.*Framework${targetName.replaceFirstChar { it.uppercase() }}"
+        )
 
-        // Register link task for framework targets
-        val linkTaskName = "swiftifyLink${targetName.replaceFirstChar { it.uppercase() }}"
-        project.tasks.register(linkTaskName, SwiftifyLinkTask::class.java) { task ->
-            task.group = "swiftify"
-            task.description = "Link Swiftify extensions into $targetName framework"
-            task.outputDirectory.set(
-                extension.outputDirectory.map { it.dir("$targetName/linked") }
-            )
+        project.tasks.configureEach { task ->
+            val taskName = task.name
+            val isFrameworkLinkTask = linkTaskPatterns.any { pattern ->
+                if (pattern.contains(".*")) {
+                    taskName.matches(Regex(pattern))
+                } else {
+                    taskName == pattern
+                }
+            }
 
-            // Configure manifest file from KSP output
-            val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
-            task.manifestFile.set(
-                kspOutputDir.map { it.file("${targetName}Main/resources/swiftify-manifest.txt") }
-            )
-
-            // Set default framework directory based on convention
-            task.frameworkDirectory.set(
-                project.layout.buildDirectory.dir("bin/$targetName/debugFramework")
-            )
+            if (isFrameworkLinkTask) {
+                // Run swiftifyGenerate after the framework is linked
+                task.finalizedBy("swiftifyGenerate")
+                project.logger.info("Swiftify: Hooked into $taskName - Swift code will be auto-generated")
+            }
         }
     }
 }

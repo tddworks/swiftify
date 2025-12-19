@@ -445,17 +445,16 @@ sample/
 ### Manual Build Steps
 
 ```bash
-# 1. Build the Kotlin framework
+# 1. Build the Kotlin framework (Swift code auto-generated!)
 ./gradlew :sample:linkDebugFrameworkMacosArm64
 
-# 2. Generate Swift wrappers
-./gradlew :sample:swiftifyGenerate
-
-# 3. Open and run in Xcode
+# 2. Open and run in Xcode
 open sample/macApp/macApp.xcodeproj
 # or
 open sample/iosApp/iosApp.xcodeproj
 ```
+
+> **Note:** Swiftify automatically generates Swift code when you build the framework. No separate step needed!
 
 ---
 
@@ -471,8 +470,8 @@ open sample/iosApp/iosApp.xcodeproj
 # Publish to local Maven
 ./gradlew publishToMavenLocal
 
-# Generate sample Swift code
-./gradlew :sample:swiftifyGenerate
+# Build framework (auto-generates Swift)
+./gradlew :sample:linkDebugFrameworkMacosArm64
 
 # Run demo apps
 ./run-mac-demo.sh

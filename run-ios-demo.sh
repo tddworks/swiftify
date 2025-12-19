@@ -9,15 +9,12 @@ cd "$SCRIPT_DIR"
 echo "=== Swiftify iOS Demo ==="
 echo ""
 
-# Step 1: Build Kotlin framework for iOS simulator
-echo "[1/3] Building Kotlin framework for iOS Simulator..."
+# Step 1: Build Kotlin framework (Swift code auto-generated!)
+echo "[1/2] Building Kotlin framework + generating Swift code..."
 ./gradlew :sample:linkDebugFrameworkIosSimulatorArm64 --quiet
 
-echo "[2/3] Generating Swift code..."
-./gradlew :sample:swiftifyGenerate --quiet
-
-# Step 3: Build and run iOS app
-echo "[3/3] Building iOS app..."
+# Step 2: Build and run iOS app
+echo "[2/2] Building iOS app..."
 cd sample/iosApp
 
 # Build for iOS Simulator

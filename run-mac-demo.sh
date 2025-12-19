@@ -9,15 +9,12 @@ cd "$SCRIPT_DIR"
 echo "=== Swiftify macOS Demo ==="
 echo ""
 
-# Step 1: Build Kotlin framework and generate Swift code
-echo "[1/3] Building Kotlin framework..."
+# Step 1: Build Kotlin framework (Swift code auto-generated!)
+echo "[1/2] Building Kotlin framework + generating Swift code..."
 ./gradlew :sample:linkDebugFrameworkMacosArm64 --quiet
 
-echo "[2/3] Generating Swift code..."
-./gradlew :sample:swiftifyGenerate --quiet
-
-# Step 3: Build and run macOS app
-echo "[3/3] Building and running macOS app..."
+# Step 2: Build and run macOS app
+echo "[2/2] Building and running macOS app..."
 cd sample/macApp
 
 # Build the app
