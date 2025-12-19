@@ -10,6 +10,7 @@ import kotlin.test.assertContains
 
 /**
  * Integration tests for the Swiftify transformation pipeline.
+ * Uses DSL mode (requireAnnotations = false) to test transformation of all functions.
  */
 class SwiftifyTransformationIntegrationTest {
 
@@ -17,6 +18,13 @@ class SwiftifyTransformationIntegrationTest {
     lateinit var tempDir: File
 
     private val transformer = SwiftifyTransformer()
+
+    // DSL mode config - process all functions without annotations
+    private val dslConfig = swiftify {
+        defaults {
+            requireAnnotations = false
+        }
+    }
 
     @Test
     fun `transforms complete sealed class hierarchy`() {
@@ -31,7 +39,7 @@ class SwiftifyTransformationIntegrationTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertContains(result.swiftCode, "public enum NetworkResult<T>")
         // Kotlin Int maps to Swift Int32 in Kotlin/Native
@@ -53,7 +61,7 @@ class SwiftifyTransformationIntegrationTest {
             suspend fun deleteUser(id: Int): Unit
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         // Kotlin Int maps to Swift Int32 in Kotlin/Native
         assertContains(result.swiftCode, "func fetchUser(id: Int32) async throws -> User")
@@ -73,6 +81,9 @@ class SwiftifyTransformationIntegrationTest {
         """.trimIndent()
 
         val config = swiftify {
+            defaults {
+                requireAnnotations = false
+            }
             sealedClasses {
                 transformToEnum(exhaustive = true)
                 conformTo("Hashable", "Codable")
@@ -97,7 +108,7 @@ class SwiftifyTransformationIntegrationTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertContains(result.swiftCode, "public enum Response")
         assertContains(result.swiftCode, "case success")
@@ -121,7 +132,7 @@ class SwiftifyTransformationIntegrationTest {
             suspend fun refreshData(force: Boolean = false): LoadingState
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         // Should have enum
         assertContains(result.swiftCode, "public enum LoadingState")
@@ -145,7 +156,7 @@ class SwiftifyTransformationIntegrationTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         val outputFile = File(tempDir, "State.swift")
         outputFile.writeText(result.swiftCode)
@@ -172,7 +183,7 @@ class SwiftifyTransformationIntegrationTest {
             """.trimIndent()
         )
 
-        val results = sources.map { transformer.transform(it) }
+        val results = sources.map { transformer.transform(it, dslConfig) }
 
         assertTrue(results[0].swiftCode.contains("enum Result"))
         assertTrue(results[1].swiftCode.contains("func process"))
@@ -188,7 +199,7 @@ class SwiftifyTransformationIntegrationTest {
             fun watchState(userId: String): Flow<UserState>
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertContains(result.swiftCode, "func observeUpdates() -> AsyncStream<Update>")
         assertContains(result.swiftCode, "func watchState(userId: String) -> AsyncStream<UserState>")
@@ -210,7 +221,7 @@ class SwiftifyTransformationIntegrationTest {
             fun observeState(): Flow<AppState>
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         // Enum
         assertContains(result.swiftCode, "public enum AppState")

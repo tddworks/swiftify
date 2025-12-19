@@ -1,16 +1,25 @@
 package io.swiftify.tests.acceptance
 
 import io.swiftify.generator.SwiftifyTransformer
+import io.swiftify.dsl.swiftify
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
 /**
  * End-to-end acceptance tests for suspend function → Swift async transformation.
+ * Uses DSL mode (requireAnnotations = false) to test transformation of all suspend functions.
  */
 class SuspendFunctionAcceptanceTest {
 
     private val transformer = SwiftifyTransformer()
+
+    // DSL mode config - process all functions without annotations
+    private val dslConfig = swiftify {
+        defaults {
+            requireAnnotations = false
+        }
+    }
 
     @Test
     fun `simple suspend function transforms to async`() {
@@ -20,7 +29,7 @@ class SuspendFunctionAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func fetchUser")
@@ -35,7 +44,7 @@ class SuspendFunctionAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func login")
@@ -52,7 +61,7 @@ class SuspendFunctionAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func logout")
@@ -67,7 +76,7 @@ class SuspendFunctionAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "async")

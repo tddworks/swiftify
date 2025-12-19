@@ -35,16 +35,36 @@ class SwiftifyTransformerTest {
     }
 
     @Test
-    fun `transform suspend function to async`() {
+    fun `transform suspend function to async with annotation`() {
         val kotlinSource = """
             package com.example
 
+            @SwiftDefaults
             suspend fun fetchUser(id: Int): User
         """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
 
         // Kotlin Int maps to Swift Int32 in Kotlin/Native
+        assertContains(result.swiftCode, "public func fetchUser(id: Int32) async throws -> User")
+    }
+
+    @Test
+    fun `transform suspend function with DSL mode`() {
+        val kotlinSource = """
+            package com.example
+
+            suspend fun fetchUser(id: Int): User
+        """.trimIndent()
+
+        // DSL mode - process all functions without annotations
+        val config = swiftify {
+            defaults {
+                requireAnnotations = false
+            }
+        }
+        val result = transformer.transform(kotlinSource, config)
+
         assertContains(result.swiftCode, "public func fetchUser(id: Int32) async throws -> User")
     }
 
@@ -90,7 +110,7 @@ class SwiftifyTransformerTest {
     }
 
     @Test
-    fun `transform multiple declarations`() {
+    fun `transform multiple declarations with DSL mode`() {
         val kotlinSource = """
             package com.example
 
@@ -104,7 +124,13 @@ class SwiftifyTransformerTest {
             fun observeState(): Flow<State>
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        // DSL mode - process all functions without annotations
+        val config = swiftify {
+            defaults {
+                requireAnnotations = false
+            }
+        }
+        val result = transformer.transform(kotlinSource, config)
 
         // Should generate enum
         assertContains(result.swiftCode, "public enum State")
@@ -120,6 +146,7 @@ class SwiftifyTransformerTest {
 
             sealed class A { object X : A() }
             sealed class B { object Y : B() }
+            @SwiftDefaults
             suspend fun foo(): String
         """.trimIndent()
 

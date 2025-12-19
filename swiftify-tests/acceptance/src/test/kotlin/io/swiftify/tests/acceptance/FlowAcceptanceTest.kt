@@ -1,16 +1,25 @@
 package io.swiftify.tests.acceptance
 
 import io.swiftify.generator.SwiftifyTransformer
+import io.swiftify.dsl.swiftify
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
 /**
- * End-to-end acceptance tests for Flow → Swift AsyncSequence transformation.
+ * End-to-end acceptance tests for Flow → Swift AsyncStream transformation.
+ * Uses DSL mode (requireAnnotations = false) to test transformation of all Flow functions.
  */
 class FlowAcceptanceTest {
 
     private val transformer = SwiftifyTransformer()
+
+    // DSL mode config - process all functions without annotations
+    private val dslConfig = swiftify {
+        defaults {
+            requireAnnotations = false
+        }
+    }
 
     @Test
     fun `Flow function transforms to AsyncStream`() {
@@ -22,7 +31,7 @@ class FlowAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func getUserUpdates")
@@ -37,7 +46,7 @@ class FlowAcceptanceTest {
             val currentUser: StateFlow<User?>
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "currentUser")
@@ -53,7 +62,7 @@ class FlowAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func getEvents")

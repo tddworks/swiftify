@@ -109,8 +109,12 @@ class SwiftifyTransformer {
                 funcs.forEach { declaration ->
                     when (declaration) {
                         is SuspendFunctionDeclaration -> {
-                            if (config.defaults.generateDefaultOverloads) {
-                                // Since Kotlin 1.8+ generates async/await natively, we only generate:
+                            // Check if we should process this function:
+                            // - If requireAnnotations=true, only process annotated functions
+                            // - If requireAnnotations=false, process all functions
+                            val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftAsyncAnnotation
+                            if (shouldProcess && config.defaults.generateDefaultOverloads) {
+                                // Since Kotlin 2.0+ generates async/await natively, we only generate:
                                 // 1. Nothing for functions without default params (Kotlin has them)
                                 // 2. Convenience overloads for functions WITH default params
                                 val bodies = transformSuspendFunctionBodies(declaration, config)
@@ -121,7 +125,11 @@ class SwiftifyTransformer {
                             }
                         }
                         is FlowFunctionDeclaration -> {
-                            if (config.defaults.transformFlowToAsyncStream) {
+                            // Check if we should process this function:
+                            // - If requireAnnotations=true, only process annotated functions
+                            // - If requireAnnotations=false, process all Flow functions
+                            val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftFlowAnnotation
+                            if (shouldProcess && config.defaults.transformFlowToAsyncStream) {
                                 // Flow -> AsyncStream wrappers are always needed
                                 // (Kotlin only exposes raw Flow, not AsyncStream)
                                 val body = transformFlowFunctionBody(declaration, config)
@@ -154,14 +162,16 @@ class SwiftifyTransformer {
             declarations.forEach { declaration ->
                 when (declaration) {
                     is SuspendFunctionDeclaration -> {
-                        if (config.defaults.generateDefaultOverloads) {
+                        val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftAsyncAnnotation
+                        if (shouldProcess && config.defaults.generateDefaultOverloads) {
                             val swiftCode = transformSuspendFunction(declaration, config, options)
                             swiftCodeParts += swiftCode
                             transformedCount++
                         }
                     }
                     is FlowFunctionDeclaration -> {
-                        if (config.defaults.transformFlowToAsyncStream) {
+                        val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftFlowAnnotation
+                        if (shouldProcess && config.defaults.transformFlowToAsyncStream) {
                             val swiftCode = transformFlowFunction(declaration, config, options)
                             swiftCodeParts += swiftCode
                             transformedCount++

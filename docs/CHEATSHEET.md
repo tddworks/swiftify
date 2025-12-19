@@ -83,6 +83,10 @@ Task {
 
 ```kotlin
 swiftify {
+    defaults {
+        requireAnnotations = true  // Only annotated functions (default)
+        // Set to false to process ALL functions
+    }
     defaultParameters {
         generateOverloads(maxOverloads = 5)
     }
@@ -94,6 +98,13 @@ swiftify {
     }
 }
 ```
+
+## Mode Selection
+
+| Mode | Config | Behavior |
+|------|--------|----------|
+| **Annotation** | `requireAnnotations = true` | Only `@SwiftDefaults`/`@SwiftFlow` functions |
+| **DSL** | `requireAnnotations = false` | All suspend/Flow functions |
 
 ---
 

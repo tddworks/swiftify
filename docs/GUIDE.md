@@ -225,6 +225,7 @@ swiftify {
 ```kotlin
 swiftify {
     defaults {
+        requireAnnotations = true            // Only process annotated functions (default)
         generateDefaultOverloads = true      // Generate convenience overloads
         transformFlowToAsyncStream = true    // Wrap Flow as AsyncStream
         transformSealedClassesToEnums = true // Transform sealed classes
@@ -232,6 +233,36 @@ swiftify {
     }
 }
 ```
+
+### Annotation Mode vs DSL Mode
+
+Swiftify supports two modes of operation:
+
+**Annotation Mode (default)**: Only process functions explicitly marked with `@SwiftDefaults` or `@SwiftFlow`.
+
+```kotlin
+// Only this function will be processed
+@SwiftDefaults
+suspend fun getNotes(limit: Int = 10): List<Note>
+
+// This function is NOT processed (no annotation)
+suspend fun internalFetch(): Data
+```
+
+**DSL Mode**: Process ALL matching functions without requiring annotations.
+
+```kotlin
+swiftify {
+    defaults {
+        requireAnnotations = false  // Process all suspend/Flow functions
+    }
+}
+```
+
+Use DSL mode when:
+- You want to transform your entire API without adding annotations
+- You're migrating an existing codebase
+- You prefer configuration over annotations
 
 ---
 

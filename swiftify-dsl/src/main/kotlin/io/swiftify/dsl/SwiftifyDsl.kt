@@ -44,7 +44,12 @@ data class SwiftifySpec(
         val transformSealedClassesToEnums: Boolean = true,
         val generateDefaultOverloads: Boolean = true,
         val transformFlowToAsyncStream: Boolean = true,
-        val maxDefaultOverloads: Int = 5
+        val maxDefaultOverloads: Int = 5,
+        /**
+         * If true, only process functions with explicit annotations (@SwiftDefaults, @SwiftFlow).
+         * If false, process all suspend functions and Flow returns based on DSL rules.
+         */
+        val requireAnnotations: Boolean = true
     )
 }
 
@@ -137,12 +142,18 @@ class DefaultsBuilder(private var current: SwiftifySpec.Defaults) {
     var generateDefaultOverloads: Boolean = current.generateDefaultOverloads
     var transformFlowToAsyncStream: Boolean = current.transformFlowToAsyncStream
     var maxDefaultOverloads: Int = current.maxDefaultOverloads
+    /**
+     * If true, only process functions with explicit annotations (@SwiftDefaults, @SwiftFlow).
+     * If false, process all matching functions based on DSL rules.
+     */
+    var requireAnnotations: Boolean = current.requireAnnotations
 
     fun build() = SwiftifySpec.Defaults(
         transformSealedClassesToEnums = transformSealedClassesToEnums,
         generateDefaultOverloads = generateDefaultOverloads,
         transformFlowToAsyncStream = transformFlowToAsyncStream,
-        maxDefaultOverloads = maxDefaultOverloads
+        maxDefaultOverloads = maxDefaultOverloads,
+        requireAnnotations = requireAnnotations
     )
 }
 

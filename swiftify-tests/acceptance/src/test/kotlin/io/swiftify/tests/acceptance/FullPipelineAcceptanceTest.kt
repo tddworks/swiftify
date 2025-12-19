@@ -1,16 +1,25 @@
 package io.swiftify.tests.acceptance
 
 import io.swiftify.generator.SwiftifyTransformer
+import io.swiftify.dsl.swiftify
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
 /**
  * Full end-to-end pipeline test using realistic sample code.
+ * Uses DSL mode (requireAnnotations = false) to test transformation of all functions.
  */
 class FullPipelineAcceptanceTest {
 
     private val transformer = SwiftifyTransformer()
+
+    // DSL mode config - process all functions without annotations
+    private val dslConfig = swiftify {
+        defaults {
+            requireAnnotations = false
+        }
+    }
 
     @Test
     fun `full UserRepository transforms correctly`() {
@@ -58,7 +67,7 @@ class FullPipelineAcceptanceTest {
             )
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         println("=== Generated Swift Code ===")
         println(result.swiftCode)
@@ -93,7 +102,7 @@ class FullPipelineAcceptanceTest {
             }
         """.trimIndent()
 
-        val result = transformer.transform(kotlinSource)
+        val result = transformer.transform(kotlinSource, dslConfig)
 
         println("=== Generated Swift Code ===")
         println(result.swiftCode)
@@ -128,8 +137,8 @@ class FullPipelineAcceptanceTest {
             }
         """.trimIndent()
 
-        val result1 = transformer.transform(kotlinSource1)
-        val result2 = transformer.transform(kotlinSource2)
+        val result1 = transformer.transform(kotlinSource1, dslConfig)
+        val result2 = transformer.transform(kotlinSource2, dslConfig)
 
         // Generate combined Swift file
         val combinedSwift = buildString {

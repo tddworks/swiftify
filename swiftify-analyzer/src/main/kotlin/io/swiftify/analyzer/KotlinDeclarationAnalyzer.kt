@@ -22,10 +22,10 @@ class KotlinDeclarationAnalyzer {
         """(@SwiftDefaults\s*(?:\([^)]*\))?\s*|@SwiftAsync\s*(?:\([^)]*\))?\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?"""
     )
     private val flowFunctionPattern = Regex(
-        """fun\s+(\w+)\s*\(([^)]*)\)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
+        """(@SwiftFlow\s*(?:\([^)]*\))?\s*)?fun\s+(\w+)\s*\(([^)]*)\)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
     )
     private val flowPropertyPattern = Regex(
-        """val\s+(\w+)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
+        """(@SwiftFlow\s*(?:\([^)]*\))?\s*)?val\s+(\w+)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
     )
     private val propertyPattern = Regex(
         """val\s+(\w+)\s*:\s*(\w+\??(?:<[^>]+>)?)"""
@@ -304,10 +304,12 @@ class KotlinDeclarationAnalyzer {
 
         // Analyze Flow-returning functions
         flowFunctionPattern.findAll(source).forEach { match ->
-            val funcName = match.groupValues[1]
-            val paramsStr = match.groupValues[2]
-            val elementType = match.groupValues[3]
+            val annotation = match.groupValues[1]
+            val funcName = match.groupValues[2]
+            val paramsStr = match.groupValues[3]
+            val elementType = match.groupValues[4]
 
+            val hasAnnotation = annotation.contains("@SwiftFlow")
             val parameters = parseParameters(paramsStr)
 
             // Find containing class
@@ -320,6 +322,7 @@ class KotlinDeclarationAnalyzer {
                 name = funcName,
                 parameters = parameters,
                 elementTypeName = elementType.removeSuffix("?"),
+                hasSwiftFlowAnnotation = hasAnnotation,
                 isProperty = false,
                 containingClassName = containingClass
             )
@@ -327,8 +330,11 @@ class KotlinDeclarationAnalyzer {
 
         // Analyze Flow properties
         flowPropertyPattern.findAll(source).forEach { match ->
-            val propName = match.groupValues[1]
-            val elementType = match.groupValues[2]
+            val annotation = match.groupValues[1]
+            val propName = match.groupValues[2]
+            val elementType = match.groupValues[3]
+
+            val hasAnnotation = annotation.contains("@SwiftFlow")
 
             // Find containing class
             val containingClass = findContainingClass(match.range.first, classRanges)
@@ -340,6 +346,7 @@ class KotlinDeclarationAnalyzer {
                 name = propName,
                 parameters = emptyList(),
                 elementTypeName = elementType.removeSuffix("?"),
+                hasSwiftFlowAnnotation = hasAnnotation,
                 isProperty = true,
                 containingClassName = containingClass
             )
