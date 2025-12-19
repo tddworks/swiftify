@@ -538,8 +538,11 @@ open sample/macApp/macApp.xcodeproj
 # Publish to local Maven
 ./gradlew publishToMavenLocal
 
+# go to sample folder
+cd sample
+
 # Build sample framework (auto-generates Swift)
-./gradlew :sample:linkReleaseFrameworkMacosArm64
+../gradlew linkReleaseFrameworkMacosArm64
 
 # Open demo app in Xcode
 open sample/macApp/macApp.xcodeproj

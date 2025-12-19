@@ -152,21 +152,6 @@ swiftifyEmbedSwift (runs after link)
 Framework with embedded Swift
 ```
 
-### swiftify-runtime
-
-Runtime support code embedded in frameworks.
-
-```swift
-// SwiftifyFlowCollector - bridges Kotlin Flow to Swift AsyncStream
-public class SwiftifyFlowCollector<T>: Kotlinx_coroutines_coreFlowCollector {
-    public init(
-        onEmit: @escaping (T) -> Void,
-        onComplete: @escaping () -> Void,
-        onError: @escaping (Error) -> Void
-    )
-}
-```
-
 ### swiftify-swift
 
 Swift type specifications - the intermediate representation for Swift code generation.
