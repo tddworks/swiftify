@@ -508,6 +508,16 @@ open sample/macApp/macApp.xcodeproj
 
 ---
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Developer Guide](docs/GUIDE.md) | Comprehensive guide with examples and best practices |
+| [Cheatsheet](docs/CHEATSHEET.md) | Quick reference for common patterns |
+| [Architecture](docs/ARCHITECTURE.md) | Internal design and module structure |
+
+---
+
 ## Development
 
 ```bash
