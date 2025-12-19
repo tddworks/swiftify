@@ -78,6 +78,33 @@ class SwiftifyPluginTest {
     }
 
     @Test
+    fun `swiftifyEmbed task is registered`() {
+        project.plugins.apply("io.swiftify")
+
+        val task = project.tasks.findByName("swiftifyEmbed")
+        assertNotNull(task)
+        assertEquals("swiftify", task.group)
+        assertTrue(task is SwiftifyEmbedTask)
+    }
+
+    @Test
+    fun `swiftifyEmbed depends on swiftifyGenerate`() {
+        project.plugins.apply("io.swiftify")
+
+        val embedTask = project.tasks.findByName("swiftifyEmbed")
+        assertNotNull(embedTask)
+
+        val dependencies = embedTask.dependsOn.map {
+            when (it) {
+                is org.gradle.api.tasks.TaskProvider<*> -> it.name
+                is org.gradle.api.Task -> it.name
+                else -> it.toString()
+            }
+        }
+        assertTrue(dependencies.any { it.contains("swiftifyGenerate") })
+    }
+
+    @Test
     fun `output directory has correct default`() {
         project.plugins.apply("io.swiftify")
 

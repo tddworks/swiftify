@@ -54,6 +54,7 @@ class SwiftifyPlugin : Plugin<Project> {
         registerPreviewTask(project, extension)
         registerGenerateTask(project, extension)
         registerProcessManifestTask(project, extension)
+        registerEmbedTask(project, extension)
 
         // Configure KSP if available
         configureKsp(project, extension)
@@ -125,6 +126,17 @@ class SwiftifyPlugin : Plugin<Project> {
         }
 
         return taskProvider
+    }
+
+    private fun registerEmbedTask(project: Project, extension: SwiftifyExtension): TaskProvider<SwiftifyEmbedTask> {
+        return project.tasks.register("swiftifyEmbed", SwiftifyEmbedTask::class.java) { task ->
+            task.group = "swiftify"
+            task.description = "Embed Swift extensions into framework binary"
+            task.swiftSourceDirectory.set(extension.outputDirectory)
+
+            // Depend on swiftifyGenerate to ensure Swift files are generated first
+            task.dependsOn("swiftifyGenerate")
+        }
     }
 
     private fun configureSwiftifyIntegration(project: Project, extension: SwiftifyExtension) {
@@ -237,11 +249,13 @@ class SwiftifyPlugin : Plugin<Project> {
     }
 
     /**
-     * Hook swiftifyGenerate into framework link tasks.
-     * Swift code is auto-generated when building frameworks - no separate command needed.
+     * Hook swiftifyEmbed into framework link tasks.
+     * Swift code is auto-generated and embedded when building frameworks.
      *
      * When you run: ./gradlew linkDebugFrameworkMacosArm64
-     * Swiftify will automatically generate Swift code.
+     * Swiftify will automatically:
+     * 1. Generate Swift code (swiftifyGenerate)
+     * 2. Embed it into the framework binary (swiftifyEmbed)
      */
     private fun hookIntoFrameworkLinkTasks(
         project: Project,
@@ -265,9 +279,27 @@ class SwiftifyPlugin : Plugin<Project> {
             }
 
             if (isFrameworkLinkTask) {
-                // Run swiftifyGenerate after the framework is linked
-                task.finalizedBy("swiftifyGenerate")
-                project.logger.info("Swiftify: Hooked into $taskName - Swift code will be auto-generated")
+                // Configure swiftifyEmbed with the framework directory from the link task
+                project.tasks.named("swiftifyEmbed", SwiftifyEmbedTask::class.java).configure { embedTask ->
+                    // Set framework directory from link task output
+                    try {
+                        val outputDir = task.javaClass.getMethod("getOutputDirectory").invoke(task)
+                        if (outputDir != null) {
+                            val dirProperty = outputDir.javaClass.getMethod("get").invoke(outputDir)
+                            val asFile = dirProperty.javaClass.getMethod("getAsFile").invoke(dirProperty) as? java.io.File
+                            if (asFile != null) {
+                                embedTask.frameworkDirectory.set(asFile)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        project.logger.debug("Swiftify: Could not auto-configure framework directory: ${e.message}")
+                    }
+                }
+
+                // Run swiftifyEmbed after the framework is linked
+                // swiftifyEmbed already depends on swiftifyGenerate
+                task.finalizedBy("swiftifyEmbed")
+                project.logger.info("Swiftify: Hooked into $taskName - Swift will be auto-generated and embedded")
             }
         }
     }
