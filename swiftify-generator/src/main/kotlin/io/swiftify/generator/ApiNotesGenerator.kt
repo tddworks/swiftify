@@ -23,37 +23,35 @@ class ApiNotesGenerator {
      * @param declarations List of analyzed Kotlin declarations
      * @return YAML content for the .apinotes file
      */
-    fun generate(frameworkName: String, declarations: List<KotlinDeclaration>): String {
-        return buildString {
-            appendLine("---")
-            appendLine("Name: $frameworkName")
-            appendLine("Classes:")
+    fun generate(frameworkName: String, declarations: List<KotlinDeclaration>): String = buildString {
+        appendLine("---")
+        appendLine("Name: $frameworkName")
+        appendLine("Classes:")
 
-            // Group declarations by their containing class
-            val classDeclarations = mutableMapOf<String, MutableList<KotlinDeclaration>>()
+        // Group declarations by their containing class
+        val classDeclarations = mutableMapOf<String, MutableList<KotlinDeclaration>>()
 
-            declarations.forEach { decl ->
-                when (decl) {
-                    is SealedClassDeclaration -> {
-                        // Sealed classes get their own entry
-                        appendLine(generateSealedClassNotes(decl))
-                    }
-                    is SuspendFunctionDeclaration -> {
-                        // Group by package for now (could be by class if we had that info)
-                        val key = decl.packageName.ifEmpty { "Global" }
-                        classDeclarations.getOrPut(key) { mutableListOf() }.add(decl)
-                    }
-                    is FlowFunctionDeclaration -> {
-                        val key = decl.packageName.ifEmpty { "Global" }
-                        classDeclarations.getOrPut(key) { mutableListOf() }.add(decl)
-                    }
+        declarations.forEach { decl ->
+            when (decl) {
+                is SealedClassDeclaration -> {
+                    // Sealed classes get their own entry
+                    appendLine(generateSealedClassNotes(decl))
+                }
+                is SuspendFunctionDeclaration -> {
+                    // Group by package for now (could be by class if we had that info)
+                    val key = decl.packageName.ifEmpty { "Global" }
+                    classDeclarations.getOrPut(key) { mutableListOf() }.add(decl)
+                }
+                is FlowFunctionDeclaration -> {
+                    val key = decl.packageName.ifEmpty { "Global" }
+                    classDeclarations.getOrPut(key) { mutableListOf() }.add(decl)
                 }
             }
+        }
 
-            // Generate method notes grouped by class/module
-            classDeclarations.forEach { (className, decls) ->
-                appendLine(generateClassNotes(className, decls))
-            }
+        // Generate method notes grouped by class/module
+        classDeclarations.forEach { (className, decls) ->
+            appendLine(generateClassNotes(className, decls))
         }
     }
 
@@ -133,18 +131,16 @@ class ApiNotesGenerator {
         appendLine("        # Returns AsyncSequence<${decl.elementTypeName}>")
     }
 
-    private fun generateObjCSelector(name: String, parameters: List<ParameterDeclaration>): String {
-        return if (parameters.isEmpty()) {
-            name
-        } else {
-            buildString {
-                append(name)
-                parameters.forEachIndexed { index, param ->
-                    if (index == 0) {
-                        append("With${param.name.replaceFirstChar { it.uppercase() }}:")
-                    } else {
-                        append("${param.name}:")
-                    }
+    private fun generateObjCSelector(name: String, parameters: List<ParameterDeclaration>): String = if (parameters.isEmpty()) {
+        name
+    } else {
+        buildString {
+            append(name)
+            parameters.forEachIndexed { index, param ->
+                if (index == 0) {
+                    append("With${param.name.replaceFirstChar { it.uppercase() }}:")
+                } else {
+                    append("${param.name}:")
                 }
             }
         }

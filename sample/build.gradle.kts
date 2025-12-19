@@ -13,7 +13,7 @@ kotlin {
     listOf(
         iosArm64(),
         iosSimulatorArm64(),
-        macosArm64()
+        macosArm64(),
     ).forEach { appleTarget ->
         appleTarget.binaries.framework {
             baseName = "SampleKit"

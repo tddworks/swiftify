@@ -1,9 +1,9 @@
 package io.swiftify.gradle
 
-import io.swiftify.swift.*
-import io.swiftify.generator.SwiftEnumGenerator
-import io.swiftify.generator.SwiftDefaultsGenerator
 import io.swiftify.generator.SwiftAsyncStreamGenerator
+import io.swiftify.generator.SwiftDefaultsGenerator
+import io.swiftify.generator.SwiftEnumGenerator
+import io.swiftify.swift.*
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -120,7 +120,7 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
         section: Map<String, String>?,
         subclasses: List<Pair<String, Boolean>>,
         parameters: List<Pair<String, String>>,
-        declarations: MutableList<ParsedDeclaration>
+        declarations: MutableList<ParsedDeclaration>,
     ) {
         if (type == null || section == null) return
 
@@ -132,7 +132,7 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
                     } else {
                         SwiftEnumCase(
                             name.replaceFirstChar { it.lowercase() },
-                            listOf(SwiftEnumCase.AssociatedValue("value", SwiftType.Named(name)))
+                            listOf(SwiftEnumCase.AssociatedValue("value", SwiftType.Named(name))),
                         )
                     }
                 }
@@ -141,9 +141,9 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
                         SwiftEnumSpec(
                             name = section["swiftName"] ?: section["name"] ?: "",
                             cases = cases,
-                            isExhaustive = section["exhaustive"]?.toBooleanStrictOrNull() ?: true
-                        )
-                    )
+                            isExhaustive = section["exhaustive"]?.toBooleanStrictOrNull() ?: true,
+                        ),
+                    ),
                 )
             }
             "suspend" -> {
@@ -156,9 +156,9 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
                             name = section["name"] ?: "",
                             parameters = params,
                             returnType = mapKotlinTypeToSwift(section["return"] ?: "Unit"),
-                            isThrowing = section["throwing"]?.toBooleanStrictOrNull() ?: true
-                        )
-                    )
+                            isThrowing = section["throwing"]?.toBooleanStrictOrNull() ?: true,
+                        ),
+                    ),
                 )
             }
             "flow" -> {
@@ -170,34 +170,30 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
                         SwiftAsyncStreamSpec(
                             name = section["name"] ?: "",
                             parameters = params,
-                            elementType = mapKotlinTypeToSwift(section["element"] ?: "Any")
-                        )
-                    )
+                            elementType = mapKotlinTypeToSwift(section["element"] ?: "Any"),
+                        ),
+                    ),
                 )
             }
         }
     }
 
-    private fun mapKotlinTypeToSwift(kotlinType: String): SwiftType {
-        return when (kotlinType) {
-            "String" -> SwiftType.Named("String")
-            "Int" -> SwiftType.Named("Int")
-            "Long" -> SwiftType.Named("Int64")
-            "Float" -> SwiftType.Named("Float")
-            "Double" -> SwiftType.Named("Double")
-            "Boolean" -> SwiftType.Named("Bool")
-            "Unit" -> SwiftType.Void
-            else -> SwiftType.Named(kotlinType)
-        }
+    private fun mapKotlinTypeToSwift(kotlinType: String): SwiftType = when (kotlinType) {
+        "String" -> SwiftType.Named("String")
+        "Int" -> SwiftType.Named("Int")
+        "Long" -> SwiftType.Named("Int64")
+        "Float" -> SwiftType.Named("Float")
+        "Double" -> SwiftType.Named("Double")
+        "Boolean" -> SwiftType.Named("Bool")
+        "Unit" -> SwiftType.Void
+        else -> SwiftType.Named(kotlinType)
     }
 
-    private fun generateSwiftCode(declarations: List<ParsedDeclaration>): String {
-        return declarations.joinToString("\n\n") { decl ->
-            when (decl) {
-                is ParsedDeclaration.SealedClass -> enumGenerator.generate(decl.spec)
-                is ParsedDeclaration.SuspendFunction -> defaultsGenerator.generate(decl.spec)
-                is ParsedDeclaration.FlowFunction -> asyncStreamGenerator.generate(decl.spec)
-            }
+    private fun generateSwiftCode(declarations: List<ParsedDeclaration>): String = declarations.joinToString("\n\n") { decl ->
+        when (decl) {
+            is ParsedDeclaration.SealedClass -> enumGenerator.generate(decl.spec)
+            is ParsedDeclaration.SuspendFunction -> defaultsGenerator.generate(decl.spec)
+            is ParsedDeclaration.FlowFunction -> asyncStreamGenerator.generate(decl.spec)
         }
     }
 

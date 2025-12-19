@@ -85,7 +85,7 @@ abstract class SwiftifyLinkTask : DefaultTask() {
             targetTriple = targetTriple.orNull,
             sdkPath = sdkPath.orNull,
             dryRun = false,
-            logger = { msg -> logger.lifecycle("Swiftify: $msg") }
+            logger = { msg -> logger.lifecycle("Swiftify: $msg") },
         )
 
         val processorConfig = FrameworkProcessorConfig(linkerConfig)

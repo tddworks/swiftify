@@ -3,9 +3,9 @@ package io.swiftify.gradle
 import io.swiftify.analyzer.KotlinDeclaration
 import io.swiftify.analyzer.KotlinDeclarationAnalyzer
 import io.swiftify.generator.ApiNotesGenerator
+import io.swiftify.generator.SwiftRuntimeSupport
 import io.swiftify.generator.SwiftifyTransformer
 import io.swiftify.generator.TransformOptions
-import io.swiftify.generator.SwiftRuntimeSupport
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
@@ -86,7 +86,7 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         // Generate with implementations so the code is actually usable
         val options = TransformOptions(
             generateImplementations = true,
-            frameworkName = fwName
+            frameworkName = fwName,
         )
 
         var totalTransformed = 0
@@ -141,7 +141,7 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         val srcDirs = listOf(
             project.file("src/commonMain/kotlin"),
             project.file("src/main/kotlin"),
-            project.file("src/iosMain/kotlin")
+            project.file("src/iosMain/kotlin"),
         )
 
         return srcDirs.filter { it.exists() }

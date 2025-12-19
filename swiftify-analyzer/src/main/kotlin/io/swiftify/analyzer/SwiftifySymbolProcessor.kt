@@ -20,7 +20,7 @@ import java.io.File
 class SwiftifySymbolProcessor(
     private val codeGenerator: CodeGenerator,
     private val logger: KSPLogger,
-    private val options: Map<String, String>
+    private val options: Map<String, String>,
 ) : SymbolProcessor {
 
     private val outputDir = options["swiftify.outputDir"] ?: "build/swiftify"
@@ -97,7 +97,7 @@ class SwiftifySymbolProcessor(
                     PropertyDeclaration(
                         name = param.name?.asString() ?: "",
                         typeName = param.type.resolve().declaration.simpleName.asString(),
-                        isNullable = param.type.resolve().isMarkedNullable
+                        isNullable = param.type.resolve().isMarkedNullable,
                     )
                 } ?: emptyList()
             }
@@ -108,7 +108,7 @@ class SwiftifySymbolProcessor(
                 isObject = isObject,
                 isDataClass = subclass.modifiers.contains(Modifier.DATA),
                 properties = properties,
-                typeParameters = subclass.typeParameters.map { it.name.asString() }
+                typeParameters = subclass.typeParameters.map { it.name.asString() },
             )
         }.toList()
 
@@ -121,8 +121,8 @@ class SwiftifySymbolProcessor(
                 subclasses = subclasses,
                 hasSwiftEnumAnnotation = swiftEnumAnnotation != null,
                 swiftEnumName = swiftEnumName,
-                isExhaustive = exhaustive
-            )
+                isExhaustive = exhaustive,
+            ),
         )
 
         logger.info("Swiftify: Found sealed class $qualifiedName")
@@ -157,7 +157,7 @@ class SwiftifySymbolProcessor(
                 name = param.name?.asString() ?: "",
                 typeName = param.type.resolve().declaration.simpleName.asString(),
                 isNullable = param.type.resolve().isMarkedNullable,
-                defaultValue = if (param.hasDefault) "default" else null
+                defaultValue = if (param.hasDefault) "default" else null,
             )
         }
 
@@ -175,8 +175,8 @@ class SwiftifySymbolProcessor(
                 returnTypeName = returnTypeName,
                 typeParameters = declaration.typeParameters.map { it.name.asString() },
                 hasSwiftAsyncAnnotation = swiftAsyncAnnotation != null,
-                isThrowing = isThrowing
-            )
+                isThrowing = isThrowing,
+            ),
         )
 
         logger.info("Swiftify: Found suspend function $qualifiedName")
@@ -198,7 +198,7 @@ class SwiftifySymbolProcessor(
                 name = param.name?.asString() ?: "",
                 typeName = param.type.resolve().declaration.simpleName.asString(),
                 isNullable = param.type.resolve().isMarkedNullable,
-                defaultValue = if (param.hasDefault) "default" else null
+                defaultValue = if (param.hasDefault) "default" else null,
             )
         }
 
@@ -209,8 +209,8 @@ class SwiftifySymbolProcessor(
                 packageName = packageName,
                 name = simpleName,
                 parameters = parameters,
-                elementTypeName = elementTypeName
-            )
+                elementTypeName = elementTypeName,
+            ),
         )
 
         logger.info("Swiftify: Found Flow function $qualifiedName")
@@ -241,8 +241,8 @@ class SwiftifySymbolProcessor(
                 elementTypeName = elementTypeName,
                 hasSwiftFlowAnnotation = declaration.annotations.any {
                     it.shortName.asString() == "SwiftFlow"
-                }
-            )
+                },
+            ),
         )
 
         logger.info("Swiftify: Found Flow property $qualifiedName")
@@ -306,7 +306,7 @@ class SwiftifySymbolProcessor(
             dependencies = Dependencies(aggregating = true),
             packageName = "",
             fileName = "swiftify-manifest",
-            extensionName = "txt"
+            extensionName = "txt",
         ).bufferedWriter().use { it.write(manifest) }
     }
 
@@ -316,7 +316,7 @@ class SwiftifySymbolProcessor(
             "kotlinx.coroutines.flow.StateFlow",
             "kotlinx.coroutines.flow.SharedFlow",
             "kotlinx.coroutines.flow.MutableStateFlow",
-            "kotlinx.coroutines.flow.MutableSharedFlow"
+            "kotlinx.coroutines.flow.MutableSharedFlow",
         )
     }
 }
@@ -325,11 +325,9 @@ class SwiftifySymbolProcessor(
  * Provider for the Swiftify KSP processor.
  */
 class SwiftifySymbolProcessorProvider : SymbolProcessorProvider {
-    override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
-        return SwiftifySymbolProcessor(
-            codeGenerator = environment.codeGenerator,
-            logger = environment.logger,
-            options = environment.options
-        )
-    }
+    override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor = SwiftifySymbolProcessor(
+        codeGenerator = environment.codeGenerator,
+        logger = environment.logger,
+        options = environment.options,
+    )
 }

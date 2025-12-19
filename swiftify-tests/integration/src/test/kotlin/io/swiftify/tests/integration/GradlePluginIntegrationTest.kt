@@ -1,12 +1,12 @@
 package io.swiftify.tests.integration
 
-import io.swiftify.generator.SwiftifyTransformer
 import io.swiftify.dsl.swiftify
+import io.swiftify.generator.SwiftifyTransformer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import kotlin.test.assertTrue
 import kotlin.test.assertContains
+import kotlin.test.assertTrue
 
 /**
  * Integration tests for the Swiftify transformation pipeline.
@@ -180,7 +180,7 @@ class SwiftifyTransformationIntegrationTest {
                 package com.example
 
                 suspend fun process(): Result
-            """.trimIndent()
+            """.trimIndent(),
         )
 
         val results = sources.map { transformer.transform(it, dslConfig) }

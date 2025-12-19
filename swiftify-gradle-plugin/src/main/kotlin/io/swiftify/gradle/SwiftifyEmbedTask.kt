@@ -92,7 +92,7 @@ abstract class SwiftifyEmbedTask : DefaultTask() {
             sdkPath = sdkPath.orNull ?: detectSdkPath(frameworkDir),
             workingDirectory = File(frameworkDir.parentFile, ".swiftify-build"),
             dryRun = dryRun.getOrElse(false),
-            logger = { msg -> logger.lifecycle("Swiftify: $msg") }
+            logger = { msg -> logger.lifecycle("Swiftify: $msg") },
         )
 
         val result = embedder.embed(frameworkDir, swiftFiles, config)

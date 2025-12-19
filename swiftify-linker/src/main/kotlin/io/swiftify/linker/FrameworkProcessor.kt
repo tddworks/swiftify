@@ -1,9 +1,9 @@
 package io.swiftify.linker
 
-import io.swiftify.swift.*
-import io.swiftify.generator.SwiftEnumGenerator
-import io.swiftify.generator.SwiftDefaultsGenerator
 import io.swiftify.generator.SwiftAsyncStreamGenerator
+import io.swiftify.generator.SwiftDefaultsGenerator
+import io.swiftify.generator.SwiftEnumGenerator
+import io.swiftify.swift.*
 import java.io.File
 
 /**
@@ -16,7 +16,7 @@ import java.io.File
  * 4. Optionally updates ApiNotes for better Swift interop
  */
 class FrameworkProcessor(
-    private val config: FrameworkProcessorConfig
+    private val config: FrameworkProcessorConfig,
 ) {
     private val enumGenerator = SwiftEnumGenerator()
     private val defaultsGenerator = SwiftDefaultsGenerator()
@@ -39,7 +39,7 @@ class FrameworkProcessor(
             return ProcessingResult.Success(
                 frameworkName = frameworkDir.nameWithoutExtension,
                 swiftFilesGenerated = 0,
-                message = "No manifest file found, skipping Swiftify processing"
+                message = "No manifest file found, skipping Swiftify processing",
             )
         }
 
@@ -49,7 +49,7 @@ class FrameworkProcessor(
                 return ProcessingResult.Success(
                     frameworkName = frameworkDir.nameWithoutExtension,
                     swiftFilesGenerated = 0,
-                    message = "No declarations to transform"
+                    message = "No declarations to transform",
                 )
             }
 
@@ -68,7 +68,7 @@ class FrameworkProcessor(
                 is InjectionResult.Success -> ProcessingResult.Success(
                     frameworkName = frameworkDir.nameWithoutExtension,
                     swiftFilesGenerated = 1,
-                    message = injectionResult.message
+                    message = injectionResult.message,
                 )
                 is InjectionResult.Error -> ProcessingResult.Error(injectionResult.message)
             }
@@ -128,7 +128,7 @@ class FrameworkProcessor(
         section: Map<String, String>?,
         subclasses: List<Pair<String, Boolean>>,
         parameters: List<Pair<String, String>>,
-        specs: MutableList<SwiftSpec>
+        specs: MutableList<SwiftSpec>,
     ) {
         if (type == null || section == null) return
 
@@ -140,7 +140,7 @@ class FrameworkProcessor(
                     } else {
                         SwiftEnumCase(
                             name.replaceFirstChar { it.lowercase() },
-                            listOf(SwiftEnumCase.AssociatedValue("value", SwiftType.Named(name)))
+                            listOf(SwiftEnumCase.AssociatedValue("value", SwiftType.Named(name))),
                         )
                     }
                 }
@@ -149,9 +149,9 @@ class FrameworkProcessor(
                         SwiftEnumSpec(
                             name = section["swiftName"] ?: section["name"] ?: "",
                             cases = cases,
-                            isExhaustive = section["exhaustive"]?.toBooleanStrictOrNull() ?: true
-                        )
-                    )
+                            isExhaustive = section["exhaustive"]?.toBooleanStrictOrNull() ?: true,
+                        ),
+                    ),
                 )
             }
             "suspend" -> {
@@ -164,9 +164,9 @@ class FrameworkProcessor(
                             name = section["name"] ?: "",
                             parameters = params,
                             returnType = mapKotlinTypeToSwift(section["return"] ?: "Unit"),
-                            isThrowing = section["throwing"]?.toBooleanStrictOrNull() ?: true
-                        )
-                    )
+                            isThrowing = section["throwing"]?.toBooleanStrictOrNull() ?: true,
+                        ),
+                    ),
                 )
             }
             "flow" -> {
@@ -178,34 +178,30 @@ class FrameworkProcessor(
                         SwiftAsyncStreamSpec(
                             name = section["name"] ?: "",
                             parameters = params,
-                            elementType = mapKotlinTypeToSwift(section["element"] ?: "Any")
-                        )
-                    )
+                            elementType = mapKotlinTypeToSwift(section["element"] ?: "Any"),
+                        ),
+                    ),
                 )
             }
         }
     }
 
-    private fun mapKotlinTypeToSwift(kotlinType: String): SwiftType {
-        return when (kotlinType) {
-            "String" -> SwiftType.Named("String")
-            "Int" -> SwiftType.Named("Int")
-            "Long" -> SwiftType.Named("Int64")
-            "Float" -> SwiftType.Named("Float")
-            "Double" -> SwiftType.Named("Double")
-            "Boolean" -> SwiftType.Named("Bool")
-            "Unit" -> SwiftType.Void
-            else -> SwiftType.Named(kotlinType)
-        }
+    private fun mapKotlinTypeToSwift(kotlinType: String): SwiftType = when (kotlinType) {
+        "String" -> SwiftType.Named("String")
+        "Int" -> SwiftType.Named("Int")
+        "Long" -> SwiftType.Named("Int64")
+        "Float" -> SwiftType.Named("Float")
+        "Double" -> SwiftType.Named("Double")
+        "Boolean" -> SwiftType.Named("Bool")
+        "Unit" -> SwiftType.Void
+        else -> SwiftType.Named(kotlinType)
     }
 
-    private fun generateSwiftCode(specs: List<SwiftSpec>): String {
-        return specs.joinToString("\n\n") { spec ->
-            when (spec) {
-                is SwiftSpec.Enum -> enumGenerator.generate(spec.spec)
-                is SwiftSpec.Defaults -> defaultsGenerator.generate(spec.spec)
-                is SwiftSpec.AsyncStream -> asyncStreamGenerator.generate(spec.spec)
-            }
+    private fun generateSwiftCode(specs: List<SwiftSpec>): String = specs.joinToString("\n\n") { spec ->
+        when (spec) {
+            is SwiftSpec.Enum -> enumGenerator.generate(spec.spec)
+            is SwiftSpec.Defaults -> defaultsGenerator.generate(spec.spec)
+            is SwiftSpec.AsyncStream -> asyncStreamGenerator.generate(spec.spec)
         }
     }
 
@@ -237,7 +233,7 @@ class FrameworkProcessor(
  * Configuration for framework processing.
  */
 data class FrameworkProcessorConfig(
-    val linkerConfig: SwiftifyLinkerConfig = SwiftifyLinkerConfig()
+    val linkerConfig: SwiftifyLinkerConfig = SwiftifyLinkerConfig(),
 )
 
 /**
@@ -247,7 +243,7 @@ sealed class ProcessingResult {
     data class Success(
         val frameworkName: String,
         val swiftFilesGenerated: Int,
-        val message: String
+        val message: String,
     ) : ProcessingResult()
 
     data class Error(val message: String) : ProcessingResult()

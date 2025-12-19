@@ -43,7 +43,7 @@ class SwiftEmbedderTest {
             name = "TestKit",
             binaryPath = File(framework, "TestKit"),
             platform = Platform.MACOS,
-            targetTriple = "arm64-apple-macos"
+            targetTriple = "arm64-apple-macos",
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
@@ -82,7 +82,7 @@ class SwiftEmbedderTest {
             name = "TestKit",
             binaryPath = File(framework, "TestKit"),
             platform = Platform.MACOS,
-            targetTriple = "arm64-apple-macos"
+            targetTriple = "arm64-apple-macos",
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
@@ -105,7 +105,7 @@ class SwiftEmbedderTest {
             name = "TestKit",
             binaryPath = File(framework, "TestKit"),
             platform = Platform.MACOS,
-            targetTriple = "arm64-apple-macos"
+            targetTriple = "arm64-apple-macos",
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
@@ -129,7 +129,7 @@ class SwiftEmbedderTest {
             name = "TestKit",
             binaryPath = File(framework, "TestKit"),
             platform = Platform.IOS,
-            targetTriple = "arm64-apple-ios"
+            targetTriple = "arm64-apple-ios",
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
@@ -140,9 +140,12 @@ class SwiftEmbedderTest {
         embedder.embed(framework, listOf(swiftFile))
 
         verify {
-            compiler.compile(any(), match { config ->
-                config.targetTriple == "arm64-apple-ios"
-            })
+            compiler.compile(
+                any(),
+                match { config ->
+                    config.targetTriple == "arm64-apple-ios"
+                },
+            )
         }
     }
 
@@ -157,7 +160,7 @@ class SwiftEmbedderTest {
             name = "TestKit",
             binaryPath = File(framework, "TestKit"),
             platform = Platform.MACOS,
-            targetTriple = "arm64-apple-macos"
+            targetTriple = "arm64-apple-macos",
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo
@@ -168,9 +171,12 @@ class SwiftEmbedderTest {
         embedder.embed(framework, listOf(swiftFile))
 
         verify {
-            compiler.compile(any(), match { config ->
-                config.frameworkPath == framework
-            })
+            compiler.compile(
+                any(),
+                match { config ->
+                    config.frameworkPath == framework
+                },
+            )
         }
     }
 
@@ -194,7 +200,7 @@ class SwiftEmbedderTest {
             name = "TestKit",
             binaryPath = File(framework, "TestKit"),
             platform = Platform.MACOS,
-            targetTriple = "arm64-apple-macos"
+            targetTriple = "arm64-apple-macos",
         )
 
         every { analyzer.analyze(framework) } returns frameworkInfo

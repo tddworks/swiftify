@@ -1,9 +1,9 @@
 package io.swiftify.generator
 
 import io.swiftify.analyzer.*
-import io.swiftify.swift.*
 import io.swiftify.dsl.SwiftifySpec
 import io.swiftify.dsl.swiftify
+import io.swiftify.swift.*
 
 /**
  * Configuration for the transformer.
@@ -22,7 +22,7 @@ data class TransformOptions(
     /**
      * Framework name for imports.
      */
-    val frameworkName: String? = null
+    val frameworkName: String? = null,
 )
 
 /**
@@ -43,23 +43,17 @@ class SwiftifyTransformer {
     /**
      * Transform Kotlin source code to Swift with default configuration.
      */
-    fun transform(kotlinSource: String): TransformResult {
-        return transform(kotlinSource, swiftify { })
-    }
+    fun transform(kotlinSource: String): TransformResult = transform(kotlinSource, swiftify { })
 
     /**
      * Transform Kotlin source code to Swift with custom configuration.
      */
-    fun transform(kotlinSource: String, config: SwiftifySpec): TransformResult {
-        return transform(kotlinSource, config, TransformOptions())
-    }
+    fun transform(kotlinSource: String, config: SwiftifySpec): TransformResult = transform(kotlinSource, config, TransformOptions())
 
     /**
      * Transform Kotlin source code to Swift with transform options only (uses default DSL config).
      */
-    fun transform(kotlinSource: String, options: TransformOptions): TransformResult {
-        return transform(kotlinSource, swiftify { }, options)
-    }
+    fun transform(kotlinSource: String, options: TransformOptions): TransformResult = transform(kotlinSource, swiftify { }, options)
 
     /**
      * Transform Kotlin source code to Swift with full configuration.
@@ -67,7 +61,7 @@ class SwiftifyTransformer {
     fun transform(
         kotlinSource: String,
         config: SwiftifySpec,
-        options: TransformOptions
+        options: TransformOptions,
     ): TransformResult {
         val declarations = analyzer.analyze(kotlinSource)
         val swiftCodeParts = mutableListOf<String>()
@@ -185,19 +179,19 @@ class SwiftifyTransformer {
         return TransformResult(
             swiftCode = swiftCodeParts.joinToString("\n\n"),
             declarationsTransformed = transformedCount,
-            declarations = declarations
+            declarations = declarations,
         )
     }
 
     private fun transformSealedClass(
         declaration: SealedClassDeclaration,
         config: SwiftifySpec,
-        options: TransformOptions
+        options: TransformOptions,
     ): String {
         // Determine configuration from annotation or DSL
         val swiftName = declaration.swiftEnumName ?: declaration.simpleName
         val isExhaustive = declaration.isExhaustive ||
-                config.sealedClassRules.any { it.exhaustive }
+            config.sealedClassRules.any { it.exhaustive }
 
         val conformances = buildList {
             addAll(declaration.conformances)
@@ -214,10 +208,10 @@ class SwiftifyTransformer {
                     subclass.properties.map { prop ->
                         SwiftEnumCase.AssociatedValue(
                             label = prop.name,
-                            type = mapKotlinTypeToSwift(prop.typeName, prop.isNullable)
+                            type = mapKotlinTypeToSwift(prop.typeName, prop.isNullable),
                         )
                     }
-                }
+                },
             )
         }
 
@@ -226,7 +220,7 @@ class SwiftifyTransformer {
             typeParameters = declaration.typeParameters,
             cases = cases,
             conformances = conformances,
-            isExhaustive = isExhaustive
+            isExhaustive = isExhaustive,
         )
 
         // Enums are data types - they don't need bridging implementations
@@ -243,7 +237,7 @@ class SwiftifyTransformer {
     private fun transformSuspendFunction(
         declaration: SuspendFunctionDeclaration,
         config: SwiftifySpec,
-        options: TransformOptions
+        options: TransformOptions,
     ): String {
         // Kotlin 2.0+ suspend functions are always async throws
         val isThrowing = declaration.isThrowing
@@ -252,7 +246,7 @@ class SwiftifyTransformer {
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue),
             )
         }
 
@@ -261,7 +255,7 @@ class SwiftifyTransformer {
             typeParameters = declaration.typeParameters,
             parameters = parameters,
             returnType = mapKotlinTypeToSwift(declaration.returnTypeName, false),
-            isThrowing = isThrowing
+            isThrowing = isThrowing,
         )
 
         // For preview mode, just generate the signature
@@ -272,13 +266,13 @@ class SwiftifyTransformer {
     private fun transformFlowFunction(
         declaration: FlowFunctionDeclaration,
         config: SwiftifySpec,
-        options: TransformOptions
+        options: TransformOptions,
     ): String {
         val parameters = declaration.parameters.map { param ->
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue),
             )
         }
 
@@ -286,7 +280,7 @@ class SwiftifyTransformer {
             name = declaration.name,
             parameters = parameters,
             elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
-            isProperty = declaration.isProperty
+            isProperty = declaration.isProperty,
         )
 
         // Use the containing class name from the declaration
@@ -311,7 +305,7 @@ class SwiftifyTransformer {
      */
     private fun transformSuspendFunctionBodies(
         declaration: SuspendFunctionDeclaration,
-        config: SwiftifySpec
+        config: SwiftifySpec,
     ): List<String> {
         // Kotlin 2.0+ suspend functions are always async throws
         val isThrowing = declaration.isThrowing
@@ -320,7 +314,7 @@ class SwiftifyTransformer {
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue),
             )
         }
 
@@ -335,7 +329,7 @@ class SwiftifyTransformer {
             typeParameters = declaration.typeParameters,
             parameters = parameters,
             returnType = mapKotlinTypeToSwift(declaration.returnTypeName, false),
-            isThrowing = isThrowing
+            isThrowing = isThrowing,
         )
 
         // Generate convenience overload bodies (without extension wrapper)
@@ -348,13 +342,13 @@ class SwiftifyTransformer {
      */
     private fun transformFlowFunctionBody(
         declaration: FlowFunctionDeclaration,
-        config: SwiftifySpec
+        config: SwiftifySpec,
     ): String {
         val parameters = declaration.parameters.map { param ->
             SwiftParameter(
                 name = param.name,
                 type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue)
+                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue),
             )
         }
 
@@ -362,7 +356,7 @@ class SwiftifyTransformer {
             name = declaration.name,
             parameters = parameters,
             elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
-            isProperty = declaration.isProperty
+            isProperty = declaration.isProperty,
         )
 
         // Generate function body only (without extension wrapper)
@@ -393,7 +387,7 @@ class SwiftifyTransformer {
                         if (types.size == 2) {
                             SwiftType.Dictionary(
                                 mapKotlinTypeToSwift(types[0].trim(), false),
-                                mapKotlinTypeToSwift(types[1].trim(), false)
+                                mapKotlinTypeToSwift(types[1].trim(), false),
                             )
                         } else {
                             SwiftType.Named(kotlinType)
@@ -411,12 +405,10 @@ class SwiftifyTransformer {
     /**
      * Convert Kotlin default value to Swift.
      */
-    private fun mapKotlinDefaultValueToSwift(kotlinDefaultValue: String?): String? {
-        return when (kotlinDefaultValue) {
-            null -> null
-            "null" -> "nil"
-            else -> kotlinDefaultValue
-        }
+    private fun mapKotlinDefaultValueToSwift(kotlinDefaultValue: String?): String? = when (kotlinDefaultValue) {
+        null -> null
+        "null" -> "nil"
+        else -> kotlinDefaultValue
     }
 }
 
@@ -437,5 +429,5 @@ data class TransformResult(
     /**
      * The analyzed declarations.
      */
-    val declarations: List<KotlinDeclaration>
+    val declarations: List<KotlinDeclaration>,
 )

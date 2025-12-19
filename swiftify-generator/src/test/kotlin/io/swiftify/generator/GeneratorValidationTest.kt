@@ -20,7 +20,7 @@ class GeneratorValidationTest {
     fun `enum generator throws for blank name`() {
         val spec = SwiftEnumSpec(
             name = "",
-            cases = listOf(SwiftEnumCase("case1"))
+            cases = listOf(SwiftEnumCase("case1")),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             enumGenerator.generate(spec)
@@ -32,7 +32,7 @@ class GeneratorValidationTest {
     fun `enum generator throws for empty cases`() {
         val spec = SwiftEnumSpec(
             name = "TestEnum",
-            cases = emptyList()
+            cases = emptyList(),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             enumGenerator.generate(spec)
@@ -44,7 +44,7 @@ class GeneratorValidationTest {
     fun `enum generator throws for blank case name`() {
         val spec = SwiftEnumSpec(
             name = "TestEnum",
-            cases = listOf(SwiftEnumCase(""))
+            cases = listOf(SwiftEnumCase("")),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             enumGenerator.generate(spec)
@@ -56,7 +56,7 @@ class GeneratorValidationTest {
     fun `enum generator warns for lowercase name`() {
         val spec = SwiftEnumSpec(
             name = "testEnum",
-            cases = listOf(SwiftEnumCase("case1"))
+            cases = listOf(SwiftEnumCase("case1")),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             enumGenerator.generate(spec)
@@ -71,7 +71,7 @@ class GeneratorValidationTest {
         val spec = SwiftDefaultsSpec(
             name = "",
             parameters = emptyList(),
-            returnType = SwiftType.Named("String")
+            returnType = SwiftType.Named("String"),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             defaultsGenerator.generate(spec)
@@ -84,7 +84,7 @@ class GeneratorValidationTest {
         val spec = SwiftDefaultsSpec(
             name = "fetchData",
             parameters = listOf(SwiftParameter("", SwiftType.Named("Int"))),
-            returnType = SwiftType.Named("String")
+            returnType = SwiftType.Named("String"),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             defaultsGenerator.generate(spec)
@@ -97,7 +97,7 @@ class GeneratorValidationTest {
         val spec = SwiftDefaultsSpec(
             name = "fetchData",
             parameters = listOf(SwiftParameter("id", SwiftType.Named("Int"))),
-            returnType = SwiftType.Named("String")
+            returnType = SwiftType.Named("String"),
         )
         val result = defaultsGenerator.generate(spec)
         assertContains(result, "func fetchData")
@@ -110,7 +110,7 @@ class GeneratorValidationTest {
         val spec = SwiftAsyncStreamSpec(
             name = "",
             parameters = emptyList(),
-            elementType = SwiftType.Named("String")
+            elementType = SwiftType.Named("String"),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             asyncStreamGenerator.generate(spec)
@@ -123,7 +123,7 @@ class GeneratorValidationTest {
         val spec = SwiftAsyncStreamSpec(
             name = "getUpdates",
             parameters = listOf(SwiftParameter("", SwiftType.Named("Int"))),
-            elementType = SwiftType.Named("String")
+            elementType = SwiftType.Named("String"),
         )
         val exception = assertThrows<SwiftifyValidationException> {
             asyncStreamGenerator.generate(spec)
@@ -136,7 +136,7 @@ class GeneratorValidationTest {
         val spec = SwiftAsyncStreamSpec(
             name = "getUpdates",
             parameters = emptyList(),
-            elementType = SwiftType.Named("String")
+            elementType = SwiftType.Named("String"),
         )
         val result = asyncStreamGenerator.generate(spec)
         assertContains(result, "func getUpdates")
