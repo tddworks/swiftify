@@ -17,9 +17,9 @@ class SwiftifyDslTest {
         val spec = swiftify { }
 
         assertTrue(spec.sealedClassRules.isEmpty())
-        assertTrue(spec.suspendFunctionRules.isEmpty())
+        assertTrue(spec.defaultParameterRules.isEmpty())
         assertTrue(spec.defaults.transformSealedClassesToEnums)
-        assertTrue(spec.defaults.transformSuspendToAsync)
+        assertTrue(spec.defaults.generateDefaultOverloads)
     }
 
     @Test
@@ -51,39 +51,39 @@ class SwiftifyDslTest {
     }
 
     @Test
-    fun `configure suspend functions transformation`() {
+    fun `configure default parameters overload generation`() {
         val spec = swiftify {
-            suspendFunctions {
-                transformToAsync(throwing = true)
+            defaultParameters {
+                generateOverloads(maxOverloads = 3)
             }
         }
 
-        assertTrue(spec.suspendFunctionRules.isNotEmpty())
-        val rule = spec.suspendFunctionRules.first()
-        assertTrue(rule.throwing)
+        assertTrue(spec.defaultParameterRules.isNotEmpty())
+        val rule = spec.defaultParameterRules.first()
+        assertEquals(3, rule.maxOverloads)
     }
 
     @Test
     fun `configure flow transformation`() {
         val spec = swiftify {
             flowTypes {
-                transformToAsyncSequence()
+                transformToAsyncStream()
             }
         }
 
         assertTrue(spec.flowRules.isNotEmpty())
-        assertTrue(spec.flowRules.first().useAsyncSequence)
+        assertTrue(spec.flowRules.first().useAsyncStream)
     }
 
     @Test
-    fun `configure default arguments`() {
+    fun `configure max default overloads`() {
         val spec = swiftify {
             defaults {
-                maxDefaultArguments = 3
+                maxDefaultOverloads = 3
             }
         }
 
-        assertEquals(3, spec.defaults.maxDefaultArguments)
+        assertEquals(3, spec.defaults.maxDefaultOverloads)
     }
 
     @Test
@@ -105,12 +105,12 @@ class SwiftifyDslTest {
         val spec = swiftify {
             defaults {
                 transformSealedClassesToEnums = false
-                transformSuspendToAsync = false
+                generateDefaultOverloads = false
             }
         }
 
         assertTrue(!spec.defaults.transformSealedClassesToEnums)
-        assertTrue(!spec.defaults.transformSuspendToAsync)
+        assertTrue(!spec.defaults.generateDefaultOverloads)
     }
 
     @Test

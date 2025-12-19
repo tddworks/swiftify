@@ -15,8 +15,11 @@ annotation class SwiftifyDsl
  *     sealedClasses {
  *         transformToEnum(exhaustive = true)
  *     }
- *     suspendFunctions {
- *         transformToAsync(throwing = true)
+ *     defaultParameters {
+ *         generateOverloads(maxOverloads = 5)
+ *     }
+ *     flowTypes {
+ *         transformToAsyncStream()
  *     }
  * }
  * ```
@@ -31,7 +34,7 @@ fun swiftify(block: SwiftifySpecBuilder.() -> Unit): SwiftifySpec {
 data class SwiftifySpec(
     val defaults: Defaults,
     val sealedClassRules: List<SealedClassRule>,
-    val suspendFunctionRules: List<SuspendFunctionRule>,
+    val defaultParameterRules: List<DefaultParameterRule>,
     val flowRules: List<FlowRule>,
     val packageRules: Map<String, PackageSpec>,
     val explicitMappings: Map<String, ExplicitMapping>,
@@ -39,9 +42,9 @@ data class SwiftifySpec(
 ) {
     data class Defaults(
         val transformSealedClassesToEnums: Boolean = true,
-        val transformSuspendToAsync: Boolean = true,
-        val transformFlowToAsyncSequence: Boolean = true,
-        val maxDefaultArguments: Int = 5
+        val generateDefaultOverloads: Boolean = true,
+        val transformFlowToAsyncStream: Boolean = true,
+        val maxDefaultOverloads: Int = 5
     )
 }
 
@@ -50,17 +53,20 @@ data class SealedClassRule(
     val conformances: List<String> = emptyList()
 )
 
-data class SuspendFunctionRule(
-    val throwing: Boolean = true
+/**
+ * Rule for generating convenience overloads for functions with default parameters.
+ */
+data class DefaultParameterRule(
+    val maxOverloads: Int = 5
 )
 
 data class FlowRule(
-    val useAsyncSequence: Boolean = true
+    val useAsyncStream: Boolean = true
 )
 
 data class PackageSpec(
     val sealedClassRules: List<SealedClassRule> = emptyList(),
-    val suspendFunctionRules: List<SuspendFunctionRule> = emptyList()
+    val defaultParameterRules: List<DefaultParameterRule> = emptyList()
 )
 
 data class ExplicitMapping(
@@ -77,7 +83,7 @@ data class ExplicitMapping(
 class SwiftifySpecBuilder {
     private var defaults = SwiftifySpec.Defaults()
     private val sealedClassRules = mutableListOf<SealedClassRule>()
-    private val suspendFunctionRules = mutableListOf<SuspendFunctionRule>()
+    private val defaultParameterRules = mutableListOf<DefaultParameterRule>()
     private val flowRules = mutableListOf<FlowRule>()
     private val packageRules = mutableMapOf<String, PackageSpec>()
     private val explicitMappings = mutableMapOf<String, ExplicitMapping>()
@@ -91,8 +97,11 @@ class SwiftifySpecBuilder {
         sealedClassRules += SealedClassRuleBuilder().apply(block).build()
     }
 
-    fun suspendFunctions(block: SuspendFunctionRuleBuilder.() -> Unit) {
-        suspendFunctionRules += SuspendFunctionRuleBuilder().apply(block).build()
+    /**
+     * Configure how convenience overloads are generated for functions with default parameters.
+     */
+    fun defaultParameters(block: DefaultParameterRuleBuilder.() -> Unit) {
+        defaultParameterRules += DefaultParameterRuleBuilder().apply(block).build()
     }
 
     fun flowTypes(block: FlowRuleBuilder.() -> Unit) {
@@ -114,7 +123,7 @@ class SwiftifySpecBuilder {
     fun build() = SwiftifySpec(
         defaults = defaults,
         sealedClassRules = sealedClassRules.toList(),
-        suspendFunctionRules = suspendFunctionRules.toList(),
+        defaultParameterRules = defaultParameterRules.toList(),
         flowRules = flowRules.toList(),
         packageRules = packageRules.toMap(),
         explicitMappings = explicitMappings.toMap(),
@@ -125,15 +134,15 @@ class SwiftifySpecBuilder {
 @SwiftifyDsl
 class DefaultsBuilder(private var current: SwiftifySpec.Defaults) {
     var transformSealedClassesToEnums: Boolean = current.transformSealedClassesToEnums
-    var transformSuspendToAsync: Boolean = current.transformSuspendToAsync
-    var transformFlowToAsyncSequence: Boolean = current.transformFlowToAsyncSequence
-    var maxDefaultArguments: Int = current.maxDefaultArguments
+    var generateDefaultOverloads: Boolean = current.generateDefaultOverloads
+    var transformFlowToAsyncStream: Boolean = current.transformFlowToAsyncStream
+    var maxDefaultOverloads: Int = current.maxDefaultOverloads
 
     fun build() = SwiftifySpec.Defaults(
         transformSealedClassesToEnums = transformSealedClassesToEnums,
-        transformSuspendToAsync = transformSuspendToAsync,
-        transformFlowToAsyncSequence = transformFlowToAsyncSequence,
-        maxDefaultArguments = maxDefaultArguments
+        generateDefaultOverloads = generateDefaultOverloads,
+        transformFlowToAsyncStream = transformFlowToAsyncStream,
+        maxDefaultOverloads = maxDefaultOverloads
     )
 }
 
@@ -156,44 +165,54 @@ class SealedClassRuleBuilder {
     )
 }
 
+/**
+ * Builder for configuring convenience overload generation for default parameters.
+ */
 @SwiftifyDsl
-class SuspendFunctionRuleBuilder {
-    private var throwing: Boolean = true
+class DefaultParameterRuleBuilder {
+    private var maxOverloads: Int = 5
 
-    fun transformToAsync(throwing: Boolean = true) {
-        this.throwing = throwing
+    /**
+     * Configure generation of convenience overloads for functions with default parameters.
+     * @param maxOverloads Maximum number of overloads to generate (default: 5)
+     */
+    fun generateOverloads(maxOverloads: Int = 5) {
+        this.maxOverloads = maxOverloads
     }
 
-    fun build() = SuspendFunctionRule(throwing = throwing)
+    fun build() = DefaultParameterRule(maxOverloads = maxOverloads)
 }
 
 @SwiftifyDsl
 class FlowRuleBuilder {
-    private var useAsyncSequence: Boolean = true
+    private var useAsyncStream: Boolean = true
 
-    fun transformToAsyncSequence() {
-        useAsyncSequence = true
+    /**
+     * Transform Kotlin Flow to Swift AsyncStream.
+     */
+    fun transformToAsyncStream() {
+        useAsyncStream = true
     }
 
-    fun build() = FlowRule(useAsyncSequence = useAsyncSequence)
+    fun build() = FlowRule(useAsyncStream = useAsyncStream)
 }
 
 @SwiftifyDsl
 class PackageSpecBuilder {
     private val sealedClassRules = mutableListOf<SealedClassRule>()
-    private val suspendFunctionRules = mutableListOf<SuspendFunctionRule>()
+    private val defaultParameterRules = mutableListOf<DefaultParameterRule>()
 
     fun sealedClasses(block: SealedClassRuleBuilder.() -> Unit) {
         sealedClassRules += SealedClassRuleBuilder().apply(block).build()
     }
 
-    fun suspendFunctions(block: SuspendFunctionRuleBuilder.() -> Unit) {
-        suspendFunctionRules += SuspendFunctionRuleBuilder().apply(block).build()
+    fun defaultParameters(block: DefaultParameterRuleBuilder.() -> Unit) {
+        defaultParameterRules += DefaultParameterRuleBuilder().apply(block).build()
     }
 
     fun build() = PackageSpec(
         sealedClassRules = sealedClassRules.toList(),
-        suspendFunctionRules = suspendFunctionRules.toList()
+        defaultParameterRules = defaultParameterRules.toList()
     )
 }
 

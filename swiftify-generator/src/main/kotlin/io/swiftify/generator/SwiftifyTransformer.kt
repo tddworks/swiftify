@@ -109,7 +109,7 @@ class SwiftifyTransformer {
                 funcs.forEach { declaration ->
                     when (declaration) {
                         is SuspendFunctionDeclaration -> {
-                            if (config.defaults.transformSuspendToAsync) {
+                            if (config.defaults.generateDefaultOverloads) {
                                 // Since Kotlin 1.8+ generates async/await natively, we only generate:
                                 // 1. Nothing for functions without default params (Kotlin has them)
                                 // 2. Convenience overloads for functions WITH default params
@@ -121,7 +121,7 @@ class SwiftifyTransformer {
                             }
                         }
                         is FlowFunctionDeclaration -> {
-                            if (config.defaults.transformFlowToAsyncSequence) {
+                            if (config.defaults.transformFlowToAsyncStream) {
                                 // Flow -> AsyncStream wrappers are always needed
                                 // (Kotlin only exposes raw Flow, not AsyncStream)
                                 val body = transformFlowFunctionBody(declaration, config)
@@ -154,14 +154,14 @@ class SwiftifyTransformer {
             declarations.forEach { declaration ->
                 when (declaration) {
                     is SuspendFunctionDeclaration -> {
-                        if (config.defaults.transformSuspendToAsync) {
+                        if (config.defaults.generateDefaultOverloads) {
                             val swiftCode = transformSuspendFunction(declaration, config, options)
                             swiftCodeParts += swiftCode
                             transformedCount++
                         }
                     }
                     is FlowFunctionDeclaration -> {
-                        if (config.defaults.transformFlowToAsyncSequence) {
+                        if (config.defaults.transformFlowToAsyncStream) {
                             val swiftCode = transformFlowFunction(declaration, config, options)
                             swiftCodeParts += swiftCode
                             transformedCount++
@@ -235,8 +235,8 @@ class SwiftifyTransformer {
         config: SwiftifySpec,
         options: TransformOptions
     ): String {
-        val isThrowing = declaration.isThrowing ||
-                config.suspendFunctionRules.any { it.throwing }
+        // Kotlin 2.0+ suspend functions are always async throws
+        val isThrowing = declaration.isThrowing
 
         val parameters = declaration.parameters.map { param ->
             SwiftParameter(
@@ -255,7 +255,7 @@ class SwiftifyTransformer {
         )
 
         // For preview mode, just generate the signature
-        // (Kotlin 1.8+ will generate the actual implementation)
+        // (Kotlin 2.0+ will generate the actual implementation)
         return asyncFunctionGenerator.generate(spec)
     }
 
@@ -303,8 +303,8 @@ class SwiftifyTransformer {
         declaration: SuspendFunctionDeclaration,
         config: SwiftifySpec
     ): List<String> {
-        val isThrowing = declaration.isThrowing ||
-                config.suspendFunctionRules.any { it.throwing }
+        // Kotlin 2.0+ suspend functions are always async throws
+        val isThrowing = declaration.isThrowing
 
         val parameters = declaration.parameters.map { param ->
             SwiftParameter(

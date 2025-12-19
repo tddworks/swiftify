@@ -132,11 +132,11 @@ swiftify {
     sealedClasses {
         transformToEnum(exhaustive = true)
     }
-    suspendFunctions {
-        transformToAsync(throwing = true)
+    defaultParameters {
+        generateOverloads(maxOverloads = 5)
     }
     flowTypes {
-        transformToAsyncSequence()
+        transformToAsyncStream()
     }
 }
 ```
