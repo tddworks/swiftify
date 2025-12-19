@@ -39,6 +39,10 @@ class SwiftCompiler {
         config.outputDirectory?.mkdirs()
         swiftModuleDir.mkdirs()
 
+        // Create the .swiftmodule bundle directory
+        val frameworkName = config.frameworkPath.nameWithoutExtension
+        File(swiftModuleDir, "${frameworkName}Swiftify.swiftmodule").mkdirs()
+
         return try {
             val process = ProcessBuilder(command)
                 .directory(config.workingDirectory ?: sourceFiles.first().parentFile)
@@ -65,9 +69,13 @@ class SwiftCompiler {
      */
     fun buildCommand(sourceFiles: List<File>, config: CompileConfig): List<String> {
         val frameworkName = config.frameworkPath.nameWithoutExtension
+        // Use Swiftify suffix to avoid conflicts with the Objective-C module
         val moduleName = "${frameworkName}Swiftify"
         val outputFile = getOutputFile(sourceFiles.first(), config)
         val swiftModuleDir = getSwiftModuleDir(config)
+
+        // Create the .swiftmodule bundle directory
+        val swiftModuleBundle = File(swiftModuleDir, "$moduleName.swiftmodule")
 
         return buildList {
             add("swiftc")
@@ -83,9 +91,9 @@ class SwiftCompiler {
             add("-enable-library-evolution")
             add("-whole-module-optimization")
 
-            // Module output paths
+            // Module output paths - output to bundle directory
             add("-emit-module-path")
-            add(File(swiftModuleDir, "$moduleName.swiftmodule").absolutePath)
+            add(swiftModuleBundle.absolutePath)
 
             // Target triple
             add("-target")

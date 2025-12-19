@@ -84,6 +84,7 @@ class SwiftEmbedder(
 
         // Step 4: Install Swift module into framework
         val installConfig = InstallConfig(
+            targetTriple = frameworkInfo.targetTriple,
             dryRun = config.dryRun,
             logger = config.logger
         )

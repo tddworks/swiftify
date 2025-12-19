@@ -40,22 +40,65 @@ class SwiftModuleInstaller {
             return InstallResult.Success(modulesDir)
         }
 
+        // Convert target triple to architecture prefix for module files
+        // e.g., "arm64-apple-macos11.0" -> "arm64-apple-macos"
+        val archPrefix = config.targetTriple?.let { triple ->
+            // Remove version number from OS part: arm64-apple-macos11.0 -> arm64-apple-macos
+            triple.replace(Regex("(macos|ios|watchos|tvos)[0-9.]+"), "$1")
+        }
+
         return try {
             // Copy all Swift module files to framework's Modules directory
             val copiedFiles = mutableListOf<File>()
             swiftModuleDir.listFiles()?.forEach { file ->
-                val destFile = File(modulesDir, file.name)
-                if (file.isDirectory) {
-                    file.copyRecursively(destFile, overwrite = true)
+                if (file.isDirectory && file.name.endsWith(".swiftmodule")) {
+                    // This is a .swiftmodule bundle - need to rename inner files
+                    val destBundle = File(modulesDir, file.name)
+                    destBundle.mkdirs()
+
+                    // Copy and rename files inside the bundle with architecture prefix
+                    file.listFiles()?.forEach { innerFile ->
+                        val destName = if (archPrefix != null) {
+                            // Rename ModuleName.xxx to arch.xxx
+                            val ext = innerFile.name.substringAfterLast(".")
+                            "$archPrefix.$ext"
+                        } else {
+                            innerFile.name
+                        }
+                        val destFile = File(destBundle, destName)
+                        innerFile.copyTo(destFile, overwrite = true)
+                        config.logger?.invoke("Installed: ${file.name}/$destName")
+                    }
+                    copiedFiles.add(destBundle)
                 } else {
+                    val destFile = File(modulesDir, file.name)
                     file.copyTo(destFile, overwrite = true)
+                    copiedFiles.add(destFile)
+                    config.logger?.invoke("Installed: ${file.name}")
                 }
-                copiedFiles.add(destFile)
-                config.logger?.invoke("Installed: ${file.name}")
             }
 
             if (copiedFiles.isEmpty()) {
                 return InstallResult.Error("No Swift module files found to install")
+            }
+
+            // Update module.modulemap to include the Swift module
+            val modulemapFile = File(modulesDir, "module.modulemap")
+            if (modulemapFile.exists()) {
+                val frameworkName = frameworkDir.name.removeSuffix(".framework")
+                val swiftModuleName = "${frameworkName}Swiftify"
+                val modulemapContent = modulemapFile.readText()
+
+                // Only add if not already present
+                if (!modulemapContent.contains("module \"$swiftModuleName\"")) {
+                    val swiftModuleDecl = """
+
+module "$swiftModuleName" {
+}
+"""
+                    modulemapFile.appendText(swiftModuleDecl)
+                    config.logger?.invoke("Updated module.modulemap with $swiftModuleName")
+                }
             }
 
             config.logger?.invoke("Installed ${copiedFiles.size} Swift module files")
@@ -91,6 +134,8 @@ class SwiftModuleInstaller {
  * Configuration for Swift module installation.
  */
 data class InstallConfig(
+    /** Target triple for architecture-specific naming (e.g., "arm64-apple-macos11.0") */
+    val targetTriple: String? = null,
     /** Dry run mode - don't execute, just report */
     val dryRun: Boolean = false,
     /** Logger for output */
