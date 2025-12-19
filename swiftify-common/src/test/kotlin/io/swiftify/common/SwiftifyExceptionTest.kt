@@ -1,6 +1,5 @@
-package io.swiftify.tests.unit
+package io.swiftify.common
 
-import io.swiftify.common.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertEquals

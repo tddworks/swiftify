@@ -10,6 +10,14 @@ dependencies {
 
     // KSP for Kotlin symbol processing
     implementation("com.google.devtools.ksp:symbol-processing-api:2.0.21-1.0.25")
+
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 publishing {

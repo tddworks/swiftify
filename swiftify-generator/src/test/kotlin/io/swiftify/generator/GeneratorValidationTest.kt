@@ -1,9 +1,6 @@
-package io.swiftify.tests.unit
+package io.swiftify.generator
 
 import io.swiftify.common.*
-import io.swiftify.generator.SwiftEnumGenerator
-import io.swiftify.generator.SwiftAsyncFunctionGenerator
-import io.swiftify.generator.SwiftAsyncSequenceGenerator
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertContains

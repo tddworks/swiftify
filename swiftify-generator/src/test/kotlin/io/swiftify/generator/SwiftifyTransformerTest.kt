@@ -1,6 +1,5 @@
-package io.swiftify.tests.unit
+package io.swiftify.generator
 
-import io.swiftify.generator.SwiftifyTransformer
 import io.swiftify.dsl.swiftify
 import org.junit.jupiter.api.Test
 import kotlin.test.assertTrue

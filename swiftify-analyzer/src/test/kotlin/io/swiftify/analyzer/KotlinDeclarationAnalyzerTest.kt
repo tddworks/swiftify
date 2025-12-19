@@ -1,10 +1,5 @@
-package io.swiftify.tests.unit
+package io.swiftify.analyzer
 
-import io.swiftify.analyzer.KotlinDeclaration
-import io.swiftify.analyzer.KotlinDeclarationAnalyzer
-import io.swiftify.analyzer.SealedClassDeclaration
-import io.swiftify.analyzer.SuspendFunctionDeclaration
-import io.swiftify.analyzer.FlowFunctionDeclaration
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

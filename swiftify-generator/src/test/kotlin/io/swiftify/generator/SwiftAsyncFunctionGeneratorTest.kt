@@ -1,9 +1,8 @@
-package io.swiftify.tests.unit
+package io.swiftify.generator
 
 import io.swiftify.common.SwiftAsyncFunctionSpec
 import io.swiftify.common.SwiftParameter
 import io.swiftify.common.SwiftType
-import io.swiftify.generator.SwiftAsyncFunctionGenerator
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

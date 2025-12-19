@@ -6,6 +6,14 @@ plugins {
 dependencies {
     implementation(kotlin("stdlib"))
     api(project(":swiftify-common"))
+
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 publishing {
