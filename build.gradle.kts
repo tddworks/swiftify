@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kover)
     alias(libs.plugins.spotless)
     alias(libs.plugins.dokka)
-    alias(libs.plugins.ben.manes.versions)
     alias(libs.plugins.version.catalog.update)
 }
 
