@@ -189,10 +189,27 @@ class SwiftAsyncFunctionGeneratorTest {
         assertEquals(expected, result.trim())
     }
 
-    // Tests for generateWithOverloads (Swift default parameters)
+    // Tests for generateConvenienceOverloads (Kotlin 1.8+ compatible approach)
+    // Since Kotlin 1.8+ generates async/await natively, we only generate convenience overloads
 
     @Test
-    fun `generates single function with default parameter`() {
+    fun `convenience overloads returns empty for function without defaults`() {
+        val spec = SwiftAsyncFunctionSpec(
+            name = "simpleFunc",
+            parameters = listOf(
+                SwiftParameter(name = "value", type = SwiftType.Named("Int"))
+            ),
+            returnType = SwiftType.Void
+        )
+
+        val result = generator.generateConvenienceOverloads(spec, "MyClass")
+
+        // No default params, Kotlin already provides the method
+        assertEquals("", result)
+    }
+
+    @Test
+    fun `convenience overloads generates distinct overloads for single default param`() {
         val spec = SwiftAsyncFunctionSpec(
             name = "fetchUser",
             parameters = listOf(
@@ -207,16 +224,20 @@ class SwiftAsyncFunctionGeneratorTest {
             isThrowing = true
         )
 
-        val result = generator.generateWithOverloads(spec)
+        val result = generator.generateConvenienceOverloads(spec, "MyClass")
 
-        // Should generate single function with Swift default parameter
-        assertTrue(result.contains("func fetchUser(id: String, includeProfile: Bool = true) async throws -> User"))
-        // Only one function, not multiple overloads
-        assertEquals(1, result.lines().filter { it.contains("func fetchUser") }.size)
+        // Should generate ONE convenience overload with just 'id'
+        // (The full signature is provided by Kotlin)
+        assertTrue(result.contains("extension MyClass"))
+        assertTrue(result.contains("func fetchUser(id: String) async throws -> User"))
+        // The overload calls the full Kotlin method with default values
+        assertTrue(result.contains("try await fetchUser(id: id, includeProfile: true)"))
+        // Should NOT contain the full signature (Kotlin provides it)
+        assertFalse(result.contains("includeProfile: Bool)"))
     }
 
     @Test
-    fun `generates single function with multiple default parameters`() {
+    fun `convenience overloads generates multiple overloads for multiple defaults`() {
         val spec = SwiftAsyncFunctionSpec(
             name = "search",
             parameters = listOf(
@@ -236,73 +257,79 @@ class SwiftAsyncFunctionGeneratorTest {
             isThrowing = true
         )
 
-        val result = generator.generateWithOverloads(spec)
+        val result = generator.generateConvenienceOverloads(spec, "SearchService")
 
-        // Should generate single function with all Swift default parameters
-        assertTrue(result.contains("func search(query: String, limit: Int = 10, offset: Int = 0) async throws -> [Result]"))
-        // Only one function
-        assertEquals(1, result.lines().filter { it.contains("func search") }.size)
+        // Should generate 2 overloads:
+        // 1. search(query:) -> calls search(query, 10, 0)
+        // 2. search(query:, limit:) -> calls search(query, limit, 0)
+        assertTrue(result.contains("func search(query: String) async throws -> [Result]"))
+        assertTrue(result.contains("func search(query: String, limit: Int) async throws -> [Result]"))
+        // Both call the full method with defaults filled in
+        assertTrue(result.contains("search(query: query, limit: 10, offset: 0)"))
+        assertTrue(result.contains("search(query: query, limit: limit, offset: 0)"))
     }
 
     @Test
-    fun `generates single function without defaults when none specified`() {
+    fun `convenience overload bodies returns list of function bodies`() {
         val spec = SwiftAsyncFunctionSpec(
-            name = "simpleFunc",
+            name = "getData",
             parameters = listOf(
-                SwiftParameter(name = "value", type = SwiftType.Named("Int"))
+                SwiftParameter(name = "id", type = SwiftType.Named("Int")),
+                SwiftParameter(
+                    name = "cache",
+                    type = SwiftType.Named("Bool"),
+                    defaultValue = "true"
+                )
             ),
-            returnType = SwiftType.Void
+            returnType = SwiftType.Named("Data"),
+            isThrowing = true
         )
 
-        val result = generator.generateWithOverloads(spec)
+        val result = generator.generateConvenienceOverloadBodies(spec)
 
-        // Should only have one function
-        assertEquals(1, result.lines().filter { it.contains("func simpleFunc") }.size)
-        assertTrue(result.contains("func simpleFunc(value: Int) async"))
+        // Should return a list with one overload body
+        assertEquals(1, result.size)
+        assertTrue(result[0].contains("func getData(id: Int) async throws -> Data"))
+        assertTrue(result[0].contains("try await getData(id: id, cache: true)"))
     }
 
     @Test
-    fun `generates function with many default parameters`() {
+    fun `convenience overload bodies returns empty list when no defaults`() {
         val spec = SwiftAsyncFunctionSpec(
-            name = "manyDefaults",
+            name = "noDefaults",
             parameters = listOf(
                 SwiftParameter(name = "a", type = SwiftType.Named("Int")),
-                SwiftParameter(name = "b", type = SwiftType.Named("Int"), defaultValue = "1"),
-                SwiftParameter(name = "c", type = SwiftType.Named("Int"), defaultValue = "2"),
-                SwiftParameter(name = "d", type = SwiftType.Named("Int"), defaultValue = "3")
+                SwiftParameter(name = "b", type = SwiftType.Named("String"))
             ),
             returnType = SwiftType.Void
         )
 
-        val result = generator.generateWithOverloads(spec)
+        val result = generator.generateConvenienceOverloadBodies(spec)
 
-        // Should generate single function with all defaults
-        assertTrue(result.contains("a: Int"))
-        assertTrue(result.contains("b: Int = 1"))
-        assertTrue(result.contains("c: Int = 2"))
-        assertTrue(result.contains("d: Int = 3"))
-        // Only one function
-        assertEquals(1, result.lines().filter { it.contains("func manyDefaults") }.size)
+        // No defaults, nothing to generate
+        assertTrue(result.isEmpty())
     }
 
     @Test
-    fun `includes default values in Swift signature`() {
+    fun `convenience overloads without class name generates top-level functions`() {
         val spec = SwiftAsyncFunctionSpec(
-            name = "withDefault",
+            name = "topLevelFunc",
             parameters = listOf(
                 SwiftParameter(name = "x", type = SwiftType.Named("Int")),
                 SwiftParameter(
                     name = "y",
                     type = SwiftType.Named("Int"),
-                    defaultValue = "42"
+                    defaultValue = "0"
                 )
             ),
             returnType = SwiftType.Void
         )
 
-        val result = generator.generateWithOverloads(spec)
+        val result = generator.generateConvenienceOverloads(spec, className = null)
 
-        // Swift default parameter should include the default value
-        assertTrue(result.contains("y: Int = 42"))
+        // Should NOT have extension wrapper
+        assertFalse(result.contains("extension"))
+        // Should have the function
+        assertTrue(result.contains("func topLevelFunc(x: Int) async"))
     }
 }

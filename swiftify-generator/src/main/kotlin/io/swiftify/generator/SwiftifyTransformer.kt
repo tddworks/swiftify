@@ -110,13 +110,20 @@ class SwiftifyTransformer {
                     when (declaration) {
                         is SuspendFunctionDeclaration -> {
                             if (config.defaults.transformSuspendToAsync) {
-                                val body = transformSuspendFunctionBody(declaration, config)
-                                functionBodies += body
-                                transformedCount++
+                                // Since Kotlin 1.8+ generates async/await natively, we only generate:
+                                // 1. Nothing for functions without default params (Kotlin has them)
+                                // 2. Convenience overloads for functions WITH default params
+                                val bodies = transformSuspendFunctionBodies(declaration, config)
+                                if (bodies.isNotEmpty()) {
+                                    functionBodies += bodies
+                                    transformedCount++
+                                }
                             }
                         }
                         is FlowFunctionDeclaration -> {
                             if (config.defaults.transformFlowToAsyncSequence) {
+                                // Flow -> AsyncStream wrappers are always needed
+                                // (Kotlin only exposes raw Flow, not AsyncStream)
                                 val body = transformFlowFunctionBody(declaration, config)
                                 functionBodies += body
                                 transformedCount++
@@ -217,6 +224,12 @@ class SwiftifyTransformer {
         return enumGenerator.generate(spec)
     }
 
+    /**
+     * Transform suspend function for preview mode (signatures only).
+     *
+     * NOTE: This is only used for preview/signature mode, not for generating actual code.
+     * For actual code generation, the implementation mode uses transformSuspendFunctionBodies().
+     */
     private fun transformSuspendFunction(
         declaration: SuspendFunctionDeclaration,
         config: SwiftifySpec,
@@ -241,29 +254,9 @@ class SwiftifyTransformer {
             isThrowing = isThrowing
         )
 
-        // Use overloads if there are default parameters
-        val hasDefaultParams = parameters.any { it.defaultValue != null }
-
-        // Use the containing class name from the declaration
-        val className = declaration.containingClassName
-
-        return if (options.generateImplementations) {
-            // Generate full implementations with bridging code
-            if (hasDefaultParams) {
-                asyncFunctionGenerator.generateWithOverloadsAndImplementation(
-                    spec, className, config.defaults.maxDefaultArguments
-                )
-            } else {
-                asyncFunctionGenerator.generateWithImplementation(spec, className)
-            }
-        } else {
-            // Generate signatures only (for preview)
-            if (hasDefaultParams) {
-                asyncFunctionGenerator.generateWithOverloads(spec, config.defaults.maxDefaultArguments)
-            } else {
-                asyncFunctionGenerator.generate(spec)
-            }
-        }
+        // For preview mode, just generate the signature
+        // (Kotlin 1.8+ will generate the actual implementation)
+        return asyncFunctionGenerator.generate(spec)
     }
 
     private fun transformFlowFunction(
@@ -297,13 +290,19 @@ class SwiftifyTransformer {
     }
 
     /**
-     * Transform suspend function to just the function body (no extension wrapper).
-     * Used for grouped extension generation.
+     * Transform suspend function to convenience overload bodies.
+     *
+     * Since Kotlin 1.8+ generates async/await methods natively, we only generate
+     * convenience overloads for functions WITH default parameters.
+     *
+     * For functions without default params, returns empty list (Kotlin already provides them).
+     *
+     * @return List of convenience overload bodies, or empty if none needed
      */
-    private fun transformSuspendFunctionBody(
+    private fun transformSuspendFunctionBodies(
         declaration: SuspendFunctionDeclaration,
         config: SwiftifySpec
-    ): String {
+    ): List<String> {
         val isThrowing = declaration.isThrowing ||
                 config.suspendFunctionRules.any { it.throwing }
 
@@ -315,6 +314,12 @@ class SwiftifyTransformer {
             )
         }
 
+        // If no default parameters, nothing to generate
+        // Kotlin already provides the full async/await method
+        if (parameters.none { it.defaultValue != null }) {
+            return emptyList()
+        }
+
         val spec = SwiftAsyncFunctionSpec(
             name = declaration.name,
             typeParameters = declaration.typeParameters,
@@ -323,8 +328,8 @@ class SwiftifyTransformer {
             isThrowing = isThrowing
         )
 
-        // Generate function body only (without extension wrapper)
-        return asyncFunctionGenerator.generateFunctionBody(spec)
+        // Generate convenience overload bodies (without extension wrapper)
+        return asyncFunctionGenerator.generateConvenienceOverloadBodies(spec)
     }
 
     /**

@@ -9,8 +9,13 @@ import io.swiftify.common.SwiftifyValidationException
 /**
  * Generates Swift async function implementations from SwiftAsyncFunctionSpec.
  *
- * This generates Swift code that bridges Kotlin suspend functions to Swift async/await
- * using withCheckedThrowingContinuation to wrap the Kotlin completion handler.
+ * Since Kotlin 1.8+, the Kotlin/Native compiler generates async/await methods natively.
+ * This generator now focuses on:
+ * 1. Generating convenience overloads for functions with default parameters
+ *    (Kotlin doesn't preserve default values in Swift)
+ * 2. Preview mode signatures for documentation
+ *
+ * For functions WITHOUT default parameters, no generation is needed as Kotlin provides them.
  */
 class SwiftAsyncFunctionGenerator {
 
@@ -38,6 +43,10 @@ class SwiftAsyncFunctionGenerator {
     /**
      * Generate Swift async function with full implementation.
      *
+     * NOTE: Since Kotlin 1.8+ generates async/await natively, this should only be used
+     * for special cases. For functions with default parameters, use
+     * generateConvenienceOverloads() instead.
+     *
      * @param className The Kotlin class name that contains this method
      * @return Complete Swift function with bridging implementation
      */
@@ -57,56 +66,37 @@ class SwiftAsyncFunctionGenerator {
     }
 
     /**
-     * Generate Swift async function with default parameters preserved.
+     * Generate convenience overloads for functions with default parameters.
      *
-     * For a function like `func foo(a: Int, b: Bool = true, c: String = "x")`,
-     * generates a single Swift function with default parameters:
-     * `func foo(a: Int, b: Bool = true, c: String = "x") async throws`
+     * Since Kotlin doesn't preserve default parameter values in Swift, and we can't
+     * duplicate the full signature (Kotlin already generates it), we generate
+     * DISTINCT overloads with fewer parameters that call the full Kotlin method.
      *
-     * This uses Swift's native default parameter syntax instead of generating multiple overloads.
+     * For example, for `func foo(a: Int, b: Bool = true, c: String = "x")`:
+     * - Kotlin generates: `func foo(a: Int, b: Bool, c: String) async throws`
+     * - We generate:
+     *   - `func foo(a: Int) async throws` -> calls foo(a, true, "x")
+     *   - `func foo(a: Int, b: Bool) async throws` -> calls foo(a, b, "x")
      *
-     * @param maxOverloads Ignored - kept for API compatibility
-     * @return Single function declaration with default parameters
-     */
-    fun generateWithOverloads(spec: SwiftAsyncFunctionSpec, maxOverloads: Int = 5): String {
-        validate(spec)
-        return try {
-            // Just generate the single signature with default parameters preserved
-            generateSignature(spec)
-        } catch (e: Exception) {
-            if (e is SwiftifyValidationException) throw e
-            throw SwiftifyGenerationException(
-                "Failed to generate Swift async function",
-                specType = "asyncFunction",
-                specName = spec.name,
-                cause = e
-            )
-        }
-    }
-
-    /**
-     * Generate Swift async function with default parameters and full implementation.
-     *
-     * Generates a single Swift function that preserves default parameters and includes
-     * the bridging implementation to call the underlying Kotlin function.
+     * Note: We don't generate a no-arg version if all params have defaults,
+     * nor do we generate the full signature (Kotlin already has it).
      *
      * @param className The Kotlin class name that contains this method
-     * @param maxOverloads Ignored - kept for API compatibility
-     * @return Single function with default parameters and bridging implementation
+     * @param maxOverloads Maximum number of overloads to generate
+     * @return Convenience overloads that call the full Kotlin method, or empty string if none needed
      */
-    fun generateWithOverloadsAndImplementation(
+    fun generateConvenienceOverloads(
         spec: SwiftAsyncFunctionSpec,
         className: String? = null,
         maxOverloads: Int = 5
     ): String {
         validate(spec)
         return try {
-            // Generate single function with default parameters and implementation
-            generateImplementation(spec, className)
+            generateConvenienceOverloadsInternal(spec, className, maxOverloads)
         } catch (e: Exception) {
             if (e is SwiftifyValidationException) throw e
             throw SwiftifyGenerationException(
-                "Failed to generate Swift async function",
+                "Failed to generate Swift async function convenience overloads",
                 specType = "asyncFunction",
                 specName = spec.name,
                 cause = e
@@ -115,68 +105,135 @@ class SwiftAsyncFunctionGenerator {
     }
 
     /**
-     * Generate list of overload declarations (signatures only).
+     * Generate convenience overload function bodies only (without extension wrapper).
+     * Used for grouped extension generation where multiple functions share one extension.
+     *
+     * @return List of function bodies for convenience overloads, empty if none needed
      */
-    private fun generateOverloads(spec: SwiftAsyncFunctionSpec, maxOverloads: Int): List<String> {
-        return generateOverloadSpecs(spec, maxOverloads).map { generateSignature(it) }
+    fun generateConvenienceOverloadBodies(spec: SwiftAsyncFunctionSpec): List<String> {
+        validate(spec)
+        val paramsWithDefaults = spec.parameters.filter { it.defaultValue != null }
+        if (paramsWithDefaults.isEmpty()) {
+            return emptyList()
+        }
+        return generateOverloadBodies(spec)
     }
 
     /**
-     * Generate list of overload specs.
+     * Generate convenience overloads that call the full Kotlin method.
+     *
+     * These are DISTINCT from the full signature - they have fewer parameters
+     * and call the full method with default values filled in.
      */
-    private fun generateOverloadSpecs(spec: SwiftAsyncFunctionSpec, maxOverloads: Int): List<SwiftAsyncFunctionSpec> {
+    private fun generateConvenienceOverloadsInternal(
+        spec: SwiftAsyncFunctionSpec,
+        className: String?,
+        maxOverloads: Int
+    ): String {
         val paramsWithDefaults = spec.parameters.filter { it.defaultValue != null }
-
-        // If no default parameters, just return the single function
         if (paramsWithDefaults.isEmpty()) {
-            return listOf(spec.copy(parameters = spec.parameters.map { it.copy(defaultValue = null) }))
+            // No default parameters, nothing to generate
+            // (Kotlin already provides the full method)
+            return ""
         }
 
-        val overloads = mutableListOf<SwiftAsyncFunctionSpec>()
+        val overloadBodies = generateOverloadBodies(spec, maxOverloads)
+        if (overloadBodies.isEmpty()) {
+            return ""
+        }
 
-        // Generate overloads by progressively removing default parameters from the end
+        return if (className != null) {
+            buildString {
+                appendLine("extension $className {")
+                append(overloadBodies.joinToString("\n\n") { "    $it".replace("\n", "\n    ").trimEnd() })
+                appendLine()
+                append("}")
+            }
+        } else {
+            overloadBodies.joinToString("\n\n")
+        }
+    }
+
+    /**
+     * Generate convenience overload bodies (without extension wrapper).
+     *
+     * Generates overloads with progressively fewer parameters,
+     * EXCLUDING the full signature (which Kotlin already provides).
+     */
+    private fun generateOverloadBodies(
+        spec: SwiftAsyncFunctionSpec,
+        maxOverloads: Int = 5
+    ): List<String> {
+        val paramsWithDefaults = spec.parameters.filter { it.defaultValue != null }
+        if (paramsWithDefaults.isEmpty()) {
+            return emptyList()
+        }
+
+        val overloads = mutableListOf<String>()
+
+        // Split into required and optional parameters
         val requiredParams = spec.parameters.takeWhile { it.defaultValue == null }
         val defaultParams = spec.parameters.dropWhile { it.defaultValue == null }
 
-        // Generate overloads: start with just required, add one default param at a time
-        var overloadCount = 0
-        for (i in 0..defaultParams.size) {
-            if (overloadCount >= maxOverloads) break
+        // Generate overloads from just-required up to (but not including) all params
+        // We skip the full signature because Kotlin already generates it
+        for (i in 0 until defaultParams.size) {
+            if (overloads.size >= maxOverloads) break
 
             val paramsForOverload = requiredParams + defaultParams.take(i)
             val overloadSpec = spec.copy(
                 parameters = paramsForOverload.map { it.copy(defaultValue = null) }
             )
-            overloads.add(overloadSpec)
-            overloadCount++
+
+            val body = generateConvenienceOverloadBody(overloadSpec, spec)
+            overloads.add(body)
         }
 
         return overloads
     }
 
     /**
-     * Generate implementation for an overload that calls the full function.
+     * Generate a single convenience overload body that calls the full Kotlin method.
      */
-    private fun generateOverloadImplementation(
+    private fun generateConvenienceOverloadBody(
         overloadSpec: SwiftAsyncFunctionSpec,
-        fullSpec: SwiftAsyncFunctionSpec,
-        className: String?
+        fullSpec: SwiftAsyncFunctionSpec
     ): String = buildString {
-        // Signature
-        append(generateSignature(overloadSpec))
+        // Generate signature without default values
+        append(overloadSpec.accessLevel.swiftKeyword)
+        append(" func ")
+        append(overloadSpec.name)
+        if (overloadSpec.typeParameters.isNotEmpty()) {
+            append("<")
+            append(overloadSpec.typeParameters.joinToString(", "))
+            append(">")
+        }
+        append("(")
+        append(overloadSpec.parameters.joinToString(", ") { param ->
+            buildString {
+                if (param.externalName == "_") append("_ ")
+                else if (param.externalName != null) append("${param.externalName} ")
+                append("${param.name}: ${param.type.swiftRepresentation}")
+                // No default value - this is a distinct overload
+            }
+        })
+        append(")")
+        append(" async")
+        if (overloadSpec.isThrowing) append(" throws")
+        if (fullSpec.returnType !is SwiftType.Void) {
+            append(" -> ")
+            append(fullSpec.returnType.swiftRepresentation)
+        }
         appendLine(" {")
 
-        // Call the full function with default values
+        // Call the full Kotlin method with default values filled in
         val indent = "    "
         if (fullSpec.returnType !is SwiftType.Void) {
             append("${indent}return ")
         } else {
             append(indent)
         }
-
-        if (overloadSpec.isThrowing) {
-            append("try ")
-        }
+        if (overloadSpec.isThrowing) append("try ")
         append("await ")
         append(fullSpec.name)
         append("(")
@@ -184,9 +241,10 @@ class SwiftAsyncFunctionGenerator {
         val args = fullSpec.parameters.mapIndexed { index, param ->
             val overloadParam = overloadSpec.parameters.getOrNull(index)
             if (overloadParam != null) {
+                // Parameter exists in overload, pass it through
                 "${param.name}: ${param.name}"
             } else {
-                // Use default value
+                // Parameter not in overload, use default value
                 val defaultValue = fullSpec.parameters[index].defaultValue ?: "nil"
                 "${param.name}: $defaultValue"
             }
