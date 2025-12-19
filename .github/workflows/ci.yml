@@ -55,6 +55,7 @@ jobs:
           files: ${{ github.workspace }}/build/reports/kover/report.xml
           fail_ci_if_error: false
 
+  # Test on multiple platforms
   test-matrix:
     strategy:
       matrix:
@@ -88,3 +89,33 @@ jobs:
 
       - name: Run tests
         run: ./gradlew ${{ matrix.target }}
+
+  # Build sample project (uses includeBuild to resolve plugin)
+  sample:
+    runs-on: macos-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build sample (macOS framework)
+        working-directory: sample
+        run: ../gradlew linkReleaseFrameworkMacosArm64

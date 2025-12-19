@@ -32,5 +32,5 @@ include(":swiftify-runtime")
 include(":swiftify-tests:integration")
 include(":swiftify-tests:acceptance")
 
-// Sample project
-include(":sample")
+// Note: sample/ is a standalone project with its own settings.gradle.kts
+// Build it separately: cd sample && ./gradlew build
