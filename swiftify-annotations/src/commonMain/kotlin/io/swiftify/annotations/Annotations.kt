@@ -71,30 +71,18 @@ annotation class SwiftCase(
 )
 
 /**
- * Marks a suspend function to be exposed as a Swift async function.
- *
- * Example:
- * ```kotlin
- * @SwiftAsync
- * suspend fun fetchData(id: String): Result
- * ```
- *
- * Will generate:
- * ```swift
- * public func fetchData(id: String) async throws -> Result
- * ```
+ * @deprecated Use @SwiftDefaults instead. Kotlin 2.0+ already exports suspend functions
+ * as Swift async/await automatically. Use @SwiftDefaults to generate convenience overloads
+ * for functions with default parameters.
  */
+@Deprecated(
+    message = "Use @SwiftDefaults instead. Kotlin 2.0+ exports suspend as async automatically.",
+    replaceWith = ReplaceWith("SwiftDefaults")
+)
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class SwiftAsync(
-    /**
-     * Whether this function can throw errors (adds `throws` keyword).
-     */
     val throwing: Boolean = true,
-
-    /**
-     * Custom Swift function name. If empty, uses the Kotlin function name.
-     */
     val name: String = ""
 )
 
@@ -119,26 +107,44 @@ annotation class SwiftFlow(
 )
 
 /**
- * Configures default argument handling for a function.
+ * Generates Swift convenience overloads for functions with default parameters.
+ *
+ * Swift doesn't support default parameters from Kotlin/Objective-C interfaces.
+ * This annotation generates overloaded methods that call through with default values.
  *
  * Example:
  * ```kotlin
- * @SwiftDefaults(generate = true)
- * fun search(query: String, limit: Int = 10, offset: Int = 0): List<Result>
+ * @SwiftDefaults
+ * suspend fun getNotes(limit: Int = 10, includeArchived: Boolean = false): List<Note>
  * ```
  *
- * Will generate overloads in Swift with default values.
+ * Generates Swift overloads:
+ * ```swift
+ * extension NotesRepository {
+ *     func getNotes() async throws -> [Note] {
+ *         return try await getNotes(limit: 10, includeArchived: false)
+ *     }
+ *     func getNotes(limit: Int32) async throws -> [Note] {
+ *         return try await getNotes(limit: limit, includeArchived: false)
+ *     }
+ *     // Full signature provided by Kotlin/Native
+ * }
+ * ```
+ *
+ * Works with both suspend and regular functions.
  */
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class SwiftDefaults(
     /**
      * Whether to generate convenience overloads with default values.
+     * Set to false to disable generation for a specific function.
      */
     val generate: Boolean = true,
 
     /**
      * Maximum number of default argument combinations to generate.
+     * Limits combinatorial explosion for functions with many defaults.
      */
     val maxOverloads: Int = 5
 )

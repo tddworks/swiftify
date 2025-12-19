@@ -1,6 +1,6 @@
 package com.example
 
-import io.swiftify.annotations.SwiftAsync
+import io.swiftify.annotations.SwiftDefaults
 import io.swiftify.annotations.SwiftFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +24,7 @@ class UserRepository {
     /**
      * Fetch user by ID - transforms to Swift async function.
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun fetchUser(id: String): User {
         delay(500) // Simulate network delay
         return User(id = id, name = "John Doe", email = "john@example.com")
@@ -33,7 +33,7 @@ class UserRepository {
     /**
      * Fetch user with optional parameters.
      */
-    @SwiftAsync(throwing = true)
+    @SwiftDefaults
     suspend fun fetchUserWithOptions(
         id: String,
         includeProfile: Boolean = true,
@@ -59,7 +59,7 @@ class UserRepository {
     /**
      * Login user.
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun login(username: String, password: String): NetworkResult<User> {
         delay(500) // Simulate network delay
         val user = User("1", username, "$username@example.com")
@@ -70,7 +70,7 @@ class UserRepository {
     /**
      * Logout user.
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun logout() {
         delay(200) // Simulate network delay
         _currentUser.value = User("guest", "Guest", "guest@example.com")

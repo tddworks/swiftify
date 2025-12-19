@@ -1,17 +1,47 @@
 # Swiftify
 
-**Transform Kotlin Multiplatform APIs into idiomatic Swift**
+**Make Kotlin Multiplatform feel native in Swift**
 
-Swiftify automatically generates Swift-friendly wrappers for your Kotlin Multiplatform code, bridging the gap between Kotlin coroutines and Swift concurrency.
+Swiftify enhances Kotlin Multiplatform's Swift interop by generating convenience overloads for default parameters and converting Kotlin Flow to native Swift AsyncStream.
+
+## The Problem
+
+Kotlin 2.0+ exports `suspend` functions as Swift `async throws` automatically. But two pain points remain:
+
+```kotlin
+// Kotlin - nice default parameters
+suspend fun getNotes(limit: Int = 10, includeArchived: Boolean = false): List<Note>
+```
+
+```swift
+// Swift without Swiftify - must specify ALL parameters
+let notes = try await repo.getNotes(limit: 10, includeArchived: false)
+
+// Kotlin Flow - requires complex FlowCollector protocol
+class MyCollector: Kotlinx_coroutines_coreFlowCollector { ... }
+repo.watchNote(id: "1").collect(collector: MyCollector()) { _ in }
+```
+
+## The Solution
+
+```swift
+// Swift with Swiftify - convenience overloads!
+let notes = try await repo.getNotes()           // uses defaults
+let notes = try await repo.getNotes(limit: 5)   // partial defaults
+
+// Kotlin Flow → native AsyncStream
+for await note in repo.watchNote(id: "1") {
+    print("Updated: \(note.title)")
+}
+```
 
 ## Features
 
-| Kotlin | Swift | Status |
-|--------|-------|--------|
-| `suspend fun` | `async throws` | ✅ |
-| `Flow<T>` | `AsyncStream<T>` | ✅ |
-| `StateFlow<T>` | `AsyncStream<T>` | ✅ |
-| Default parameters | Preserved | ✅ |
+| Kotlin | Swift | What Swiftify Does |
+|--------|-------|-------------------|
+| `suspend fun` with defaults | `async throws` | Generates convenience overloads |
+| `Flow<T>` | `AsyncStream<T>` | Wraps with native Swift API |
+| `StateFlow<T>` | `AsyncStream<T>` | Adds `*Stream` property |
 | Sealed classes | Swift enums | 🚧 Preview |
 
 ## Quick Start
@@ -34,30 +64,31 @@ plugins {
 }
 ```
 
-### 2. Write Your Kotlin Code
+### 2. Annotate Your Kotlin Code
 
 ```kotlin
-class UserRepository {
-    @SwiftAsync
-    suspend fun fetchUser(id: String): User { ... }
+class NotesRepository {
+    @SwiftDefaults
+    suspend fun getNotes(limit: Int = 10): List<Note> { ... }
 
     @SwiftFlow
-    fun getUserUpdates(userId: String): Flow<User> = flow { ... }
+    fun watchNote(id: String): Flow<Note?> = flow { ... }
 }
 ```
 
-### 3. Generate & Use
+### 3. Build & Use
 
 ```bash
-./gradlew swiftifyGenerate
+./gradlew linkDebugFrameworkMacosArm64  # Swift code auto-generated!
 ```
 
 ```swift
-// Swift - just works!
-let user = try await repository.fetchUser(id: "123")
+// Swift - clean and native!
+let notes = try await repo.getNotes()        // default limit
+let five = try await repo.getNotes(limit: 5) // custom limit
 
-for await update in repository.getUserUpdates(userId: "123") {
-    print("Updated: \(update.name)")
+for await note in repo.watchNote(id: "1") {
+    print("Note: \(note.title)")
 }
 ```
 
@@ -85,7 +116,7 @@ kotlin {
 
 // That's it! Add annotations to your code:
 class MyRepository {
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getData(): Data { ... }
 }
 ```
@@ -114,16 +145,16 @@ swiftify {
 
 | Approach | How it Works |
 |----------|-------------|
-| **Annotations** | Add `@SwiftAsync`, `@SwiftFlow` to specific declarations |
+| **Annotations** | Add `@SwiftDefaults`, `@SwiftFlow` to specific declarations |
 | **DSL Rules** | Configure global behavior for all declarations |
 | **Mixed** | Use both for fine-tuned control |
 
 ```kotlin
 class UserRepository {
-    @SwiftAsync  // Explicitly marked - will be transformed
-    suspend fun fetchUser(id: String): User
+    @SwiftDefaults  // Generates convenience overloads for defaults
+    suspend fun fetchUser(id: String, includeProfile: Boolean = true): User
 
-    // No annotation - NOT transformed (keeps original KMP behavior)
+    // No annotation - uses Kotlin/Native's default behavior
     suspend fun internalFetch(): Data
 }
 ```
@@ -132,37 +163,46 @@ class UserRepository {
 
 ## Annotations Reference
 
-### @SwiftAsync
+### @SwiftDefaults
 
-Transforms a `suspend` function to Swift `async throws`.
+Generates **convenience overloads** for functions with default parameters.
+
+Swift doesn't support default parameters from Kotlin/Objective-C interfaces. This annotation generates overloaded methods that call through with default values.
 
 ```kotlin
-@SwiftAsync
-suspend fun login(username: String, password: String): AuthResult
+@SwiftDefaults
+suspend fun getNotes(
+    limit: Int = 10,
+    includeArchived: Boolean = false
+): List<Note>
 ```
 
-**Generated Swift:**
+**Generated Swift (convenience overloads):**
 ```swift
-public func login(username: String, password: String) async throws -> AuthResult {
-    return try await withCheckedThrowingContinuation { continuation in
-        self.login(username: username, password: password) { result, error in
-            if let error = error {
-                continuation.resume(throwing: error)
-            } else if let result = result {
-                continuation.resume(returning: result)
-            }
-        }
+extension NotesRepository {
+    // Overload 1: no parameters (uses all defaults)
+    public func getNotes() async throws -> [Note] {
+        return try await getNotes(limit: 10, includeArchived: false)
     }
+
+    // Overload 2: just limit (uses default for includeArchived)
+    public func getNotes(limit: Int32) async throws -> [Note] {
+        return try await getNotes(limit: limit, includeArchived: false)
+    }
+
+    // Full signature already provided by Kotlin/Native
 }
 ```
 
+Works with both suspend and regular functions.
+
 ### @SwiftFlow
 
-Transforms a `Flow`-returning function or property to `AsyncStream`.
+Wraps Kotlin `Flow` with native Swift `AsyncStream` for clean `for await` syntax.
 
 ```kotlin
 @SwiftFlow
-fun watchMessages(chatId: String): Flow<Message>
+fun watchNote(id: String): Flow<Note?>
 
 @SwiftFlow
 val connectionState: StateFlow<ConnectionState>
@@ -170,19 +210,29 @@ val connectionState: StateFlow<ConnectionState>
 
 **Generated Swift:**
 ```swift
-public func watchMessages(chatId: String) -> AsyncStream<Message> {
-    return AsyncStream { continuation in
-        let collector = SwiftifyFlowCollector<Message>(
-            onEmit: { value in continuation.yield(value) },
-            onComplete: { continuation.finish() },
-            onError: { _ in continuation.finish() }
-        )
-        self.watchMessages(chatId: chatId).collect(collector: collector) { _ in }
+extension NotesRepository {
+    public func watchNote(id: String) -> AsyncStream<Note> {
+        return AsyncStream { continuation in
+            let collector = SwiftifyFlowCollector<Note>(
+                onEmit: { value in continuation.yield(value) },
+                onComplete: { continuation.finish() },
+                onError: { _ in continuation.finish() }
+            )
+            self.watchNote(id: id).collect(collector: collector) { _ in }
+        }
     }
 }
 
-// Properties get "Stream" suffix to avoid conflicts
+// StateFlow properties get "Stream" suffix to avoid naming conflicts
 public var connectionStateStream: AsyncStream<ConnectionState> { ... }
+```
+
+**Usage:**
+```swift
+// Clean for-await loop instead of FlowCollector
+for await note in repo.watchNote(id: "1") {
+    print("Note updated: \(note.title)")
+}
 ```
 
 ### @SwiftEnum (Preview)
@@ -228,10 +278,10 @@ public enum NetworkResult<T> {
 
 ### Default Parameters
 
-Kotlin default parameters are preserved:
+Swift doesn't support default parameters from Objective-C/Kotlin interfaces. Use `@SwiftDefaults` to generate **convenience overloads**:
 
 ```kotlin
-@SwiftAsync
+@SwiftDefaults
 suspend fun getProducts(
     page: Int = 1,
     pageSize: Int = 20,
@@ -239,12 +289,26 @@ suspend fun getProducts(
 ): ProductPage
 ```
 
+**Generated Swift overloads:**
 ```swift
-public func getProducts(
-    page: Int32 = 1,
-    pageSize: Int32 = 20,
-    category: String? = nil  // null → nil
-) async throws -> ProductPage
+extension ProductRepository {
+    // No params - uses all defaults
+    func getProducts() async throws -> ProductPage {
+        return try await getProducts(page: 1, pageSize: 20, category: nil)
+    }
+
+    // Just page
+    func getProducts(page: Int32) async throws -> ProductPage {
+        return try await getProducts(page: page, pageSize: 20, category: nil)
+    }
+
+    // Page + pageSize
+    func getProducts(page: Int32, pageSize: Int32) async throws -> ProductPage {
+        return try await getProducts(page: page, pageSize: pageSize, category: nil)
+    }
+
+    // Full signature provided by Kotlin/Native
+}
 ```
 
 ---
@@ -287,88 +351,77 @@ your-project/
 ### Kotlin Code
 
 ```kotlin
-// src/commonMain/kotlin/com/example/ChatRepository.kt
+// src/commonMain/kotlin/com/example/NotesRepository.kt
 package com.example
 
-import io.swiftify.annotations.SwiftAsync
+import io.swiftify.annotations.SwiftDefaults
 import io.swiftify.annotations.SwiftFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 
-class ChatRepository {
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+class NotesRepository {
+    private val _notes = MutableStateFlow<List<Note>>(emptyList())
 
-    @SwiftFlow
-    val connectionState: StateFlow<ConnectionState> = _connectionState
-
-    @SwiftAsync
-    suspend fun connect(): ConnectionState {
-        _connectionState.value = ConnectionState.CONNECTING
-        delay(500)
-        _connectionState.value = ConnectionState.CONNECTED
-        return ConnectionState.CONNECTED
-    }
-
-    @SwiftAsync
-    suspend fun sendMessage(chatId: String, content: String): Message {
+    // @SwiftDefaults with default parameters
+    // Generates: getNotes(), getNotes(limit:)
+    @SwiftDefaults
+    suspend fun getNotes(
+        limit: Int = 10,
+        includeArchived: Boolean = false
+    ): List<Note> {
         delay(100)
-        return Message(id = "msg_123", content = content)
+        return _notes.value.take(limit)
     }
 
+    // @SwiftDefaults with multiple defaults
+    // Generates: createNote(title:), createNote(title:, content:)
+    @SwiftDefaults
+    suspend fun createNote(
+        title: String,
+        content: String = "",
+        pinned: Boolean = false
+    ): Note {
+        val note = Note(id = "note_1", title = title, content = content)
+        _notes.value = listOf(note) + _notes.value
+        return note
+    }
+
+    // @SwiftFlow - converts to AsyncStream
     @SwiftFlow
-    fun watchMessages(chatId: String): Flow<Message> = flow {
+    fun watchNote(id: String): Flow<Note?> = flow {
         while (true) {
-            delay(3000)
-            emit(Message(id = "...", content = "New message"))
+            emit(_notes.value.find { it.id == id })
+            delay(1000)
         }
     }
 }
 
-enum class ConnectionState {
-    DISCONNECTED, CONNECTING, CONNECTED
-}
+data class Note(
+    val id: String,
+    val title: String,
+    val content: String = ""
+)
 ```
 
 ### Swift Usage
 
 ```swift
 import SampleKit
-import SwiftUI
 
-class ChatViewModel: ObservableObject {
-    @Published var isConnected = false
-    @Published var messages: [Message] = []
+// With Swiftify - clean and native!
+let repo = NotesRepository()
 
-    private let repository = ChatRepository()
+// Convenience overloads for default parameters
+let notes = try await repo.getNotes()           // uses defaults
+let five = try await repo.getNotes(limit: 5)    // partial defaults
 
-    func connect() async {
-        do {
-            let state = try await repository.connect()
-            await MainActor.run {
-                isConnected = true
-            }
-        } catch {
-            print("Failed: \(error)")
-        }
-    }
+// Create with defaults
+let note = try await repo.createNote(title: "Hello")
+let note2 = try await repo.createNote(title: "Hello", content: "World")
 
-    func send(_ text: String) async {
-        do {
-            let msg = try await repository.sendMessage(chatId: "chat_1", content: text)
-            await MainActor.run {
-                messages.append(msg)
-            }
-        } catch {
-            print("Send failed: \(error)")
-        }
-    }
-
-    func watchMessages() async {
-        for await message in repository.watchMessages(chatId: "chat_1") {
-            await MainActor.run {
-                messages.append(message)
-            }
-        }
-    }
+// Flow → AsyncStream with for-await
+for await note in repo.watchNote(id: "1") {
+    print("Updated: \(note.title)")
 }
 ```
 
@@ -402,59 +455,56 @@ swiftify/
 
 ## Sample Project
 
-The `sample/` directory contains a complete demo project with macOS and iOS apps showcasing all Swiftify features.
+The `sample/` directory contains a demo project showcasing Swiftify's two main features with an interactive before/after comparison.
 
 ### Quick Start
 
 ```bash
-# Run macOS demo app
-./run-mac-demo.sh
-
-# Run iOS demo app (opens Xcode)
-./run-ios-demo.sh
+# Build and run macOS demo
+./gradlew :sample:linkReleaseFrameworkMacosArm64
+open sample/macApp/macApp.xcodeproj
 ```
+
+### Demo App Features
+
+The demo app shows a **before/after comparison** for each Swiftify feature:
+
+| Feature | Before (Without Swiftify) | After (With Swiftify) |
+|---------|---------------------------|----------------------|
+| **async/await** | Must specify all parameters | Convenience overloads with defaults |
+| **AsyncStream** | Complex FlowCollector protocol | Native `for await` syntax |
+
+Each feature includes a **"Try it live"** button that executes the actual Swiftify-generated code.
 
 ### Sample Structure
 
 ```
 sample/
 ├── src/commonMain/kotlin/com/example/
-│   ├── UserRepository.kt      # Basic async/await demo
-│   ├── ProductRepository.kt   # E-commerce with cart, checkout
-│   ├── ChatRepository.kt      # Real-time messaging
-│   └── NetworkResult.kt       # Sealed class example
-├── macApp/                    # macOS SwiftUI app
+│   ├── NotesRepository.kt     # Primary demo (getNotes, watchNote)
+│   ├── UserRepository.kt      # User management examples
+│   ├── ProductRepository.kt   # E-commerce examples
+│   └── ChatRepository.kt      # Real-time messaging
+├── macApp/                    # macOS SwiftUI demo app
 │   └── macApp/
-│       └── ContentView.swift  # Sidebar navigation with 3 demos
-├── iosApp/                    # iOS SwiftUI app
-│   └── iosApp/
-│       └── ContentView.swift  # Tab navigation with 3 demos
+│       └── ContentView.swift  # Before/after comparison UI
 └── build/generated/swiftify/
-    ├── Swiftify.swift         # Generated Swift extensions
-    └── SwiftifyRuntime.swift  # Runtime helpers
+    ├── Swiftify.swift         # Combined generated extensions
+    ├── SwiftifyRuntime.swift  # FlowCollector helper
+    └── SampleKit.apinotes     # API notes for Xcode
 ```
 
-### Demo Features
-
-| Demo | Features Demonstrated |
-|------|----------------------|
-| **User** | `@SwiftAsync` for suspend functions, `@SwiftFlow` for user updates stream |
-| **E-commerce** | Default parameters, cart state, `Flow` for price watching |
-| **Chat** | Connection state, real-time messages, typing indicators |
-
-### Manual Build Steps
+### Build Steps
 
 ```bash
 # 1. Build the Kotlin framework (Swift code auto-generated!)
-./gradlew :sample:linkDebugFrameworkMacosArm64
+./gradlew :sample:linkReleaseFrameworkMacosArm64
 
 # 2. Open and run in Xcode
 open sample/macApp/macApp.xcodeproj
-# or
-open sample/iosApp/iosApp.xcodeproj
 ```
 
-> **Note:** Swiftify automatically generates Swift code when you build the framework. No separate step needed!
+> **Note:** Swiftify generates Swift extensions automatically when building the framework.
 
 ---
 
@@ -470,12 +520,11 @@ open sample/iosApp/iosApp.xcodeproj
 # Publish to local Maven
 ./gradlew publishToMavenLocal
 
-# Build framework (auto-generates Swift)
-./gradlew :sample:linkDebugFrameworkMacosArm64
+# Build sample framework (auto-generates Swift)
+./gradlew :sample:linkReleaseFrameworkMacosArm64
 
-# Run demo apps
-./run-mac-demo.sh
-./run-ios-demo.sh
+# Open demo app in Xcode
+open sample/macApp/macApp.xcodeproj
 ```
 
 ---

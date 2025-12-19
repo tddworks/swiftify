@@ -19,7 +19,7 @@ class KotlinDeclarationAnalyzer {
         """(?:data\s+)?object\s+(\w+)\s*:\s*(\w+)(?:<[^>]*>)?(?:\(\))?"""
     )
     private val suspendFunctionPattern = Regex(
-        """(@SwiftAsync\s*\([^)]*\)\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?"""
+        """(@SwiftDefaults\s*(?:\([^)]*\))?\s*|@SwiftAsync\s*(?:\([^)]*\))?\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?"""
     )
     private val flowFunctionPattern = Regex(
         """fun\s+(\w+)\s*\(([^)]*)\)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>"""
@@ -38,6 +38,9 @@ class KotlinDeclarationAnalyzer {
     )
     private val swiftAsyncAnnotationPattern = Regex(
         """@SwiftAsync\s*\(\s*throwing\s*=\s*(true|false)\s*\)"""
+    )
+    private val swiftDefaultsAnnotationPattern = Regex(
+        """@SwiftDefaults\s*(?:\(\s*(?:generate\s*=\s*(true|false))?\s*\))?"""
     )
     private val classPattern = Regex(
         """(?:open\s+|abstract\s+)?class\s+(\w+)"""
@@ -244,9 +247,13 @@ class KotlinDeclarationAnalyzer {
             // Return type is optional - if not specified, it's Unit
             val returnType = match.groupValues.getOrNull(5)?.takeIf { it.isNotBlank() } ?: "Unit"
 
-            // Parse annotation if present
+            // Parse annotation if present - support both @SwiftDefaults (preferred) and @SwiftAsync (deprecated)
+            val swiftDefaultsMatch = swiftDefaultsAnnotationPattern.find(annotation)
             val swiftAsyncMatch = swiftAsyncAnnotationPattern.find(annotation)
-            val hasAnnotation = swiftAsyncMatch != null || annotation.contains("@SwiftAsync")
+            val hasAnnotation = swiftDefaultsMatch != null ||
+                annotation.contains("@SwiftDefaults") ||
+                swiftAsyncMatch != null ||
+                annotation.contains("@SwiftAsync")
             val isThrowing = swiftAsyncMatch?.groupValues?.get(1)?.toBooleanStrictOrNull() ?: true
 
             val parameters = parseParameters(paramsStr)

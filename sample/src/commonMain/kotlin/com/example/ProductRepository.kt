@@ -1,6 +1,6 @@
 package com.example
 
-import io.swiftify.annotations.SwiftAsync
+import io.swiftify.annotations.SwiftDefaults
 import io.swiftify.annotations.SwiftFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -32,7 +32,7 @@ class ProductRepository {
     /**
      * Fetch products with pagination - common REST API pattern
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getProducts(
         page: Int = 1,
         pageSize: Int = 20,
@@ -60,7 +60,7 @@ class ProductRepository {
     /**
      * Search products - with optional filters
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun searchProducts(
         query: String,
         minPrice: Double = 0.0,
@@ -78,7 +78,7 @@ class ProductRepository {
     /**
      * Get product details by ID
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getProductDetails(productId: String): ProductDetails {
         delay(150)
         return ProductDetails(
@@ -98,7 +98,7 @@ class ProductRepository {
     /**
      * Add item to cart
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun addToCart(productId: String, quantity: Int = 1): Cart {
         delay(100)
         val currentCart = _cart.value
@@ -121,7 +121,7 @@ class ProductRepository {
     /**
      * Remove item from cart
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun removeFromCart(productId: String): Cart {
         delay(100)
         val newItems = _cart.value.items.filter { it.productId != productId }
@@ -133,7 +133,7 @@ class ProductRepository {
     /**
      * Checkout - returns order result
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun checkout(paymentMethod: String): OrderResult {
         delay(500) // Simulate payment processing
         val cart = _cart.value

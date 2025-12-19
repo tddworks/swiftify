@@ -464,7 +464,7 @@ struct ContentView: View {
         switch selectedCase {
         case .asyncAwait:
             return """
-            @SwiftAsync
+            @SwiftDefaults
             suspend fun getNotes(
                 limit: Int = 10
             ): List<Note>

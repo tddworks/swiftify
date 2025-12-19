@@ -142,7 +142,22 @@ class KotlinDeclarationAnalyzerTest {
     }
 
     @Test
-    fun `analyze suspend function with SwiftAsync annotation`() {
+    fun `analyze suspend function with SwiftDefaults annotation`() {
+        val kotlinSource = """
+            package com.example
+
+            @SwiftDefaults
+            suspend fun loadData(limit: Int = 10): Data
+        """.trimIndent()
+
+        val declarations = analyzer.analyze(kotlinSource)
+
+        val suspendFn = declarations[0] as SuspendFunctionDeclaration
+        assertTrue(suspendFn.hasSwiftAsyncAnnotation) // Field name kept for backwards compat
+    }
+
+    @Test
+    fun `analyze suspend function with deprecated SwiftAsync annotation`() {
         val kotlinSource = """
             package com.example
 

@@ -1,6 +1,6 @@
 package com.example
 
-import io.swiftify.annotations.SwiftAsync
+import io.swiftify.annotations.SwiftDefaults
 import io.swiftify.annotations.SwiftFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -12,9 +12,8 @@ import kotlinx.coroutines.flow.flow
  * Simple Notes Repository - demonstrates Swiftify features
  *
  * Features shown:
- * - @SwiftAsync: suspend functions → Swift async/await
+ * - @SwiftDefaults: generates Swift convenience overloads for default parameters
  * - @SwiftFlow: Kotlin Flow → Swift AsyncStream
- * - Default parameters → Swift convenience overloads
  */
 class NotesRepository {
 
@@ -34,7 +33,7 @@ class NotesRepository {
     //   - getNotes()
     //   - getNotes(limit:)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getNotes(
         limit: Int = 10,
         includeArchived: Boolean = false
@@ -49,7 +48,7 @@ class NotesRepository {
     // Simple suspend function
     // Swift: let note = try await repository.getNote(id: "1")
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getNote(id: String): Note? {
         delay(50)
         return _notes.value.find { it.id == id }
@@ -61,7 +60,7 @@ class NotesRepository {
     //   - createNote(title:)
     //   - createNote(title:, content:)
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun createNote(
         title: String,
         content: String = "",
@@ -82,7 +81,7 @@ class NotesRepository {
     // Suspend function (no defaults)
     // Swift: try await repository.deleteNote(id: "1")
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun deleteNote(id: String) {
         delay(50)
         _notes.value = _notes.value.filter { it.id != id }

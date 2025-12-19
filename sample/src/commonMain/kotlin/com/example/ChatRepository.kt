@@ -1,6 +1,6 @@
 package com.example
 
-import io.swiftify.annotations.SwiftAsync
+import io.swiftify.annotations.SwiftDefaults
 import io.swiftify.annotations.SwiftFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -40,7 +40,7 @@ class ChatRepository {
     /**
      * Connect to chat server
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun connect(): ConnectionState {
         _connectionState.value = ConnectionState.CONNECTING
         delay(500) // Simulate connection
@@ -51,7 +51,7 @@ class ChatRepository {
     /**
      * Disconnect from chat server
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun disconnect() {
         delay(100)
         _connectionState.value = ConnectionState.DISCONNECTED
@@ -62,7 +62,7 @@ class ChatRepository {
     /**
      * Get all conversations with pagination
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getConversations(
         page: Int = 1,
         includeArchived: Boolean = false
@@ -99,7 +99,7 @@ class ChatRepository {
     /**
      * Get messages for a conversation with pagination
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun getMessages(
         conversationId: String,
         beforeMessageId: String? = null,
@@ -128,7 +128,7 @@ class ChatRepository {
     /**
      * Send a text message
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun sendMessage(
         conversationId: String,
         content: String
@@ -147,7 +147,7 @@ class ChatRepository {
     /**
      * Send a message with attachment
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun sendMessageWithAttachment(
         conversationId: String,
         content: String,
@@ -169,7 +169,7 @@ class ChatRepository {
     /**
      * Mark messages as read
      */
-    @SwiftAsync
+    @SwiftDefaults
     suspend fun markAsRead(conversationId: String) {
         delay(50)
         _unreadCount.value = (_unreadCount.value - 1).coerceAtLeast(0)
