@@ -35,8 +35,9 @@ class SwiftCompiler {
             return CompileResult.Success(listOf(outputFile), swiftModuleDir)
         }
 
-        // Ensure output directory exists
+        // Ensure output directories exist
         config.outputDirectory?.mkdirs()
+        swiftModuleDir.mkdirs()
 
         return try {
             val process = ProcessBuilder(command)
