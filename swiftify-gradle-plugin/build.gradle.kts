@@ -13,6 +13,16 @@ dependencies {
     implementation(project(":swiftify-linker"))
 
     compileOnly(gradleApi())
+
+    // Test dependencies
+    testImplementation(gradleTestKit())
+    testImplementation(kotlin("test"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+    testImplementation("io.mockk:mockk:1.13.9")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 gradlePlugin {
