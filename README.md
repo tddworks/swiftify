@@ -1,7 +1,7 @@
 # Swiftify
 
-![CI](https://github.com/user/swiftify/actions/workflows/ci.yml/badge.svg)
-[![codecov](https://codecov.io/gh/user/swiftify/graph/badge.svg)](https://codecov.io/gh/user/swiftify)
+![CI](https://github.com/tddworks/swiftify/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/tddworks/swiftify/graph/badge.svg)](https://codecov.io/gh/tddworks/swiftify)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.3.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![KMP](https://img.shields.io/badge/Kotlin-Multiplatform-blue.svg?logo=kotlin)](https://kotlinlang.org/docs/multiplatform.html)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)

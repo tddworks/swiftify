@@ -1,0 +1,83 @@
+name: Release to Maven Central
+
+# Release workflow for publishing Swiftify SDK to Maven Central
+#
+# Triggers:
+# - Manual trigger with version input (e.g., 0.1.0, 0.2.0-beta.1)
+# - Automatically creates git tag and GitHub release
+# - Publishes to Maven Central via Sonatype Portal
+#
+# Process:
+# 1. Validate version format (semantic versioning)
+# 2. Build and test with specified version
+# 3. Create git tag and GitHub release
+# 4. Publish to Maven Central via Sonatype Portal
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 0.1.0, 0.2.0-beta.1)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+      actions: read
+    env:
+      SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+      SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+      SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "Invalid version format. Use semantic versioning (e.g., 0.1.0, 0.2.0-beta.1)"
+            exit 1
+          fi
+          echo "Version format is valid: ${{ inputs.version }}"
+
+      - name: Build and test with release version
+        run: ./gradlew clean build koverVerify -Pversion=${{ inputs.version }}
+
+      - name: Check code style
+        run: ./gradlew spotlessCheck -Pversion=${{ inputs.version }}
+
+      - name: Create git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: v${{ inputs.version }}
+          draft: false
+          prerelease: ${{ contains(inputs.version, '-') }}
+          generate_release_notes: true
+
+      - name: Publish to Maven Central
+        run: ./gradlew publishToMavenLocal -Pversion=${{ inputs.version }}
+        # TODO: Replace with actual Maven Central publishing when configured
+        # run: ./gradlew publishToCentral -Pversion=${{ inputs.version }}
