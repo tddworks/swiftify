@@ -72,21 +72,21 @@ class SwiftifyExtensionTest {
     }
 
     @Test
-    fun `suspendFunctions configuration works`() {
-        extension.suspendFunctions {
-            transformToAsync(throwing = false)
+    fun `defaultParameters configuration works`() {
+        extension.defaultParameters {
+            generateOverloads(maxOverloads = 3)
         }
 
-        assertFalse(extension.suspendFunctionConfig.throwing)
+        assertEquals(3, extension.defaultParameterConfig.maxOverloads)
     }
 
     @Test
     fun `flowTypes configuration works`() {
         extension.flowTypes {
-            transformToAsyncSequence()
+            transformToAsyncStream()
         }
 
-        assertTrue(extension.flowConfig.useAsyncSequence)
+        assertTrue(extension.flowConfig.useAsyncStream)
     }
 
     @Test
@@ -96,12 +96,12 @@ class SwiftifyExtensionTest {
     }
 
     @Test
-    fun `suspendFunctionConfig has correct defaults`() {
-        assertTrue(extension.suspendFunctionConfig.throwing)
+    fun `defaultParameterConfig has correct defaults`() {
+        assertEquals(5, extension.defaultParameterConfig.maxOverloads)
     }
 
     @Test
     fun `flowConfig has correct defaults`() {
-        assertTrue(extension.flowConfig.useAsyncSequence)
+        assertTrue(extension.flowConfig.useAsyncStream)
     }
 }

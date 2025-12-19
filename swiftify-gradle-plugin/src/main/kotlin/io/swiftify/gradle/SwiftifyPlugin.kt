@@ -13,7 +13,7 @@ import java.io.File
  * Enhances Kotlin Multiplatform Swift interfaces with:
  * - Sealed class → Swift enum transformation
  * - Suspend function → async/await transformation
- * - Flow → AsyncSequence transformation
+ * - Flow → AsyncStream transformation
  * - Default argument handling
  *
  * Usage:
@@ -26,6 +26,12 @@ import java.io.File
  *     // Optional configuration - sensible defaults work out of the box
  *     sealedClasses {
  *         transformToEnum(exhaustive = true)
+ *     }
+ *     defaultParameters {
+ *         generateOverloads(maxOverloads = 5)
+ *     }
+ *     flowTypes {
+ *         transformToAsyncStream()
  *     }
  * }
  * ```
@@ -304,8 +310,8 @@ class SwiftifyPlugin : Plugin<Project> {
  * ```kotlin
  * swiftify {
  *     sealedClasses { transformToEnum(exhaustive = true) }
- *     suspendFunctions { transformToAsync(throwing = true) }
- *     flowTypes { transformToAsyncSequence() }
+ *     defaultParameters { generateOverloads(maxOverloads = 5) }
+ *     flowTypes { transformToAsyncStream() }
  * }
  * ```
  */
@@ -342,9 +348,9 @@ abstract class SwiftifyExtension(private val project: Project) {
     val sealedClassConfig = SealedClassConfig()
 
     /**
-     * Configuration for suspend function transformations.
+     * Configuration for default parameter convenience overloads.
      */
-    val suspendFunctionConfig = SuspendFunctionConfig()
+    val defaultParameterConfig = DefaultParameterConfig()
 
     /**
      * Configuration for Flow transformations.
@@ -374,10 +380,13 @@ abstract class SwiftifyExtension(private val project: Project) {
     }
 
     /**
-     * Configure suspend function transformations.
+     * Configure default parameter convenience overload generation.
+     *
+     * Use this to customize how many convenience overloads are generated
+     * for functions with default parameters.
      */
-    fun suspendFunctions(configure: SuspendFunctionConfig.() -> Unit) {
-        suspendFunctionConfig.apply(configure)
+    fun defaultParameters(configure: DefaultParameterConfig.() -> Unit) {
+        defaultParameterConfig.apply(configure)
     }
 
     /**
@@ -401,18 +410,33 @@ class SealedClassConfig {
     }
 }
 
-class SuspendFunctionConfig {
-    var throwing: Boolean = true
+/**
+ * Configuration for generating convenience overloads for functions with default parameters.
+ *
+ * Note: Kotlin 2.0+ already exports suspend functions as Swift async/await automatically.
+ * This configuration only controls the generation of convenience overloads that omit
+ * trailing default parameters.
+ */
+class DefaultParameterConfig {
+    var maxOverloads: Int = 5
 
-    fun transformToAsync(throwing: Boolean = true) {
-        this.throwing = throwing
+    /**
+     * Enable generation of convenience overloads for functions with default parameters.
+     *
+     * @param maxOverloads Maximum number of overloads to generate (default: 5)
+     */
+    fun generateOverloads(maxOverloads: Int = 5) {
+        this.maxOverloads = maxOverloads
     }
 }
 
 class FlowConfig {
-    var useAsyncSequence: Boolean = true
+    var useAsyncStream: Boolean = true
 
-    fun transformToAsyncSequence() {
-        useAsyncSequence = true
+    /**
+     * Transform Kotlin Flow to Swift AsyncStream.
+     */
+    fun transformToAsyncStream() {
+        useAsyncStream = true
     }
 }

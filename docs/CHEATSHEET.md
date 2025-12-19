@@ -83,18 +83,25 @@ Task {
 
 ```kotlin
 swiftify {
+    // Global defaults
     defaults {
         requireAnnotations = true  // Only annotated functions (default)
         // Set to false to process ALL functions
     }
+
+    // Sealed class → Swift enum
+    sealedClasses {
+        transformToEnum(exhaustive = true)
+    }
+
+    // Default parameter convenience overloads
     defaultParameters {
         generateOverloads(maxOverloads = 5)
     }
+
+    // Flow → AsyncStream
     flowTypes {
         transformToAsyncStream()
-    }
-    sealedClasses {
-        transformToEnum(exhaustive = true)
     }
 }
 ```

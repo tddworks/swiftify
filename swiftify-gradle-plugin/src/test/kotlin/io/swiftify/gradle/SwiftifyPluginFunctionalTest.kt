@@ -75,11 +75,11 @@ class SwiftifyPluginFunctionalTest {
                 sealedClasses {
                     transformToEnum(exhaustive = true)
                 }
-                suspendFunctions {
-                    transformToAsync(throwing = true)
+                defaultParameters {
+                    generateOverloads(maxOverloads = 5)
                 }
                 flowTypes {
-                    transformToAsyncSequence()
+                    transformToAsyncStream()
                 }
             }
         """.trimIndent())
@@ -102,13 +102,13 @@ class SwiftifyPluginFunctionalTest {
         File(sourceDir, "UserRepository.kt").writeText("""
             package com.example
 
-            import io.swiftify.annotations.SwiftAsync
+            import io.swiftify.annotations.SwiftDefaults
             import io.swiftify.annotations.SwiftFlow
             import kotlinx.coroutines.flow.Flow
 
             class UserRepository {
-                @SwiftAsync
-                suspend fun fetchUser(id: String): String = id
+                @SwiftDefaults
+                suspend fun fetchUser(id: String, limit: Int = 10): String = id
 
                 @SwiftFlow
                 fun getUserUpdates(): Flow<String> = TODO()
@@ -121,8 +121,8 @@ class SwiftifyPluginFunctionalTest {
             }
 
             swiftify {
-                suspendFunctions {
-                    transformToAsync(throwing = true)
+                defaultParameters {
+                    generateOverloads(maxOverloads = 5)
                 }
             }
         """.trimIndent())

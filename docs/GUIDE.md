@@ -203,22 +203,26 @@ For advanced customization:
 
 ```kotlin
 swiftify {
-    // Customize default parameter overload generation
+    // Sealed class → Swift enum transformation
+    sealedClasses {
+        transformToEnum(exhaustive = true)
+    }
+
+    // Default parameter convenience overload generation
     defaultParameters {
         generateOverloads(maxOverloads = 5)
     }
 
-    // Customize Flow transformation
+    // Flow → AsyncStream transformation
     flowTypes {
         transformToAsyncStream()
     }
-
-    // Sealed class to enum (preview)
-    sealedClasses {
-        transformToEnum(exhaustive = true)
-    }
 }
 ```
+
+> **Note:** Kotlin 2.0+ already exports suspend functions as Swift async/await automatically.
+> The `defaultParameters` block only controls generation of convenience overloads for functions
+> with default parameters.
 
 ### Defaults
 

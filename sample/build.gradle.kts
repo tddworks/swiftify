@@ -29,14 +29,15 @@ kotlin {
 
 // Swiftify DSL configuration
 // Note: frameworkName is auto-detected from KMP's baseName = "SampleKit"
+// Note: Kotlin 2.0+ already exports suspend functions as Swift async/await automatically.
 swiftify {
     sealedClasses {
         transformToEnum(exhaustive = true)
     }
-    suspendFunctions {
-        transformToAsync(throwing = true)
+    defaultParameters {
+        generateOverloads(maxOverloads = 5)
     }
     flowTypes {
-        transformToAsyncSequence()
+        transformToAsyncStream()
     }
 }
