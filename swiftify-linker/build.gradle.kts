@@ -1,17 +1,17 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlinJvm)
     `maven-publish`
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
-    api(project(":swiftify-swift"))
-    api(project(":swiftify-generator"))
+    implementation(libs.kotlin.stdlib)
+    api(projects.swiftifySwift)
+    api(projects.swiftifyGenerator)
 
     // Test dependencies
-    testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockk)
 }
 
 tasks.test {

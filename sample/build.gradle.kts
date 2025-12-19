@@ -1,5 +1,5 @@
 plugins {
-    kotlin("multiplatform")
+    alias(libs.plugins.kotlinMultiplatform)
     id("io.swiftify") version "0.1.0-SNAPSHOT"
 }
 
@@ -20,9 +20,9 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(project(":swiftify-annotations"))
-            implementation(project(":swiftify-runtime"))
-            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
+            implementation(projects.swiftifyAnnotations)
+            implementation(projects.swiftifyRuntime)
+            implementation(libs.kotlinx.coroutines.core)
         }
     }
 }

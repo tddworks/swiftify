@@ -1,0 +1,82 @@
+# Version catalog for Swiftify SDK
+# Organized for maintainability and modern Gradle practices
+
+[versions]
+# Core language and frameworks
+kotlin = "2.0.21"
+kotlinx-coroutines = "1.8.1"
+kotlinx-serialization = "1.7.3"
+
+# KSP for Kotlin symbol processing
+ksp = "2.0.21-1.0.25"
+
+# Testing framework
+junit = "5.10.2"
+assertj-core = "3.26.3"
+mockk = "1.13.9"
+
+# Code quality and coverage
+kover = "0.8.3"
+spotless = "6.25.0"
+dokka = "1.9.20"
+kotlinx-binary-validator = "0.16.3"
+
+# Gradle plugins
+version-catalog-update = "1.0.1"
+ben-manes-versions = "0.51.0"
+
+[libraries]
+# Core Kotlin libraries
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+
+# Kotlinx
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+
+# KSP
+ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
+
+# Testing libraries
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit" }
+assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj-core" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+[bundles]
+# Testing bundle for JVM projects
+jvm-test = [
+    "junit-jupiter",
+    "kotlin-test",
+    "mockk",
+]
+
+# Kotlin testing bundle
+kotlin-test = [
+    "kotlin-test",
+    "kotlin-test-junit",
+    "kotlinx-coroutines-test",
+]
+
+[plugins]
+# Kotlin plugins
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinx-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+
+# Code quality and coverage
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+
+# Documentation
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+kotlinx-binary-validator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "kotlinx-binary-validator" }
+
+# Build tools
+version-catalog-update = { id = "nl.littlerobots.version-catalog-update", version.ref = "version-catalog-update" }
+ben-manes-versions = { id = "com.github.ben-manes.versions", version.ref = "ben-manes-versions" }

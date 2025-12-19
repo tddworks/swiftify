@@ -1,5 +1,7 @@
 rootProject.name = "swiftify"
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
         mavenLocal()

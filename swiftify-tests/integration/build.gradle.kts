@@ -1,14 +1,18 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlinJvm)
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
+    implementation(libs.kotlin.stdlib)
 
-    testImplementation(project(":swiftify-generator"))
-    testImplementation(project(":swiftify-analyzer"))
-    testImplementation(project(":swiftify-swift"))
-    testImplementation(project(":swiftify-dsl"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-    testImplementation(kotlin("test"))
+    testImplementation(projects.swiftifyGenerator)
+    testImplementation(projects.swiftifyAnalyzer)
+    testImplementation(projects.swiftifySwift)
+    testImplementation(projects.swiftifyDsl)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlin.test)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }

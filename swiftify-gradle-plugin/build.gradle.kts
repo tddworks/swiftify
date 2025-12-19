@@ -1,24 +1,24 @@
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlinJvm)
     `java-gradle-plugin`
     `maven-publish`
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
-    implementation(project(":swiftify-swift"))
-    implementation(project(":swiftify-dsl"))
-    implementation(project(":swiftify-analyzer"))
-    implementation(project(":swiftify-generator"))
-    implementation(project(":swiftify-linker"))
+    implementation(libs.kotlin.stdlib)
+    implementation(projects.swiftifySwift)
+    implementation(projects.swiftifyDsl)
+    implementation(projects.swiftifyAnalyzer)
+    implementation(projects.swiftifyGenerator)
+    implementation(projects.swiftifyLinker)
 
     compileOnly(gradleApi())
 
     // Test dependencies
     testImplementation(gradleTestKit())
-    testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
-    testImplementation("io.mockk:mockk:1.13.9")
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.mockk)
 }
 
 tasks.test {

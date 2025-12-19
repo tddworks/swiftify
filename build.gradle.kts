@@ -1,6 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.0.21" apply false
-    kotlin("multiplatform") version "2.0.21" apply false
+    alias(libs.plugins.kotlinJvm) apply false
+    alias(libs.plugins.kotlinMultiplatform) apply false
+    alias(libs.plugins.kover)
+    alias(libs.plugins.spotless)
+    alias(libs.plugins.dokka)
+    alias(libs.plugins.ben.manes.versions)
+    alias(libs.plugins.version.catalog.update)
 }
 
 allprojects {
@@ -8,7 +13,59 @@ allprojects {
     version = "0.1.0-SNAPSHOT"
 }
 
+// Kover code coverage aggregation
+dependencies {
+    kover(projects.swiftifyAnnotations)
+    kover(projects.swiftifySwift)
+    kover(projects.swiftifyDsl)
+    kover(projects.swiftifyAnalyzer)
+    kover(projects.swiftifyGenerator)
+    kover(projects.swiftifyLinker)
+    kover(projects.swiftifyGradlePlugin)
+    kover(projects.swiftifyRuntime)
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "io.swiftify.**.*\$*$*",
+                    "io.swiftify.**.*\$Companion",
+                    "*.*\$\$serializer",
+                )
+            }
+            includes {
+                classes("io.swiftify.*")
+            }
+        }
+        verify {
+            rule {
+                bound {
+                    minValue = 80
+                }
+            }
+        }
+    }
+}
+
+// Spotless code formatting
+spotless {
+    kotlin {
+        target("**/*.kt")
+        targetExclude("**/build/**")
+        ktlint()
+    }
+    kotlinGradle {
+        target("**/*.gradle.kts")
+        targetExclude("**/build/**")
+        ktlint()
+    }
+}
+
 subprojects {
+    apply(plugin = rootProject.libs.plugins.kover.get().pluginId)
+
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
