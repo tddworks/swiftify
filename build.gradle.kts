@@ -21,7 +21,6 @@ dependencies {
     kover(projects.swiftifyGenerator)
     kover(projects.swiftifyLinker)
     kover(projects.swiftifyGradlePlugin)
-    kover(projects.swiftifyRuntime)
 }
 
 kover {

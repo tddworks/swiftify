@@ -21,7 +21,6 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.swiftifyAnnotations)
-            implementation(projects.swiftifyRuntime)
             implementation(libs.kotlinx.coroutines.core)
         }
     }
