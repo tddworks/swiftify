@@ -5,7 +5,7 @@ plugins {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    api(project(":swiftify-common"))
+    api(project(":swiftify-swift"))
     api(project(":swiftify-dsl"))
 
     // KSP for Kotlin symbol processing

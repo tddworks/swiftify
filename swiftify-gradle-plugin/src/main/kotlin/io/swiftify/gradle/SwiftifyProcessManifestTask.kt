@@ -1,9 +1,9 @@
 package io.swiftify.gradle
 
-import io.swiftify.common.*
+import io.swiftify.swift.*
 import io.swiftify.generator.SwiftEnumGenerator
-import io.swiftify.generator.SwiftAsyncFunctionGenerator
-import io.swiftify.generator.SwiftAsyncSequenceGenerator
+import io.swiftify.generator.SwiftDefaultsGenerator
+import io.swiftify.generator.SwiftAsyncStreamGenerator
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
@@ -32,8 +32,8 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
     abstract val outputDirectory: DirectoryProperty
 
     private val enumGenerator = SwiftEnumGenerator()
-    private val asyncFunctionGenerator = SwiftAsyncFunctionGenerator()
-    private val asyncSequenceGenerator = SwiftAsyncSequenceGenerator()
+    private val defaultsGenerator = SwiftDefaultsGenerator()
+    private val asyncStreamGenerator = SwiftAsyncStreamGenerator()
 
     init {
         group = "swiftify"
@@ -152,7 +152,7 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
                 }
                 declarations.add(
                     ParsedDeclaration.SuspendFunction(
-                        SwiftAsyncFunctionSpec(
+                        SwiftDefaultsSpec(
                             name = section["name"] ?: "",
                             parameters = params,
                             returnType = mapKotlinTypeToSwift(section["return"] ?: "Unit"),
@@ -167,7 +167,7 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
                 }
                 declarations.add(
                     ParsedDeclaration.FlowFunction(
-                        SwiftAsyncSequenceSpec(
+                        SwiftAsyncStreamSpec(
                             name = section["name"] ?: "",
                             parameters = params,
                             elementType = mapKotlinTypeToSwift(section["element"] ?: "Any")
@@ -195,8 +195,8 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
         return declarations.joinToString("\n\n") { decl ->
             when (decl) {
                 is ParsedDeclaration.SealedClass -> enumGenerator.generate(decl.spec)
-                is ParsedDeclaration.SuspendFunction -> asyncFunctionGenerator.generate(decl.spec)
-                is ParsedDeclaration.FlowFunction -> asyncSequenceGenerator.generate(decl.spec)
+                is ParsedDeclaration.SuspendFunction -> defaultsGenerator.generate(decl.spec)
+                is ParsedDeclaration.FlowFunction -> asyncStreamGenerator.generate(decl.spec)
             }
         }
     }
@@ -212,7 +212,7 @@ abstract class SwiftifyProcessManifestTask : DefaultTask() {
 
     private sealed class ParsedDeclaration {
         data class SealedClass(val spec: SwiftEnumSpec) : ParsedDeclaration()
-        data class SuspendFunction(val spec: SwiftAsyncFunctionSpec) : ParsedDeclaration()
-        data class FlowFunction(val spec: SwiftAsyncSequenceSpec) : ParsedDeclaration()
+        data class SuspendFunction(val spec: SwiftDefaultsSpec) : ParsedDeclaration()
+        data class FlowFunction(val spec: SwiftAsyncStreamSpec) : ParsedDeclaration()
     }
 }

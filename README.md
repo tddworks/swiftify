@@ -431,8 +431,8 @@ for await note in repo.watchNote(id: "1") {
 
 ```
 swiftify/
-├── swiftify-annotations/    # @SwiftAsync, @SwiftFlow, @SwiftEnum
-├── swiftify-common/         # Core types (SwiftType, specs)
+├── swiftify-annotations/    # @SwiftDefaults, @SwiftFlow, @SwiftEnum
+├── swiftify-swift/          # Swift type specifications (SwiftType, specs)
 ├── swiftify-dsl/            # Gradle DSL (swiftify { ... })
 ├── swiftify-analyzer/       # Kotlin source analyzer
 ├── swiftify-generator/      # Swift code generator

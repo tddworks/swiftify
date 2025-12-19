@@ -5,7 +5,7 @@ plugins {
 dependencies {
     implementation(kotlin("stdlib"))
 
-    testImplementation(project(":swiftify-common"))
+    testImplementation(project(":swiftify-swift"))
     testImplementation(project(":swiftify-generator"))
     testImplementation(project(":swiftify-analyzer"))
     testImplementation(project(":swiftify-gradle-plugin"))

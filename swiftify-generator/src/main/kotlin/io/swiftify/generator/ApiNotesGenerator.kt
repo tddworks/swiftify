@@ -1,7 +1,7 @@
 package io.swiftify.generator
 
 import io.swiftify.analyzer.*
-import io.swiftify.common.*
+import io.swiftify.swift.*
 
 /**
  * Generates .apinotes files for Xcode integration.

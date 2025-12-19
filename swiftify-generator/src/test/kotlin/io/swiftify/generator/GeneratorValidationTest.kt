@@ -1,6 +1,6 @@
 package io.swiftify.generator
 
-import io.swiftify.common.*
+import io.swiftify.swift.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import kotlin.test.assertContains
@@ -11,8 +11,8 @@ import kotlin.test.assertContains
 class GeneratorValidationTest {
 
     private val enumGenerator = SwiftEnumGenerator()
-    private val asyncFunctionGenerator = SwiftAsyncFunctionGenerator()
-    private val asyncSequenceGenerator = SwiftAsyncSequenceGenerator()
+    private val defaultsGenerator = SwiftDefaultsGenerator()
+    private val asyncStreamGenerator = SwiftAsyncStreamGenerator()
 
     // SwiftEnumGenerator validation tests
 
@@ -64,81 +64,81 @@ class GeneratorValidationTest {
         assertContains(exception.message!!, "uppercase")
     }
 
-    // SwiftAsyncFunctionGenerator validation tests
+    // SwiftDefaultsGenerator validation tests
 
     @Test
     fun `async function generator throws for blank name`() {
-        val spec = SwiftAsyncFunctionSpec(
+        val spec = SwiftDefaultsSpec(
             name = "",
             parameters = emptyList(),
             returnType = SwiftType.Named("String")
         )
         val exception = assertThrows<SwiftifyValidationException> {
-            asyncFunctionGenerator.generate(spec)
+            defaultsGenerator.generate(spec)
         }
         assertContains(exception.message!!, "blank")
     }
 
     @Test
     fun `async function generator throws for blank parameter name`() {
-        val spec = SwiftAsyncFunctionSpec(
+        val spec = SwiftDefaultsSpec(
             name = "fetchData",
             parameters = listOf(SwiftParameter("", SwiftType.Named("Int"))),
             returnType = SwiftType.Named("String")
         )
         val exception = assertThrows<SwiftifyValidationException> {
-            asyncFunctionGenerator.generate(spec)
+            defaultsGenerator.generate(spec)
         }
         assertContains(exception.message!!, "Parameter name cannot be blank")
     }
 
     @Test
     fun `async function generator succeeds with valid spec`() {
-        val spec = SwiftAsyncFunctionSpec(
+        val spec = SwiftDefaultsSpec(
             name = "fetchData",
             parameters = listOf(SwiftParameter("id", SwiftType.Named("Int"))),
             returnType = SwiftType.Named("String")
         )
-        val result = asyncFunctionGenerator.generate(spec)
+        val result = defaultsGenerator.generate(spec)
         assertContains(result, "func fetchData")
     }
 
-    // SwiftAsyncSequenceGenerator validation tests
+    // SwiftAsyncStreamGenerator validation tests
 
     @Test
     fun `async sequence generator throws for blank name`() {
-        val spec = SwiftAsyncSequenceSpec(
+        val spec = SwiftAsyncStreamSpec(
             name = "",
             parameters = emptyList(),
             elementType = SwiftType.Named("String")
         )
         val exception = assertThrows<SwiftifyValidationException> {
-            asyncSequenceGenerator.generate(spec)
+            asyncStreamGenerator.generate(spec)
         }
         assertContains(exception.message!!, "blank")
     }
 
     @Test
     fun `async sequence generator throws for blank parameter name`() {
-        val spec = SwiftAsyncSequenceSpec(
+        val spec = SwiftAsyncStreamSpec(
             name = "getUpdates",
             parameters = listOf(SwiftParameter("", SwiftType.Named("Int"))),
             elementType = SwiftType.Named("String")
         )
         val exception = assertThrows<SwiftifyValidationException> {
-            asyncSequenceGenerator.generate(spec)
+            asyncStreamGenerator.generate(spec)
         }
         assertContains(exception.message!!, "Parameter name cannot be blank")
     }
 
     @Test
     fun `async sequence generator succeeds with valid spec`() {
-        val spec = SwiftAsyncSequenceSpec(
+        val spec = SwiftAsyncStreamSpec(
             name = "getUpdates",
             parameters = emptyList(),
             elementType = SwiftType.Named("String")
         )
-        val result = asyncSequenceGenerator.generate(spec)
+        val result = asyncStreamGenerator.generate(spec)
         assertContains(result, "func getUpdates")
         assertContains(result, "AsyncStream")
     }

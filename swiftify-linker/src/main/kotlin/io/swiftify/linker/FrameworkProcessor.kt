@@ -1,9 +1,9 @@
 package io.swiftify.linker
 
-import io.swiftify.common.*
+import io.swiftify.swift.*
 import io.swiftify.generator.SwiftEnumGenerator
-import io.swiftify.generator.SwiftAsyncFunctionGenerator
-import io.swiftify.generator.SwiftAsyncSequenceGenerator
+import io.swiftify.generator.SwiftDefaultsGenerator
+import io.swiftify.generator.SwiftAsyncStreamGenerator
 import java.io.File
 
 /**
@@ -19,8 +19,8 @@ class FrameworkProcessor(
     private val config: FrameworkProcessorConfig
 ) {
     private val enumGenerator = SwiftEnumGenerator()
-    private val asyncFunctionGenerator = SwiftAsyncFunctionGenerator()
-    private val asyncSequenceGenerator = SwiftAsyncSequenceGenerator()
+    private val defaultsGenerator = SwiftDefaultsGenerator()
+    private val asyncStreamGenerator = SwiftAsyncStreamGenerator()
     private val linkerPlugin = SwiftifyLinkerPlugin(config.linkerConfig)
 
     /**
@@ -159,8 +159,8 @@ class FrameworkProcessor(
                     SwiftParameter(name, mapKotlinTypeToSwift(typeName))
                 }
                 specs.add(
-                    SwiftSpec.AsyncFunction(
-                        SwiftAsyncFunctionSpec(
+                    SwiftSpec.Defaults(
+                        SwiftDefaultsSpec(
                             name = section["name"] ?: "",
                             parameters = params,
                             returnType = mapKotlinTypeToSwift(section["return"] ?: "Unit"),
@@ -174,8 +174,8 @@ class FrameworkProcessor(
                     SwiftParameter(name, mapKotlinTypeToSwift(typeName))
                 }
                 specs.add(
-                    SwiftSpec.AsyncSequence(
-                        SwiftAsyncSequenceSpec(
+                    SwiftSpec.AsyncStream(
+                        SwiftAsyncStreamSpec(
                             name = section["name"] ?: "",
                             parameters = params,
                             elementType = mapKotlinTypeToSwift(section["element"] ?: "Any")
@@ -203,8 +203,8 @@ class FrameworkProcessor(
         return specs.joinToString("\n\n") { spec ->
             when (spec) {
                 is SwiftSpec.Enum -> enumGenerator.generate(spec.spec)
-                is SwiftSpec.AsyncFunction -> asyncFunctionGenerator.generate(spec.spec)
-                is SwiftSpec.AsyncSequence -> asyncSequenceGenerator.generate(spec.spec)
+                is SwiftSpec.Defaults -> defaultsGenerator.generate(spec.spec)
+                is SwiftSpec.AsyncStream -> asyncStreamGenerator.generate(spec.spec)
             }
         }
     }
@@ -228,8 +228,8 @@ class FrameworkProcessor(
 
     private sealed class SwiftSpec {
         data class Enum(val spec: SwiftEnumSpec) : SwiftSpec()
-        data class AsyncFunction(val spec: SwiftAsyncFunctionSpec) : SwiftSpec()
-        data class AsyncSequence(val spec: SwiftAsyncSequenceSpec) : SwiftSpec()
+        data class Defaults(val spec: SwiftDefaultsSpec) : SwiftSpec()
+        data class AsyncStream(val spec: SwiftAsyncStreamSpec) : SwiftSpec()
     }
 }
 

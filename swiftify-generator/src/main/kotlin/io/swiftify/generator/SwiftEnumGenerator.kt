@@ -1,9 +1,9 @@
 package io.swiftify.generator
 
-import io.swiftify.common.SwiftEnumCase
-import io.swiftify.common.SwiftEnumSpec
-import io.swiftify.common.SwiftifyGenerationException
-import io.swiftify.common.SwiftifyValidationException
+import io.swiftify.swift.SwiftEnumCase
+import io.swiftify.swift.SwiftEnumSpec
+import io.swiftify.swift.SwiftifyGenerationException
+import io.swiftify.swift.SwiftifyValidationException
 
 /**
  * Generates Swift enum source code from a SwiftEnumSpec.

@@ -18,7 +18,7 @@ dependencyResolutionManagement {
 
 // Core modules
 include(":swiftify-annotations")
-include(":swiftify-common")
+include(":swiftify-swift")
 include(":swiftify-dsl")
 include(":swiftify-analyzer")
 include(":swiftify-generator")

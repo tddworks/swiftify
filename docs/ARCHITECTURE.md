@@ -64,14 +64,14 @@ sealed class KotlinDeclaration {
 Generates Swift source code from analyzed Kotlin declarations.
 
 ```kotlin
-class SwiftAsyncFunctionGenerator {
-    fun generate(spec: SwiftAsyncFunctionSpec): String
-    fun generateConvenienceOverloads(spec: SwiftAsyncFunctionSpec): String
+class SwiftDefaultsGenerator {
+    fun generate(spec: SwiftDefaultsSpec): String
+    fun generateConvenienceOverloads(spec: SwiftDefaultsSpec): String
 }
 
-class SwiftAsyncSequenceGenerator {
-    fun generate(spec: SwiftAsyncSequenceSpec): String
-    fun generateWithImplementation(spec: SwiftAsyncSequenceSpec): String
+class SwiftAsyncStreamGenerator {
+    fun generate(spec: SwiftAsyncStreamSpec): String
+    fun generateWithImplementation(spec: SwiftAsyncStreamSpec): String
 }
 
 class SwiftifyTransformer {
@@ -167,25 +167,34 @@ public class SwiftifyFlowCollector<T>: Kotlinx_coroutines_coreFlowCollector {
 }
 ```
 
-### swiftify-common
+### swiftify-swift
 
-Shared data structures and specifications.
+Swift type specifications - the intermediate representation for Swift code generation.
 
 ```kotlin
-data class SwiftAsyncFunctionSpec(
+// Package: io.swiftify.swift
+
+data class SwiftDefaultsSpec(
     val name: String,
     val parameters: List<SwiftParameter>,
-    val returnType: String,
+    val returnType: SwiftType,
     val isThrowing: Boolean,
     ...
 )
 
-data class SwiftAsyncSequenceSpec(
+data class SwiftAsyncStreamSpec(
     val name: String,
     val parameters: List<SwiftParameter>,
-    val elementType: String,
+    val elementType: SwiftType,
     ...
 )
+
+sealed class SwiftType {
+    data class Named(val name: String) : SwiftType()
+    data class Optional(val wrapped: SwiftType) : SwiftType()
+    data class Array(val elementType: SwiftType) : SwiftType()
+    // ... more Swift type representations
+}
 ```
 
 ---

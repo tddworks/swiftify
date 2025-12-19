@@ -1,7 +1,7 @@
 package io.swiftify.generator
 
 import io.swiftify.analyzer.*
-import io.swiftify.common.*
+import io.swiftify.swift.*
 import io.swiftify.dsl.SwiftifySpec
 import io.swiftify.dsl.swiftify
 
@@ -37,8 +37,8 @@ class SwiftifyTransformer {
 
     private val analyzer = KotlinDeclarationAnalyzer()
     private val enumGenerator = SwiftEnumGenerator()
-    private val asyncFunctionGenerator = SwiftAsyncFunctionGenerator()
-    private val asyncSequenceGenerator = SwiftAsyncSequenceGenerator()
+    private val defaultsGenerator = SwiftDefaultsGenerator()
+    private val asyncStreamGenerator = SwiftAsyncStreamGenerator()
 
     /**
      * Transform Kotlin source code to Swift with default configuration.
@@ -256,7 +256,7 @@ class SwiftifyTransformer {
             )
         }
 
-        val spec = SwiftAsyncFunctionSpec(
+        val spec = SwiftDefaultsSpec(
             name = declaration.name,
             typeParameters = declaration.typeParameters,
             parameters = parameters,
@@ -266,7 +266,7 @@ class SwiftifyTransformer {
 
         // For preview mode, just generate the signature
         // (Kotlin 2.0+ will generate the actual implementation)
-        return asyncFunctionGenerator.generate(spec)
+        return defaultsGenerator.generate(spec)
     }
 
     private fun transformFlowFunction(
@@ -282,7 +282,7 @@ class SwiftifyTransformer {
             )
         }
 
-        val spec = SwiftAsyncSequenceSpec(
+        val spec = SwiftAsyncStreamSpec(
             name = declaration.name,
             parameters = parameters,
             elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
@@ -293,9 +293,9 @@ class SwiftifyTransformer {
         val className = declaration.containingClassName
 
         return if (options.generateImplementations) {
-            asyncSequenceGenerator.generateWithImplementation(spec, className)
+            asyncStreamGenerator.generateWithImplementation(spec, className)
         } else {
-            asyncSequenceGenerator.generate(spec)
+            asyncStreamGenerator.generate(spec)
         }
     }
 
@@ -330,7 +330,7 @@ class SwiftifyTransformer {
             return emptyList()
         }
 
-        val spec = SwiftAsyncFunctionSpec(
+        val spec = SwiftDefaultsSpec(
             name = declaration.name,
             typeParameters = declaration.typeParameters,
             parameters = parameters,
@@ -339,7 +339,7 @@ class SwiftifyTransformer {
         )
 
         // Generate convenience overload bodies (without extension wrapper)
-        return asyncFunctionGenerator.generateConvenienceOverloadBodies(spec)
+        return defaultsGenerator.generateConvenienceOverloadBodies(spec)
     }
 
     /**
@@ -358,7 +358,7 @@ class SwiftifyTransformer {
             )
         }
 
-        val spec = SwiftAsyncSequenceSpec(
+        val spec = SwiftAsyncStreamSpec(
             name = declaration.name,
             parameters = parameters,
             elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
@@ -366,7 +366,7 @@ class SwiftifyTransformer {
         )
 
         // Generate function body only (without extension wrapper)
-        return asyncSequenceGenerator.generateFunctionBody(spec)
+        return asyncStreamGenerator.generateFunctionBody(spec)
     }
 
     private fun mapKotlinTypeToSwift(kotlinType: String, isNullable: Boolean): SwiftType {

@@ -1,8 +1,8 @@
 package io.swiftify.generator
 
-import io.swiftify.common.SwiftEnumCase
-import io.swiftify.common.SwiftEnumSpec
-import io.swiftify.common.SwiftType
+import io.swiftify.swift.SwiftEnumCase
+import io.swiftify.swift.SwiftEnumSpec
+import io.swiftify.swift.SwiftType
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue

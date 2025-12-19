@@ -6,7 +6,7 @@ plugins {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation(project(":swiftify-common"))
+    implementation(project(":swiftify-swift"))
     implementation(project(":swiftify-dsl"))
     implementation(project(":swiftify-analyzer"))
     implementation(project(":swiftify-generator"))
