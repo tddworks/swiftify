@@ -26,7 +26,6 @@ include(":swiftify-analyzer")
 include(":swiftify-generator")
 include(":swiftify-linker")
 include(":swiftify-gradle-plugin")
-include(":swiftify-runtime")
 
 // Test modules (unit tests are in their respective module packages)
 include(":swiftify-tests:integration")
