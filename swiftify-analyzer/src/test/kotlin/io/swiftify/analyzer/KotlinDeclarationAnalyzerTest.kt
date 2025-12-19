@@ -9,12 +9,12 @@ import kotlin.test.assertTrue
  * The analyzer extracts declarations from Kotlin code for transformation.
  */
 class KotlinDeclarationAnalyzerTest {
-
     private val analyzer = KotlinDeclarationAnalyzer()
 
     @Test
     fun `analyze simple sealed class`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             sealed class NetworkResult {
@@ -22,7 +22,7 @@ class KotlinDeclarationAnalyzerTest {
                 data class Failure(val error: Throwable) : NetworkResult()
                 object Loading : NetworkResult()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -35,14 +35,15 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze sealed class subclasses`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             sealed class Result<T> {
                 data class Success<T>(val value: T) : Result<T>()
                 data class Error(val message: String) : Result<Nothing>()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -59,13 +60,14 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze suspend function`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             suspend fun fetchUser(id: Int): User {
                 return api.getUser(id)
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -80,7 +82,8 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze suspend function with multiple parameters`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             suspend fun search(
@@ -88,7 +91,7 @@ class KotlinDeclarationAnalyzerTest {
                 limit: Int = 10,
                 offset: Int = 0
             ): List<Result>
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -100,13 +103,14 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze flow returning function`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             fun observeUpdates(): Flow<Update> {
                 return updatesChannel.receiveAsFlow()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -118,7 +122,8 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze sealed class with SwiftEnum annotation`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             @SwiftEnum(name = "AppResult", exhaustive = true)
@@ -126,7 +131,7 @@ class KotlinDeclarationAnalyzerTest {
                 data class Success(val data: String) : Result()
                 object Failure : Result()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -138,12 +143,13 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze suspend function with SwiftDefaults annotation`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             @SwiftDefaults
             suspend fun loadData(limit: Int = 10): Data
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -153,12 +159,13 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze suspend function with deprecated SwiftAsync annotation`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             @SwiftAsync(throwing = true)
             suspend fun loadData(): Data
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -169,7 +176,8 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze multiple declarations in one file`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             sealed class State {
@@ -181,7 +189,7 @@ class KotlinDeclarationAnalyzerTest {
             suspend fun fetchState(): State
 
             fun observeState(): Flow<State>
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 
@@ -193,7 +201,8 @@ class KotlinDeclarationAnalyzerTest {
 
     @Test
     fun `analyze object subclass of sealed class`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             sealed class LoadingState {
@@ -201,7 +210,7 @@ class KotlinDeclarationAnalyzerTest {
                 object Loading : LoadingState()
                 data class Error(val message: String) : LoadingState()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val declarations = analyzer.analyze(kotlinSource)
 

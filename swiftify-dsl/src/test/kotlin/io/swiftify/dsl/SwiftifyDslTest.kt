@@ -9,7 +9,6 @@ import kotlin.test.assertTrue
  * This is the user-facing configuration that implements "Swift-first mental model".
  */
 class SwiftifyDslTest {
-
     @Test
     fun `create empty swiftify spec with defaults`() {
         val spec = swiftify { }
@@ -22,11 +21,12 @@ class SwiftifyDslTest {
 
     @Test
     fun `configure sealed classes transformation`() {
-        val spec = swiftify {
-            sealedClasses {
-                transformToEnum(exhaustive = true)
+        val spec =
+            swiftify {
+                sealedClasses {
+                    transformToEnum(exhaustive = true)
+                }
             }
-        }
 
         assertTrue(spec.sealedClassRules.isNotEmpty())
         val rule = spec.sealedClassRules.first()
@@ -35,13 +35,14 @@ class SwiftifyDslTest {
 
     @Test
     fun `configure specific kotlin class to swift enum`() {
-        val spec = swiftify {
-            "com.example.NetworkResult".toSwiftEnum {
-                name = "NetworkResult"
-                exhaustive = true
-                conformTo("Hashable", "Codable")
+        val spec =
+            swiftify {
+                "com.example.NetworkResult".toSwiftEnum {
+                    name = "NetworkResult"
+                    exhaustive = true
+                    conformTo("Hashable", "Codable")
+                }
             }
-        }
 
         val mapping = spec.explicitMappings["com.example.NetworkResult"]
         assertEquals("NetworkResult", mapping?.swiftName)
@@ -50,11 +51,12 @@ class SwiftifyDslTest {
 
     @Test
     fun `configure default parameters overload generation`() {
-        val spec = swiftify {
-            defaultParameters {
-                generateOverloads(maxOverloads = 3)
+        val spec =
+            swiftify {
+                defaultParameters {
+                    generateOverloads(maxOverloads = 3)
+                }
             }
-        }
 
         assertTrue(spec.defaultParameterRules.isNotEmpty())
         val rule = spec.defaultParameterRules.first()
@@ -63,11 +65,12 @@ class SwiftifyDslTest {
 
     @Test
     fun `configure flow transformation`() {
-        val spec = swiftify {
-            flowTypes {
-                transformToAsyncStream()
+        val spec =
+            swiftify {
+                flowTypes {
+                    transformToAsyncStream()
+                }
             }
-        }
 
         assertTrue(spec.flowRules.isNotEmpty())
         assertTrue(spec.flowRules.first().useAsyncStream)
@@ -75,24 +78,26 @@ class SwiftifyDslTest {
 
     @Test
     fun `configure max default overloads`() {
-        val spec = swiftify {
-            defaults {
-                maxDefaultOverloads = 3
+        val spec =
+            swiftify {
+                defaults {
+                    maxDefaultOverloads = 3
+                }
             }
-        }
 
         assertEquals(3, spec.defaults.maxDefaultOverloads)
     }
 
     @Test
     fun `configure package-specific rules`() {
-        val spec = swiftify {
-            inPackage("com.example.api") {
-                sealedClasses {
-                    transformToEnum(exhaustive = true)
+        val spec =
+            swiftify {
+                inPackage("com.example.api") {
+                    sealedClasses {
+                        transformToEnum(exhaustive = true)
+                    }
                 }
             }
-        }
 
         val packageRule = spec.packageRules["com.example.api"]
         assertTrue(packageRule?.sealedClassRules?.isNotEmpty() == true)
@@ -100,12 +105,13 @@ class SwiftifyDslTest {
 
     @Test
     fun `disable specific transformations`() {
-        val spec = swiftify {
-            defaults {
-                transformSealedClassesToEnums = false
-                generateDefaultOverloads = false
+        val spec =
+            swiftify {
+                defaults {
+                    transformSealedClassesToEnums = false
+                    generateDefaultOverloads = false
+                }
             }
-        }
 
         assertTrue(!spec.defaults.transformSealedClassesToEnums)
         assertTrue(!spec.defaults.generateDefaultOverloads)
@@ -113,14 +119,15 @@ class SwiftifyDslTest {
 
     @Test
     fun `explicit class mapping with case renaming`() {
-        val spec = swiftify {
-            "com.example.Result".toSwiftEnum {
-                name = "AppResult"
-                case("Success", "success")
-                case("Failure", "failure")
-                case("Loading", "loading")
+        val spec =
+            swiftify {
+                "com.example.Result".toSwiftEnum {
+                    name = "AppResult"
+                    case("Success", "success")
+                    case("Failure", "failure")
+                    case("Loading", "loading")
+                }
             }
-        }
 
         val mapping = spec.explicitMappings["com.example.Result"]
         assertEquals("AppResult", mapping?.swiftName)
@@ -130,12 +137,13 @@ class SwiftifyDslTest {
 
     @Test
     fun `type mapping for custom types`() {
-        val spec = swiftify {
-            typeMapping {
-                "kotlin.ByteArray" mapTo "Data"
-                "java.util.Date" mapTo "Date"
+        val spec =
+            swiftify {
+                typeMapping {
+                    "kotlin.ByteArray" mapTo "Data"
+                    "java.util.Date" mapTo "Date"
+                }
             }
-        }
 
         assertEquals("Data", spec.typeMappings["kotlin.ByteArray"])
         assertEquals("Date", spec.typeMappings["java.util.Date"])

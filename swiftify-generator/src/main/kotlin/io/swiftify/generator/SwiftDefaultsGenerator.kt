@@ -18,7 +18,6 @@ import io.swiftify.swift.SwiftifyValidationException
  * For functions WITHOUT default parameters, no generation is needed as Kotlin provides them.
  */
 class SwiftDefaultsGenerator {
-
     /**
      * Generate Swift async function declaration (signature only, for preview).
      *
@@ -35,7 +34,7 @@ class SwiftDefaultsGenerator {
                 "Failed to generate Swift async function",
                 specType = "asyncFunction",
                 specName = spec.name,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -50,7 +49,10 @@ class SwiftDefaultsGenerator {
      * @param className The Kotlin class name that contains this method
      * @return Complete Swift function with bridging implementation
      */
-    fun generateWithImplementation(spec: SwiftDefaultsSpec, className: String? = null): String {
+    fun generateWithImplementation(
+        spec: SwiftDefaultsSpec,
+        className: String? = null,
+    ): String {
         validate(spec)
         return try {
             generateImplementation(spec, className)
@@ -60,7 +62,7 @@ class SwiftDefaultsGenerator {
                 "Failed to generate Swift async function implementation",
                 specType = "asyncFunction",
                 specName = spec.name,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -88,7 +90,7 @@ class SwiftDefaultsGenerator {
     fun generateConvenienceOverloads(
         spec: SwiftDefaultsSpec,
         className: String? = null,
-        maxOverloads: Int = 5
+        maxOverloads: Int = 5,
     ): String {
         validate(spec)
         return try {
@@ -99,7 +101,7 @@ class SwiftDefaultsGenerator {
                 "Failed to generate Swift async function convenience overloads",
                 specType = "asyncFunction",
                 specName = spec.name,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -128,7 +130,7 @@ class SwiftDefaultsGenerator {
     private fun generateConvenienceOverloadsInternal(
         spec: SwiftDefaultsSpec,
         className: String?,
-        maxOverloads: Int
+        maxOverloads: Int,
     ): String {
         val paramsWithDefaults = spec.parameters.filter { it.defaultValue != null }
         if (paramsWithDefaults.isEmpty()) {
@@ -162,7 +164,7 @@ class SwiftDefaultsGenerator {
      */
     private fun generateOverloadBodies(
         spec: SwiftDefaultsSpec,
-        maxOverloads: Int = 5
+        maxOverloads: Int = 5,
     ): List<String> {
         val paramsWithDefaults = spec.parameters.filter { it.defaultValue != null }
         if (paramsWithDefaults.isEmpty()) {
@@ -181,9 +183,10 @@ class SwiftDefaultsGenerator {
             if (overloads.size >= maxOverloads) break
 
             val paramsForOverload = requiredParams + defaultParams.take(i)
-            val overloadSpec = spec.copy(
-                parameters = paramsForOverload.map { it.copy(defaultValue = null) }
-            )
+            val overloadSpec =
+                spec.copy(
+                    parameters = paramsForOverload.map { it.copy(defaultValue = null) },
+                )
 
             val body = generateConvenienceOverloadBody(overloadSpec, spec)
             overloads.add(body)
@@ -197,7 +200,7 @@ class SwiftDefaultsGenerator {
      */
     private fun generateConvenienceOverloadBody(
         overloadSpec: SwiftDefaultsSpec,
-        fullSpec: SwiftDefaultsSpec
+        fullSpec: SwiftDefaultsSpec,
     ): String = buildString {
         // Generate signature without default values
         append(overloadSpec.accessLevel.swiftKeyword)
@@ -209,14 +212,19 @@ class SwiftDefaultsGenerator {
             append(">")
         }
         append("(")
-        append(overloadSpec.parameters.joinToString(", ") { param ->
-            buildString {
-                if (param.externalName == "_") append("_ ")
-                else if (param.externalName != null) append("${param.externalName} ")
-                append("${param.name}: ${param.type.swiftRepresentation}")
-                // No default value - this is a distinct overload
-            }
-        })
+        append(
+            overloadSpec.parameters.joinToString(", ") { param ->
+                buildString {
+                    if (param.externalName == "_") {
+                        append("_ ")
+                    } else if (param.externalName != null) {
+                        append("${param.externalName} ")
+                    }
+                    append("${param.name}: ${param.type.swiftRepresentation}")
+                    // No default value - this is a distinct overload
+                }
+            },
+        )
         append(")")
         append(" async")
         if (overloadSpec.isThrowing) append(" throws")
@@ -238,17 +246,18 @@ class SwiftDefaultsGenerator {
         append(fullSpec.name)
         append("(")
 
-        val args = fullSpec.parameters.mapIndexed { index, param ->
-            val overloadParam = overloadSpec.parameters.getOrNull(index)
-            if (overloadParam != null) {
-                // Parameter exists in overload, pass it through
-                "${param.name}: ${param.name}"
-            } else {
-                // Parameter not in overload, use default value
-                val defaultValue = fullSpec.parameters[index].defaultValue ?: "nil"
-                "${param.name}: $defaultValue"
+        val args =
+            fullSpec.parameters.mapIndexed { index, param ->
+                val overloadParam = overloadSpec.parameters.getOrNull(index)
+                if (overloadParam != null) {
+                    // Parameter exists in overload, pass it through
+                    "${param.name}: ${param.name}"
+                } else {
+                    // Parameter not in overload, use default value
+                    val defaultValue = fullSpec.parameters[index].defaultValue ?: "nil"
+                    "${param.name}: $defaultValue"
+                }
             }
-        }
         append(args.joinToString(", "))
         appendLine(")")
         append("}")
@@ -335,7 +344,10 @@ class SwiftDefaultsGenerator {
     /**
      * Generate the full implementation that bridges to Kotlin.
      */
-    private fun generateImplementation(spec: SwiftDefaultsSpec, className: String?): String = buildString {
+    private fun generateImplementation(
+        spec: SwiftDefaultsSpec,
+        className: String?,
+    ): String = buildString {
         val baseIndent = if (className != null) "    " else ""
         val indent = "$baseIndent    "
 
@@ -431,18 +443,22 @@ class SwiftDefaultsGenerator {
         val errors = mutableListOf<SwiftifyValidationException.ValidationError>()
 
         if (spec.name.isBlank()) {
-            errors.add(SwiftifyValidationException.ValidationError(
-                "Function name cannot be blank",
-                field = "name"
-            ))
+            errors.add(
+                SwiftifyValidationException.ValidationError(
+                    "Function name cannot be blank",
+                    field = "name",
+                ),
+            )
         }
 
         spec.parameters.forEachIndexed { index, param ->
             if (param.name.isBlank()) {
-                errors.add(SwiftifyValidationException.ValidationError(
-                    "Parameter name cannot be blank",
-                    field = "parameters[$index].name"
-                ))
+                errors.add(
+                    SwiftifyValidationException.ValidationError(
+                        "Parameter name cannot be blank",
+                        field = "parameters[$index].name",
+                    ),
+                )
             }
         }
 
@@ -519,9 +535,10 @@ class SwiftDefaultsGenerator {
     }
 
     private val SwiftDefaultsSpec.AccessLevel.swiftKeyword: String
-        get() = when (this) {
-            SwiftDefaultsSpec.AccessLevel.PUBLIC -> "public"
-            SwiftDefaultsSpec.AccessLevel.INTERNAL -> "internal"
-            SwiftDefaultsSpec.AccessLevel.PRIVATE -> "private"
-        }
+        get() =
+            when (this) {
+                SwiftDefaultsSpec.AccessLevel.PUBLIC -> "public"
+                SwiftDefaultsSpec.AccessLevel.INTERNAL -> "internal"
+                SwiftDefaultsSpec.AccessLevel.PRIVATE -> "private"
+            }
 }

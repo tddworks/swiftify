@@ -12,7 +12,6 @@ import java.io.File
  * framework's Modules directory so that Swift consumers can import the extensions.
  */
 class SwiftModuleInstaller {
-
     /**
      * Installs Swift module files into the framework.
      *
@@ -24,7 +23,7 @@ class SwiftModuleInstaller {
     fun install(
         swiftModuleDir: File,
         frameworkDir: File,
-        config: InstallConfig = InstallConfig()
+        config: InstallConfig = InstallConfig(),
     ): InstallResult {
         if (!swiftModuleDir.exists() || !swiftModuleDir.isDirectory) {
             return InstallResult.Error("Swift module directory not found: ${swiftModuleDir.absolutePath}")
@@ -42,10 +41,11 @@ class SwiftModuleInstaller {
 
         // Convert target triple to architecture prefix for module files
         // e.g., "arm64-apple-macos11.0" -> "arm64-apple-macos"
-        val archPrefix = config.targetTriple?.let { triple ->
-            // Remove version number from OS part: arm64-apple-macos11.0 -> arm64-apple-macos
-            triple.replace(Regex("(macos|ios|watchos|tvos)[0-9.]+"), "$1")
-        }
+        val archPrefix =
+            config.targetTriple?.let { triple ->
+                // Remove version number from OS part: arm64-apple-macos11.0 -> arm64-apple-macos
+                triple.replace(Regex("(macos|ios|watchos|tvos)[0-9.]+"), "$1")
+            }
 
         return try {
             val frameworkName = frameworkDir.name.removeSuffix(".framework")
@@ -62,13 +62,14 @@ class SwiftModuleInstaller {
 
                     // Copy and rename files inside the bundle with architecture prefix
                     file.listFiles()?.forEach { innerFile ->
-                        val destName = if (archPrefix != null) {
-                            // Rename ModuleName.xxx to arch.xxx
-                            val ext = innerFile.name.substringAfterLast(".")
-                            "$archPrefix.$ext"
-                        } else {
-                            innerFile.name
-                        }
+                        val destName =
+                            if (archPrefix != null) {
+                                // Rename ModuleName.xxx to arch.xxx
+                                val ext = innerFile.name.substringAfterLast(".")
+                                "$archPrefix.$ext"
+                            } else {
+                                innerFile.name
+                            }
                         val destFile = File(destBundle, destName)
                         innerFile.copyTo(destFile, overwrite = true)
                         config.logger?.invoke("Installed: ${file.name}/$destName")
@@ -143,7 +144,7 @@ data class InstallConfig(
     /** Dry run mode - don't execute, just report */
     val dryRun: Boolean = false,
     /** Logger for output */
-    val logger: ((String) -> Unit)? = null
+    val logger: ((String) -> Unit)? = null,
 )
 
 /**
@@ -151,7 +152,12 @@ data class InstallConfig(
  */
 sealed class InstallResult {
     /** Successful installation */
-    data class Success(val modulesDir: File) : InstallResult()
+    data class Success(
+        val modulesDir: File,
+    ) : InstallResult()
+
     /** Installation failed */
-    data class Error(val message: String) : InstallResult()
+    data class Error(
+        val message: String,
+    ) : InstallResult()
 }

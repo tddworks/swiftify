@@ -3,15 +3,14 @@ package io.swiftify.linker
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertContains
 
 /**
  * Tests for the Swiftify linker plugin.
  */
 class LinkerTest {
-
     @TempDir
     lateinit var tempDir: File
 
@@ -20,10 +19,11 @@ class LinkerTest {
         val config = SwiftifyLinkerConfig()
         val linker = SwiftifyLinkerPlugin(config)
 
-        val result = linker.inject(
-            frameworkDir = File(tempDir, "NonExistent.framework"),
-            swiftSourceDir = tempDir
-        )
+        val result =
+            linker.inject(
+                frameworkDir = File(tempDir, "NonExistent.framework"),
+                swiftSourceDir = tempDir,
+            )
 
         assertIs<InjectionResult.Error>(result)
         assertContains(result.message, "does not exist")

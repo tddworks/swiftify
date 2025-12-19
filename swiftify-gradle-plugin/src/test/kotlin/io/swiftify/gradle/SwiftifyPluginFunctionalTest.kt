@@ -10,7 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class SwiftifyPluginFunctionalTest {
-
     @TempDir
     lateinit var testProjectDir: File
 
@@ -22,24 +21,30 @@ class SwiftifyPluginFunctionalTest {
         settingsFile = File(testProjectDir, "settings.gradle.kts")
         buildFile = File(testProjectDir, "build.gradle.kts")
 
-        settingsFile.writeText("""
+        settingsFile.writeText(
+            """
             rootProject.name = "test-project"
-        """.trimIndent())
+            """.trimIndent(),
+        )
     }
 
     @Test
     fun `plugin applies successfully`() {
-        buildFile.writeText("""
+        buildFile.writeText(
+            """
             plugins {
                 id("io.swiftify")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        val result = GradleRunner.create()
-            .withProjectDir(testProjectDir)
-            .withPluginClasspath()
-            .withArguments("tasks", "--group=swiftify")
-            .build()
+        val result =
+            GradleRunner
+                .create()
+                .withProjectDir(testProjectDir)
+                .withPluginClasspath()
+                .withArguments("tasks", "--group=swiftify")
+                .build()
 
         assertTrue(result.output.contains("swiftifyGenerate"))
         assertTrue(result.output.contains("swiftifyPreview"))
@@ -47,17 +52,21 @@ class SwiftifyPluginFunctionalTest {
 
     @Test
     fun `swiftifyGenerate task runs without sources`() {
-        buildFile.writeText("""
+        buildFile.writeText(
+            """
             plugins {
                 id("io.swiftify")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        val result = GradleRunner.create()
-            .withProjectDir(testProjectDir)
-            .withPluginClasspath()
-            .withArguments("swiftifyGenerate")
-            .build()
+        val result =
+            GradleRunner
+                .create()
+                .withProjectDir(testProjectDir)
+                .withPluginClasspath()
+                .withArguments("swiftifyGenerate")
+                .build()
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":swiftifyGenerate")?.outcome)
         assertTrue(result.output.contains("No Kotlin source files found"))
@@ -65,7 +74,8 @@ class SwiftifyPluginFunctionalTest {
 
     @Test
     fun `extension configuration works`() {
-        buildFile.writeText("""
+        buildFile.writeText(
+            """
             plugins {
                 id("io.swiftify")
             }
@@ -82,13 +92,16 @@ class SwiftifyPluginFunctionalTest {
                     transformToAsyncStream()
                 }
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        val result = GradleRunner.create()
-            .withProjectDir(testProjectDir)
-            .withPluginClasspath()
-            .withArguments("swiftifyGenerate")
-            .build()
+        val result =
+            GradleRunner
+                .create()
+                .withProjectDir(testProjectDir)
+                .withPluginClasspath()
+                .withArguments("swiftifyGenerate")
+                .build()
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":swiftifyGenerate")?.outcome)
     }
@@ -99,7 +112,8 @@ class SwiftifyPluginFunctionalTest {
         val sourceDir = File(testProjectDir, "src/commonMain/kotlin/com/example")
         sourceDir.mkdirs()
 
-        File(sourceDir, "UserRepository.kt").writeText("""
+        File(sourceDir, "UserRepository.kt").writeText(
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftDefaults
@@ -113,9 +127,11 @@ class SwiftifyPluginFunctionalTest {
                 @SwiftFlow
                 fun getUserUpdates(): Flow<String> = TODO()
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        buildFile.writeText("""
+        buildFile.writeText(
+            """
             plugins {
                 id("io.swiftify")
             }
@@ -125,13 +141,16 @@ class SwiftifyPluginFunctionalTest {
                     generateOverloads(maxOverloads = 5)
                 }
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        val result = GradleRunner.create()
-            .withProjectDir(testProjectDir)
-            .withPluginClasspath()
-            .withArguments("swiftifyGenerate")
-            .build()
+        val result =
+            GradleRunner
+                .create()
+                .withProjectDir(testProjectDir)
+                .withPluginClasspath()
+                .withArguments("swiftifyGenerate")
+                .build()
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":swiftifyGenerate")?.outcome)
 
@@ -142,17 +161,21 @@ class SwiftifyPluginFunctionalTest {
 
     @Test
     fun `swiftifyPreview task runs`() {
-        buildFile.writeText("""
+        buildFile.writeText(
+            """
             plugins {
                 id("io.swiftify")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
-        val result = GradleRunner.create()
-            .withProjectDir(testProjectDir)
-            .withPluginClasspath()
-            .withArguments("swiftifyPreview")
-            .build()
+        val result =
+            GradleRunner
+                .create()
+                .withProjectDir(testProjectDir)
+                .withPluginClasspath()
+                .withArguments("swiftifyPreview")
+                .build()
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":swiftifyPreview")?.outcome)
         assertTrue(result.output.contains("Swiftify Preview"))

@@ -4,12 +4,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
-import kotlin.test.assertIs
 
 class SwiftCompilerTest {
-
     @TempDir
     lateinit var tempDir: File
 
@@ -17,11 +16,12 @@ class SwiftCompilerTest {
     fun `builds compile command with correct flags`() {
         val compiler = SwiftCompiler()
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-macos14.0",
-            sdkPath = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-macos14.0",
+                sdkPath = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+            )
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
@@ -38,10 +38,11 @@ class SwiftCompilerTest {
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
         val frameworkPath = File(tempDir, "MyKit.framework")
         frameworkPath.mkdirs()
-        val config = CompileConfig(
-            frameworkPath = frameworkPath,
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = frameworkPath,
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
@@ -55,10 +56,11 @@ class SwiftCompilerTest {
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
         val frameworkPath = File(tempDir, "SampleKit.framework")
         frameworkPath.mkdirs()
-        val config = CompileConfig(
-            frameworkPath = frameworkPath,
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = frameworkPath,
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
@@ -72,11 +74,12 @@ class SwiftCompilerTest {
         val swiftFile = createSwiftFile("Swiftify.swift", "import Foundation")
         val outputDir = File(tempDir, "output")
         outputDir.mkdirs()
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-macos14.0",
-            outputDirectory = outputDir
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-macos14.0",
+                outputDirectory = outputDir,
+            )
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
@@ -88,10 +91,11 @@ class SwiftCompilerTest {
     fun `sets module name same as framework for Swift overlay`() {
         val compiler = SwiftCompiler()
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
@@ -104,11 +108,12 @@ class SwiftCompilerTest {
     fun `compile returns success result in dry run mode`() {
         val compiler = SwiftCompiler()
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-macos14.0",
-            dryRun = true
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-macos14.0",
+                dryRun = true,
+            )
 
         val result = compiler.compile(listOf(swiftFile), config)
 
@@ -118,10 +123,11 @@ class SwiftCompilerTest {
     @Test
     fun `compile returns error for empty source list`() {
         val compiler = SwiftCompiler()
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val result = compiler.compile(emptyList(), config)
 
@@ -132,11 +138,12 @@ class SwiftCompilerTest {
     fun `compile returns error for non-existent source files`() {
         val compiler = SwiftCompiler()
         val nonExistent = File(tempDir, "NonExistent.swift")
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-macos14.0",
-            dryRun = true
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-macos14.0",
+                dryRun = true,
+            )
 
         val result = compiler.compile(listOf(nonExistent), config)
 
@@ -147,11 +154,12 @@ class SwiftCompilerTest {
     fun `uses iOS SDK for iOS target`() {
         val compiler = SwiftCompiler()
         val swiftFile = createSwiftFile("Test.swift", "import Foundation")
-        val config = CompileConfig(
-            frameworkPath = File(tempDir, "MyKit.framework"),
-            targetTriple = "arm64-apple-ios14.0",
-            sdkPath = "/path/to/iPhoneOS.sdk"
-        )
+        val config =
+            CompileConfig(
+                frameworkPath = File(tempDir, "MyKit.framework"),
+                targetTriple = "arm64-apple-ios14.0",
+                sdkPath = "/path/to/iPhoneOS.sdk",
+            )
 
         val command = compiler.buildCommand(listOf(swiftFile), config)
 
@@ -159,7 +167,10 @@ class SwiftCompilerTest {
         assertTrue(command.any { it.contains("iPhoneOS.sdk") })
     }
 
-    private fun createSwiftFile(name: String, content: String): File {
+    private fun createSwiftFile(
+        name: String,
+        content: String,
+    ): File {
         val file = File(tempDir, name)
         file.writeText(content)
         return file

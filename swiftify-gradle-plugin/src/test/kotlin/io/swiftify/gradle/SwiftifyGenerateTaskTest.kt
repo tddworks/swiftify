@@ -11,7 +11,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SwiftifyGenerateTaskTest {
-
     private lateinit var project: Project
 
     @TempDir
@@ -19,10 +18,12 @@ class SwiftifyGenerateTaskTest {
 
     @BeforeEach
     fun setup() {
-        project = ProjectBuilder.builder()
-            .withProjectDir(tempDir)
-            .withName("testProject")
-            .build()
+        project =
+            ProjectBuilder
+                .builder()
+                .withProjectDir(tempDir)
+                .withName("testProject")
+                .build()
         project.plugins.apply("io.swiftify")
     }
 
@@ -46,8 +47,12 @@ class SwiftifyGenerateTaskTest {
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
 
         assertEquals(
-            extension.outputDirectory.get().asFile.absolutePath,
-            task.outputDirectory.get().asFile.absolutePath
+            extension.outputDirectory
+                .get()
+                .asFile.absolutePath,
+            task.outputDirectory
+                .get()
+                .asFile.absolutePath,
         )
     }
 
@@ -74,13 +79,15 @@ class SwiftifyGenerateTaskTest {
 
         // Create a test Kotlin file
         val testFile = File(sourceDir, "Test.kt")
-        testFile.writeText("""
+        testFile.writeText(
+            """
             package com.example
 
             class TestClass {
                 suspend fun test(): String = "test"
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
 

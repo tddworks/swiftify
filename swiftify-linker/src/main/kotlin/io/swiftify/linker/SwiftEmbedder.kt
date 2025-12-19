@@ -17,9 +17,8 @@ class SwiftEmbedder(
     private val analyzer: FrameworkAnalyzer = FrameworkAnalyzer(),
     private val compiler: SwiftCompiler = SwiftCompiler(),
     private val merger: BinaryMerger = BinaryMerger(),
-    private val moduleInstaller: SwiftModuleInstaller = SwiftModuleInstaller()
+    private val moduleInstaller: SwiftModuleInstaller = SwiftModuleInstaller(),
 ) {
-
     /**
      * Embeds Swift code into a Kotlin/Native framework.
      *
@@ -31,30 +30,32 @@ class SwiftEmbedder(
     fun embed(
         frameworkDir: File,
         swiftFiles: List<File>,
-        config: EmbedConfig = EmbedConfig()
+        config: EmbedConfig = EmbedConfig(),
     ): EmbedResult {
         if (swiftFiles.isEmpty()) {
             return EmbedResult.Error("No Swift files provided")
         }
 
         // Step 1: Analyze framework
-        val frameworkInfo = try {
-            analyzer.analyze(frameworkDir)
-        } catch (e: FrameworkAnalysisException) {
-            return EmbedResult.Error("Framework analysis failed: ${e.message}")
-        }
+        val frameworkInfo =
+            try {
+                analyzer.analyze(frameworkDir)
+            } catch (e: FrameworkAnalysisException) {
+                return EmbedResult.Error("Framework analysis failed: ${e.message}")
+            }
 
         config.logger?.invoke("Analyzed framework: ${frameworkInfo.name} (${frameworkInfo.platform}, ${frameworkInfo.targetTriple})")
 
         // Step 2: Compile Swift to object files and module interface
-        val compileConfig = CompileConfig(
-            frameworkPath = frameworkDir,
-            targetTriple = frameworkInfo.targetTriple,
-            sdkPath = config.sdkPath,
-            outputDirectory = config.workingDirectory,
-            dryRun = config.dryRun,
-            logger = config.logger
-        )
+        val compileConfig =
+            CompileConfig(
+                frameworkPath = frameworkDir,
+                targetTriple = frameworkInfo.targetTriple,
+                sdkPath = config.sdkPath,
+                outputDirectory = config.workingDirectory,
+                dryRun = config.dryRun,
+                logger = config.logger,
+            )
 
         val compileResult = compiler.compile(swiftFiles, compileConfig)
         if (compileResult is CompileResult.Error) {
@@ -67,12 +68,13 @@ class SwiftEmbedder(
         config.logger?.invoke("Compiled ${objectFiles.size} object files with Swift module")
 
         // Step 3: Merge object files into framework binary
-        val mergeConfig = MergeConfig(
-            originalBinary = frameworkInfo.binaryPath,
-            targetTriple = frameworkInfo.targetTriple,
-            dryRun = config.dryRun,
-            logger = config.logger
-        )
+        val mergeConfig =
+            MergeConfig(
+                originalBinary = frameworkInfo.binaryPath,
+                targetTriple = frameworkInfo.targetTriple,
+                dryRun = config.dryRun,
+                logger = config.logger,
+            )
 
         val mergeResult = merger.merge(objectFiles, mergeConfig)
         if (mergeResult is MergeResult.Error) {
@@ -83,11 +85,12 @@ class SwiftEmbedder(
         config.logger?.invoke("Embedded Swift into ${outputBinary.absolutePath}")
 
         // Step 4: Install Swift module into framework
-        val installConfig = InstallConfig(
-            targetTriple = frameworkInfo.targetTriple,
-            dryRun = config.dryRun,
-            logger = config.logger
-        )
+        val installConfig =
+            InstallConfig(
+                targetTriple = frameworkInfo.targetTriple,
+                dryRun = config.dryRun,
+                logger = config.logger,
+            )
 
         val installResult = moduleInstaller.install(swiftModuleDir, frameworkDir, installConfig)
         if (installResult is InstallResult.Error) {
@@ -99,7 +102,7 @@ class SwiftEmbedder(
         return EmbedResult.Success(
             frameworkName = frameworkInfo.name,
             binaryPath = outputBinary,
-            swiftFilesEmbedded = swiftFiles.size
+            swiftFilesEmbedded = swiftFiles.size,
         )
     }
 }
@@ -115,7 +118,7 @@ data class EmbedConfig(
     /** Dry run mode - don't execute commands */
     val dryRun: Boolean = false,
     /** Logger for output */
-    val logger: ((String) -> Unit)? = null
+    val logger: ((String) -> Unit)? = null,
 )
 
 /**
@@ -126,9 +129,11 @@ sealed class EmbedResult {
     data class Success(
         val frameworkName: String,
         val binaryPath: File,
-        val swiftFilesEmbedded: Int
+        val swiftFilesEmbedded: Int,
     ) : EmbedResult()
 
     /** Embedding failed */
-    data class Error(val message: String) : EmbedResult()
+    data class Error(
+        val message: String,
+    ) : EmbedResult()
 }

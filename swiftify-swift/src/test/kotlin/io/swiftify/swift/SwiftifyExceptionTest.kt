@@ -2,14 +2,13 @@ package io.swiftify.swift
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
-import kotlin.test.assertEquals
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 
 /**
  * Tests for Swiftify exception classes and error handling.
  */
 class SwiftifyExceptionTest {
-
     @Test
     fun `SwiftifyException has correct message`() {
         val exception = SwiftifyException("Test error")
@@ -25,40 +24,44 @@ class SwiftifyExceptionTest {
 
     @Test
     fun `SwiftifyAnalysisException includes source file info`() {
-        val exception = SwiftifyAnalysisException(
-            "Parse error",
-            sourceFile = "MyClass.kt",
-            lineNumber = 42
-        )
+        val exception =
+            SwiftifyAnalysisException(
+                "Parse error",
+                sourceFile = "MyClass.kt",
+                lineNumber = 42,
+            )
         assertContains(exception.message!!, "MyClass.kt:42")
     }
 
     @Test
     fun `SwiftifyGenerationException includes spec info`() {
-        val exception = SwiftifyGenerationException(
-            "Generation failed",
-            specType = "enum",
-            specName = "NetworkResult"
-        )
+        val exception =
+            SwiftifyGenerationException(
+                "Generation failed",
+                specType = "enum",
+                specName = "NetworkResult",
+            )
         assertContains(exception.message!!, "enum")
         assertContains(exception.message!!, "NetworkResult")
     }
 
     @Test
     fun `SwiftifyConfigurationException includes config key`() {
-        val exception = SwiftifyConfigurationException(
-            "Invalid value",
-            configKey = "swiftify.enabled"
-        )
+        val exception =
+            SwiftifyConfigurationException(
+                "Invalid value",
+                configKey = "swiftify.enabled",
+            )
         assertContains(exception.message!!, "swiftify.enabled")
     }
 
     @Test
     fun `SwiftifyFrameworkException includes framework name`() {
-        val exception = SwiftifyFrameworkException(
-            "Framework not found",
-            frameworkName = "MyApp"
-        )
+        val exception =
+            SwiftifyFrameworkException(
+                "Framework not found",
+                frameworkName = "MyApp",
+            )
         assertContains(exception.message!!, "MyApp")
     }
 
@@ -70,10 +73,11 @@ class SwiftifyExceptionTest {
 
     @Test
     fun `SwiftifyValidationException handles multiple errors`() {
-        val errors = listOf(
-            SwiftifyValidationException.ValidationError("Error 1"),
-            SwiftifyValidationException.ValidationError("Error 2")
-        )
+        val errors =
+            listOf(
+                SwiftifyValidationException.ValidationError("Error 1"),
+                SwiftifyValidationException.ValidationError("Error 2"),
+            )
         val exception = SwiftifyValidationException(errors)
         assertContains(exception.message!!, "Error 1")
         assertContains(exception.message!!, "Error 2")
@@ -82,11 +86,12 @@ class SwiftifyExceptionTest {
 
     @Test
     fun `ValidationError includes field and value info`() {
-        val error = SwiftifyValidationException.ValidationError(
-            message = "Invalid name",
-            field = "name",
-            value = ""
-        )
+        val error =
+            SwiftifyValidationException.ValidationError(
+                message = "Invalid name",
+                field = "name",
+                value = "",
+            )
         assertEquals("Invalid name", error.message)
         assertEquals("name", error.field)
         assertEquals("", error.value)

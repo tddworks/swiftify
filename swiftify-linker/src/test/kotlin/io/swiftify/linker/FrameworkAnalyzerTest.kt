@@ -8,7 +8,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class FrameworkAnalyzerTest {
-
     @TempDir
     lateinit var tempDir: File
 
@@ -116,13 +115,14 @@ class FrameworkAnalyzerTest {
     private fun createMockFramework(
         name: String,
         platform: String = "macos",
-        arch: String = "arm64"
+        arch: String = "arm64",
     ): File {
-        val platformDir = when (platform) {
-            "macos" -> "macosArm64"
-            "ios" -> "iosArm64"
-            else -> platform
-        }
+        val platformDir =
+            when (platform) {
+                "macos" -> "macosArm64"
+                "ios" -> "iosArm64"
+                else -> platform
+            }
 
         val frameworkDir = File(tempDir, "bin/$platformDir/debugFramework/$name.framework")
         frameworkDir.mkdirs()
@@ -132,7 +132,8 @@ class FrameworkAnalyzerTest {
         binary.writeText("mock binary")
 
         // Create Info.plist (optional but realistic)
-        File(frameworkDir, "Info.plist").writeText("""
+        File(frameworkDir, "Info.plist").writeText(
+            """
             <?xml version="1.0" encoding="UTF-8"?>
             <plist version="1.0">
             <dict>
@@ -140,7 +141,8 @@ class FrameworkAnalyzerTest {
                 <string>$name</string>
             </dict>
             </plist>
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         return frameworkDir
     }

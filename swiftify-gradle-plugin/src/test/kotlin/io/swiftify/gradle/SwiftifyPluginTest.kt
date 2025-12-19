@@ -11,7 +11,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class SwiftifyPluginTest {
-
     private lateinit var project: Project
 
     @TempDir
@@ -19,9 +18,11 @@ class SwiftifyPluginTest {
 
     @BeforeEach
     fun setup() {
-        project = ProjectBuilder.builder()
-            .withProjectDir(tempDir)
-            .build()
+        project =
+            ProjectBuilder
+                .builder()
+                .withProjectDir(tempDir)
+                .build()
     }
 
     @Test
@@ -94,13 +95,14 @@ class SwiftifyPluginTest {
         val embedTask = project.tasks.findByName("swiftifyEmbed")
         assertNotNull(embedTask)
 
-        val dependencies = embedTask.dependsOn.map {
-            when (it) {
-                is org.gradle.api.tasks.TaskProvider<*> -> it.name
-                is org.gradle.api.Task -> it.name
-                else -> it.toString()
+        val dependencies =
+            embedTask.dependsOn.map {
+                when (it) {
+                    is org.gradle.api.tasks.TaskProvider<*> -> it.name
+                    is org.gradle.api.Task -> it.name
+                    else -> it.toString()
+                }
             }
-        }
         assertTrue(dependencies.any { it.contains("swiftifyGenerate") })
     }
 
@@ -109,8 +111,17 @@ class SwiftifyPluginTest {
         project.plugins.apply("io.swiftify")
 
         val extension = project.extensions.getByType(SwiftifyExtension::class.java)
-        val expectedPath = project.layout.buildDirectory.dir("generated/swiftify").get().asFile.absolutePath
+        val expectedPath =
+            project.layout.buildDirectory
+                .dir("generated/swiftify")
+                .get()
+                .asFile.absolutePath
 
-        assertEquals(expectedPath, extension.outputDirectory.get().asFile.absolutePath)
+        assertEquals(
+            expectedPath,
+            extension.outputDirectory
+                .get()
+                .asFile.absolutePath,
+        )
     }
 }

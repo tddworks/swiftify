@@ -8,7 +8,6 @@ import java.io.File
  * Single Responsibility: Swift compilation to object files and module interfaces.
  */
 class SwiftCompiler {
-
     /**
      * Compiles Swift source files to object files and module interfaces.
      *
@@ -16,7 +15,10 @@ class SwiftCompiler {
      * @param config Compilation configuration
      * @return CompileResult with success/failure status
      */
-    fun compile(sourceFiles: List<File>, config: CompileConfig): CompileResult {
+    fun compile(
+        sourceFiles: List<File>,
+        config: CompileConfig,
+    ): CompileResult {
         if (sourceFiles.isEmpty()) {
             return CompileResult.Error("No source files provided")
         }
@@ -44,10 +46,11 @@ class SwiftCompiler {
         File(swiftModuleDir, "$frameworkName.swiftmodule").mkdirs()
 
         return try {
-            val process = ProcessBuilder(command)
-                .directory(config.workingDirectory ?: sourceFiles.first().parentFile)
-                .redirectErrorStream(true)
-                .start()
+            val process =
+                ProcessBuilder(command)
+                    .directory(config.workingDirectory ?: sourceFiles.first().parentFile)
+                    .redirectErrorStream(true)
+                    .start()
 
             val output = process.inputStream.bufferedReader().readText()
             val exitCode = process.waitFor()
@@ -67,7 +70,10 @@ class SwiftCompiler {
      * Builds the swiftc command for compilation.
      * Exposed for testing.
      */
-    fun buildCommand(sourceFiles: List<File>, config: CompileConfig): List<String> {
+    fun buildCommand(
+        sourceFiles: List<File>,
+        config: CompileConfig,
+    ): List<String> {
         val frameworkName = config.frameworkPath.nameWithoutExtension
         // Use same name as framework - Swift overlay pattern
         val moduleName = frameworkName
@@ -123,7 +129,10 @@ class SwiftCompiler {
         }
     }
 
-    private fun getOutputFile(sourceFile: File, config: CompileConfig): File {
+    private fun getOutputFile(
+        sourceFile: File,
+        config: CompileConfig,
+    ): File {
         val outputDir = config.outputDirectory ?: sourceFile.parentFile
         return File(outputDir, "${sourceFile.nameWithoutExtension}.o")
     }
@@ -151,7 +160,7 @@ data class CompileConfig(
     /** Dry run mode - don't execute, just return command */
     val dryRun: Boolean = false,
     /** Logger for output */
-    val logger: ((String) -> Unit)? = null
+    val logger: ((String) -> Unit)? = null,
 )
 
 /**
@@ -161,8 +170,11 @@ sealed class CompileResult {
     /** Successful compilation with list of output object files and Swift module directory */
     data class Success(
         val objectFiles: List<File>,
-        val swiftModuleDir: File
+        val swiftModuleDir: File,
     ) : CompileResult()
+
     /** Compilation failed with error message */
-    data class Error(val message: String) : CompileResult()
+    data class Error(
+        val message: String,
+    ) : CompileResult()
 }

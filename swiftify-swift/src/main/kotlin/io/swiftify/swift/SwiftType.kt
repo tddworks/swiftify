@@ -5,7 +5,6 @@ package io.swiftify.swift
  * This is a user-facing model that represents desired Swift output.
  */
 sealed class SwiftType {
-
     /**
      * The Swift source code representation of this type.
      */
@@ -14,35 +13,46 @@ sealed class SwiftType {
     /**
      * A simple named type like String, Int, Data, Error, etc.
      */
-    data class Named(val name: String) : SwiftType() {
+    data class Named(
+        val name: String,
+    ) : SwiftType() {
         override val swiftRepresentation: String get() = name
     }
 
     /**
      * A generic type parameter like T, E, Element, etc.
      */
-    data class Generic(val name: String) : SwiftType() {
+    data class Generic(
+        val name: String,
+    ) : SwiftType() {
         override val swiftRepresentation: String get() = name
     }
 
     /**
      * An optional type (T?)
      */
-    data class Optional(val wrapped: SwiftType) : SwiftType() {
+    data class Optional(
+        val wrapped: SwiftType,
+    ) : SwiftType() {
         override val swiftRepresentation: String get() = "${wrapped.swiftRepresentation}?"
     }
 
     /**
      * An array type ([T])
      */
-    data class Array(val elementType: SwiftType) : SwiftType() {
+    data class Array(
+        val elementType: SwiftType,
+    ) : SwiftType() {
         override val swiftRepresentation: String get() = "[${elementType.swiftRepresentation}]"
     }
 
     /**
      * A dictionary type ([K: V])
      */
-    data class Dictionary(val keyType: SwiftType, val valueType: SwiftType) : SwiftType() {
+    data class Dictionary(
+        val keyType: SwiftType,
+        val valueType: SwiftType,
+    ) : SwiftType() {
         override val swiftRepresentation: String
             get() = "[${keyType.swiftRepresentation}: ${valueType.swiftRepresentation}]"
     }
@@ -50,7 +60,10 @@ sealed class SwiftType {
     /**
      * A parameterized generic type like Result<T, E> or Array<Int>
      */
-    data class Parameterized(val base: String, val arguments: List<SwiftType>) : SwiftType() {
+    data class Parameterized(
+        val base: String,
+        val arguments: List<SwiftType>,
+    ) : SwiftType() {
         override val swiftRepresentation: String
             get() = "$base<${arguments.joinToString(", ") { it.swiftRepresentation }}>"
     }
@@ -62,15 +75,16 @@ sealed class SwiftType {
         val parameters: List<SwiftType>,
         val returnType: SwiftType,
         val isAsync: Boolean = false,
-        val isThrowing: Boolean = false
+        val isThrowing: Boolean = false,
     ) : SwiftType() {
         override val swiftRepresentation: String
             get() {
                 val params = "(${parameters.joinToString(", ") { it.swiftRepresentation }})"
-                val modifiers = buildString {
-                    if (isAsync) append(" async")
-                    if (isThrowing) append(" throws")
-                }
+                val modifiers =
+                    buildString {
+                        if (isAsync) append(" async")
+                        if (isThrowing) append(" throws")
+                    }
                 return "$params$modifiers -> ${returnType.swiftRepresentation}"
             }
     }
@@ -78,7 +92,9 @@ sealed class SwiftType {
     /**
      * A tuple type like (String, Int)
      */
-    data class Tuple(val elements: List<SwiftType>) : SwiftType() {
+    data class Tuple(
+        val elements: List<SwiftType>,
+    ) : SwiftType() {
         override val swiftRepresentation: String
             get() = "(${elements.joinToString(", ") { it.swiftRepresentation }})"
     }

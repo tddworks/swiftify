@@ -37,7 +37,6 @@ import java.io.File
  * ```
  */
 class SwiftifyPlugin : Plugin<Project> {
-
     companion object {
         const val SWIFTIFY_GROUP = "swiftify"
         const val PROCESSOR_ARTIFACT = "io.swiftify:swiftify-analyzer"
@@ -45,15 +44,16 @@ class SwiftifyPlugin : Plugin<Project> {
 
     override fun apply(project: Project) {
         // Create extension for configuration
-        val extension = project.extensions.create(
-            "swiftify",
-            SwiftifyExtension::class.java,
-            project
-        )
+        val extension =
+            project.extensions.create(
+                "swiftify",
+                SwiftifyExtension::class.java,
+                project,
+            )
 
         // Set default output directory
         extension.outputDirectory.convention(
-            project.layout.buildDirectory.dir("generated/swiftify")
+            project.layout.buildDirectory.dir("generated/swiftify"),
         )
 
         // Register tasks
@@ -73,7 +73,10 @@ class SwiftifyPlugin : Plugin<Project> {
         }
     }
 
-    private fun configureKsp(project: Project, extension: SwiftifyExtension) {
+    private fun configureKsp(
+        project: Project,
+        extension: SwiftifyExtension,
+    ) {
         // Wait for KSP plugin to be applied
         project.plugins.withId("com.google.devtools.ksp") {
             project.logger.info("Swiftify: KSP plugin detected, configuring processor")
@@ -87,7 +90,13 @@ class SwiftifyPlugin : Plugin<Project> {
                     val kspExtension = project.extensions.findByName("ksp")
                     if (kspExtension != null) {
                         val argMethod = kspExtension.javaClass.getMethod("arg", String::class.java, String::class.java)
-                        argMethod.invoke(kspExtension, "swiftify.outputDir", extension.outputDirectory.get().asFile.absolutePath)
+                        argMethod.invoke(
+                            kspExtension,
+                            "swiftify.outputDir",
+                            extension.outputDirectory
+                                .get()
+                                .asFile.absolutePath,
+                        )
                         argMethod.invoke(kspExtension, "swiftify.enabled", extension.enabled.get().toString())
                     }
                 } catch (e: Exception) {
@@ -97,34 +106,40 @@ class SwiftifyPlugin : Plugin<Project> {
         }
     }
 
-    private fun registerPreviewTask(project: Project, extension: SwiftifyExtension): TaskProvider<SwiftifyPreviewTask> {
-        return project.tasks.register("swiftifyPreview", SwiftifyPreviewTask::class.java) { task ->
-            task.group = "swiftify"
-            task.description = "Preview generated Swift code for Kotlin declarations"
-        }
+    private fun registerPreviewTask(
+        project: Project,
+        extension: SwiftifyExtension,
+    ): TaskProvider<SwiftifyPreviewTask> = project.tasks.register("swiftifyPreview", SwiftifyPreviewTask::class.java) { task ->
+        task.group = "swiftify"
+        task.description = "Preview generated Swift code for Kotlin declarations"
     }
 
-    private fun registerGenerateTask(project: Project, extension: SwiftifyExtension): TaskProvider<SwiftifyGenerateTask> {
-        return project.tasks.register("swiftifyGenerate", SwiftifyGenerateTask::class.java) { task ->
-            task.group = "swiftify"
-            task.description = "Generate Swift code from Kotlin declarations"
-            task.outputDirectory.set(extension.outputDirectory)
-            task.frameworkName.set(extension.frameworkName)
-        }
+    private fun registerGenerateTask(
+        project: Project,
+        extension: SwiftifyExtension,
+    ): TaskProvider<SwiftifyGenerateTask> = project.tasks.register("swiftifyGenerate", SwiftifyGenerateTask::class.java) { task ->
+        task.group = "swiftify"
+        task.description = "Generate Swift code from Kotlin declarations"
+        task.outputDirectory.set(extension.outputDirectory)
+        task.frameworkName.set(extension.frameworkName)
     }
 
-    private fun registerProcessManifestTask(project: Project, extension: SwiftifyExtension): TaskProvider<SwiftifyProcessManifestTask> {
-        val taskProvider = project.tasks.register("swiftifyProcessManifest", SwiftifyProcessManifestTask::class.java) { task ->
-            task.group = "swiftify"
-            task.description = "Process KSP manifest and generate Swift code"
-            task.outputDirectory.set(extension.outputDirectory)
+    private fun registerProcessManifestTask(
+        project: Project,
+        extension: SwiftifyExtension,
+    ): TaskProvider<SwiftifyProcessManifestTask> {
+        val taskProvider =
+            project.tasks.register("swiftifyProcessManifest", SwiftifyProcessManifestTask::class.java) { task ->
+                task.group = "swiftify"
+                task.description = "Process KSP manifest and generate Swift code"
+                task.outputDirectory.set(extension.outputDirectory)
 
-            // Configure manifest file location from KSP output using lazy provider
-            val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
-            task.manifestFile.set(
-                kspOutputDir.map { it.file("main/resources/swiftify-manifest.txt") }
-            )
-        }
+                // Configure manifest file location from KSP output using lazy provider
+                val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
+                task.manifestFile.set(
+                    kspOutputDir.map { it.file("main/resources/swiftify-manifest.txt") },
+                )
+            }
 
         // Depend on KSP task if it exists (outside task configuration block)
         project.tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach { kspTask ->
@@ -134,18 +149,22 @@ class SwiftifyPlugin : Plugin<Project> {
         return taskProvider
     }
 
-    private fun registerEmbedTask(project: Project, extension: SwiftifyExtension): TaskProvider<SwiftifyEmbedTask> {
-        return project.tasks.register("swiftifyEmbed", SwiftifyEmbedTask::class.java) { task ->
-            task.group = "swiftify"
-            task.description = "Embed Swift extensions into framework binary"
-            task.swiftSourceDirectory.set(extension.outputDirectory)
+    private fun registerEmbedTask(
+        project: Project,
+        extension: SwiftifyExtension,
+    ): TaskProvider<SwiftifyEmbedTask> = project.tasks.register("swiftifyEmbed", SwiftifyEmbedTask::class.java) { task ->
+        task.group = "swiftify"
+        task.description = "Embed Swift extensions into framework binary"
+        task.swiftSourceDirectory.set(extension.outputDirectory)
 
-            // Depend on swiftifyGenerate to ensure Swift files are generated first
-            task.dependsOn("swiftifyGenerate")
-        }
+        // Depend on swiftifyGenerate to ensure Swift files are generated first
+        task.dependsOn("swiftifyGenerate")
     }
 
-    private fun configureSwiftifyIntegration(project: Project, extension: SwiftifyExtension) {
+    private fun configureSwiftifyIntegration(
+        project: Project,
+        extension: SwiftifyExtension,
+    ) {
         // Check for KMP plugin
         val hasKmp = project.plugins.hasPlugin("org.jetbrains.kotlin.multiplatform")
 
@@ -158,7 +177,10 @@ class SwiftifyPlugin : Plugin<Project> {
         project.logger.lifecycle("Swiftify: Configured for project ${project.name}")
     }
 
-    private fun configureKmpIntegration(project: Project, extension: SwiftifyExtension) {
+    private fun configureKmpIntegration(
+        project: Project,
+        extension: SwiftifyExtension,
+    ) {
         // Try to find Apple targets and auto-detect framework name
         try {
             val kotlin = project.extensions.getByName("kotlin")
@@ -186,15 +208,18 @@ class SwiftifyPlugin : Plugin<Project> {
                 // Check both the explicit flag and whether the value differs from convention
                 val defaultConvention = project.name.replaceFirstChar { it.uppercase() }
                 val currentValue = extension.frameworkName.orNull
-                val wasExplicitlySet = extension.frameworkNameExplicitlySet ||
-                    (currentValue != null && currentValue != defaultConvention)
+                val wasExplicitlySet =
+                    extension.frameworkNameExplicitlySet ||
+                        (currentValue != null && currentValue != defaultConvention)
 
                 if (frameworkNameDetected != null && !wasExplicitlySet) {
                     extension.frameworkName.set(frameworkNameDetected)
                     project.logger.lifecycle("Swiftify: Auto-detected framework name: $frameworkNameDetected")
                 } else if (frameworkNameDetected != null && wasExplicitlySet && currentValue != frameworkNameDetected) {
-                    project.logger.warn("Swiftify: Framework name '$currentValue' was set, but detected '$frameworkNameDetected' from KMP config. " +
-                        "Consider removing frameworkName.set() as Swiftify auto-detects it.")
+                    project.logger.warn(
+                        "Swiftify: Framework name '$currentValue' was set, but detected '$frameworkNameDetected' from KMP config. " +
+                            "Consider removing frameworkName.set() as Swiftify auto-detects it.",
+                    )
                 }
             }
         } catch (e: Exception) {
@@ -213,13 +238,14 @@ class SwiftifyPlugin : Plugin<Project> {
             val binaries = binariesMethod.invoke(target) ?: return null
 
             // Try to find a framework binary
-            val frameworks = if (binaries is Iterable<*>) {
-                binaries.filterNotNull().filter { binary ->
-                    binary.javaClass.simpleName.contains("Framework")
+            val frameworks =
+                if (binaries is Iterable<*>) {
+                    binaries.filterNotNull().filter { binary ->
+                        binary.javaClass.simpleName.contains("Framework")
+                    }
+                } else {
+                    emptyList()
                 }
-            } else {
-                emptyList()
-            }
 
             // Get baseName from first framework
             frameworks.firstOrNull()?.let { framework ->
@@ -236,17 +262,33 @@ class SwiftifyPlugin : Plugin<Project> {
     }
 
     private fun isAppleTarget(targetName: String): Boolean {
-        val appleTargets = listOf(
-            "ios", "watchos", "tvos", "macos",
-            "iosArm64", "iosX64", "iosSimulatorArm64",
-            "watchosArm32", "watchosArm64", "watchosX64", "watchosSimulatorArm64",
-            "tvosArm64", "tvosX64", "tvosSimulatorArm64",
-            "macosArm64", "macosX64"
-        )
+        val appleTargets =
+            listOf(
+                "ios",
+                "watchos",
+                "tvos",
+                "macos",
+                "iosArm64",
+                "iosX64",
+                "iosSimulatorArm64",
+                "watchosArm32",
+                "watchosArm64",
+                "watchosX64",
+                "watchosSimulatorArm64",
+                "tvosArm64",
+                "tvosX64",
+                "tvosSimulatorArm64",
+                "macosArm64",
+                "macosX64",
+            )
         return appleTargets.any { targetName.contains(it, ignoreCase = true) }
     }
 
-    private fun configureAppleTarget(project: Project, extension: SwiftifyExtension, targetName: String) {
+    private fun configureAppleTarget(
+        project: Project,
+        extension: SwiftifyExtension,
+        targetName: String,
+    ) {
         project.logger.info("Swiftify: Configuring Apple target: $targetName")
 
         // Register target-specific embed tasks for each build type
@@ -260,7 +302,7 @@ class SwiftifyPlugin : Plugin<Project> {
     private fun registerTargetEmbedTasks(
         project: Project,
         extension: SwiftifyExtension,
-        targetName: String
+        targetName: String,
     ) {
         val capitalizedTarget = targetName.replaceFirstChar { it.uppercase() }
 
@@ -269,20 +311,22 @@ class SwiftifyPlugin : Plugin<Project> {
             val embedTaskName = "swiftifyEmbed${buildType}$capitalizedTarget"
 
             // Register embed task for this target/buildType
-            val embedTaskProvider = project.tasks.register(embedTaskName, SwiftifyEmbedTask::class.java) { embedTask ->
-                embedTask.group = "swiftify"
-                embedTask.description = "Embed Swift extensions into $buildType framework for $targetName"
-                embedTask.swiftSourceDirectory.set(extension.outputDirectory)
+            val embedTaskProvider =
+                project.tasks.register(embedTaskName, SwiftifyEmbedTask::class.java) { embedTask ->
+                    embedTask.group = "swiftify"
+                    embedTask.description = "Embed Swift extensions into $buildType framework for $targetName"
+                    embedTask.swiftSourceDirectory.set(extension.outputDirectory)
 
-                // Set framework directory based on KMP convention
-                val frameworkDir = project.layout.buildDirectory.dir(
-                    "bin/$targetName/${buildType.lowercase()}Framework/${extension.frameworkName.get()}.framework"
-                )
-                embedTask.frameworkDirectory.set(frameworkDir)
+                    // Set framework directory based on KMP convention
+                    val frameworkDir =
+                        project.layout.buildDirectory.dir(
+                            "bin/$targetName/${buildType.lowercase()}Framework/${extension.frameworkName.get()}.framework",
+                        )
+                    embedTask.frameworkDirectory.set(frameworkDir)
 
-                // Depend on swiftifyGenerate
-                embedTask.dependsOn("swiftifyGenerate")
-            }
+                    // Depend on swiftifyGenerate
+                    embedTask.dependsOn("swiftifyGenerate")
+                }
 
             // Hook into the link task when it's configured
             project.tasks.matching { it.name == linkTaskName }.configureEach { linkTask ->
@@ -315,8 +359,9 @@ class SwiftifyPlugin : Plugin<Project> {
  * }
  * ```
  */
-abstract class SwiftifyExtension(private val project: Project) {
-
+abstract class SwiftifyExtension(
+    private val project: Project,
+) {
     /**
      * Whether Swiftify is enabled. Default: true.
      */

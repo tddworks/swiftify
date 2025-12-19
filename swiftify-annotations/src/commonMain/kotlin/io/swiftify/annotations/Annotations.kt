@@ -28,17 +28,15 @@ annotation class SwiftEnum(
      * The name of the Swift enum. If empty, uses the Kotlin class name.
      */
     val name: String = "",
-
     /**
      * Whether this enum is exhaustive (adds @frozen attribute).
      * Exhaustive enums enable exhaustive switch statements in Swift.
      */
     val exhaustive: Boolean = true,
-
     /**
      * Protocol conformances for the enum (e.g., "Hashable", "Codable").
      */
-    val conformances: Array<String> = []
+    val conformances: Array<String> = [],
 )
 
 /**
@@ -63,11 +61,10 @@ annotation class SwiftCase(
      * The Swift case name. If empty, uses lowercased Kotlin class name.
      */
     val name: String = "",
-
     /**
      * Associated value declaration (e.g., "value: String, code: Int").
      */
-    val associated: String = ""
+    val associated: String = "",
 )
 
 /**
@@ -77,13 +74,13 @@ annotation class SwiftCase(
  */
 @Deprecated(
     message = "Use @SwiftDefaults instead. Kotlin 2.0+ exports suspend as async automatically.",
-    replaceWith = ReplaceWith("SwiftDefaults")
+    replaceWith = ReplaceWith("SwiftDefaults"),
 )
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
 annotation class SwiftAsync(
     val throwing: Boolean = true,
-    val name: String = ""
+    val name: String = "",
 )
 
 /**
@@ -103,7 +100,7 @@ annotation class SwiftFlow(
     /**
      * Custom Swift function/property name.
      */
-    val name: String = ""
+    val name: String = "",
 )
 
 /**
@@ -141,12 +138,11 @@ annotation class SwiftDefaults(
      * Set to false to disable generation for a specific function.
      */
     val generate: Boolean = true,
-
     /**
      * Maximum number of default argument combinations to generate.
      * Limits combinatorial explosion for functions with many defaults.
      */
-    val maxOverloads: Int = 5
+    val maxOverloads: Int = 5,
 )
 
 /**
@@ -167,7 +163,7 @@ annotation class SwiftName(
     /**
      * The name to use in Swift.
      */
-    val name: String
+    val name: String,
 )
 
 /**
@@ -180,9 +176,8 @@ annotation class SwiftParameter(
      * External parameter name (argument label). Use "_" for no label.
      */
     val label: String = "",
-
     /**
      * Default value expression in Swift syntax.
      */
-    val defaultValue: String = ""
+    val defaultValue: String = "",
 )

@@ -21,7 +21,7 @@ data class SealedClassDeclaration(
     val hasSwiftEnumAnnotation: Boolean = false,
     val swiftEnumName: String? = null,
     val isExhaustive: Boolean = true,
-    val conformances: List<String> = emptyList()
+    val conformances: List<String> = emptyList(),
 ) : KotlinDeclaration
 
 /**
@@ -33,7 +33,7 @@ data class SealedSubclass(
     val isObject: Boolean,
     val isDataClass: Boolean,
     val properties: List<PropertyDeclaration>,
-    val typeParameters: List<String> = emptyList()
+    val typeParameters: List<String> = emptyList(),
 )
 
 /**
@@ -42,7 +42,7 @@ data class SealedSubclass(
 data class PropertyDeclaration(
     val name: String,
     val typeName: String,
-    val isNullable: Boolean = false
+    val isNullable: Boolean = false,
 )
 
 /**
@@ -60,7 +60,7 @@ data class SuspendFunctionDeclaration(
     val isThrowing: Boolean = true,
     val receiverTypeName: String? = null,
     /** The name of the class containing this function, if any */
-    val containingClassName: String? = null
+    val containingClassName: String? = null,
 ) : KotlinDeclaration
 
 /**
@@ -71,7 +71,7 @@ data class ParameterDeclaration(
     val typeName: String,
     val isNullable: Boolean = false,
     val defaultValue: String? = null,
-    val isVararg: Boolean = false
+    val isVararg: Boolean = false,
 )
 
 /**
@@ -87,5 +87,5 @@ data class FlowFunctionDeclaration(
     val hasSwiftFlowAnnotation: Boolean = false,
     val isProperty: Boolean = false,
     /** The name of the class containing this function/property, if any */
-    val containingClassName: String? = null
+    val containingClassName: String? = null,
 ) : KotlinDeclaration

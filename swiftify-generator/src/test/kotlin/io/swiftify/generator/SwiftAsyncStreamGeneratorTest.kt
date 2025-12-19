@@ -11,16 +11,16 @@ import kotlin.test.assertTrue
  * TDD RED PHASE: Tests for Swift AsyncSequence code generation.
  */
 class SwiftAsyncStreamGeneratorTest {
-
     private val generator = SwiftAsyncStreamGenerator()
 
     @Test
     fun `generates simple async sequence function`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "observeUpdates",
-            parameters = emptyList(),
-            elementType = SwiftType.Named("Update")
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "observeUpdates",
+                parameters = emptyList(),
+                elementType = SwiftType.Named("Update"),
+            )
 
         val result = generator.generate(spec)
 
@@ -30,13 +30,15 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates async sequence with parameters`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "observeUser",
-            parameters = listOf(
-                SwiftParameter(name = "userId", type = SwiftType.Named("String"))
-            ),
-            elementType = SwiftType.Named("UserState")
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "observeUser",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "userId", type = SwiftType.Named("String")),
+                ),
+                elementType = SwiftType.Named("UserState"),
+            )
 
         val result = generator.generate(spec)
 
@@ -46,12 +48,13 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates async sequence property`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "updates",
-            parameters = emptyList(),
-            elementType = SwiftType.Named("Update"),
-            isProperty = true
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "updates",
+                parameters = emptyList(),
+                elementType = SwiftType.Named("Update"),
+                isProperty = true,
+            )
 
         val result = generator.generate(spec)
 
@@ -61,11 +64,12 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates async throwing sequence for nullable elements`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "observeData",
-            parameters = emptyList(),
-            elementType = SwiftType.Optional(SwiftType.Named("Data"))
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "observeData",
+                parameters = emptyList(),
+                elementType = SwiftType.Optional(SwiftType.Named("Data")),
+            )
 
         val result = generator.generate(spec)
 
@@ -74,12 +78,13 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates generic async sequence`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "observe",
-            typeParameters = listOf("T"),
-            parameters = emptyList(),
-            elementType = SwiftType.Generic("T")
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "observe",
+                typeParameters = listOf("T"),
+                parameters = emptyList(),
+                elementType = SwiftType.Generic("T"),
+            )
 
         val result = generator.generate(spec)
 
@@ -89,14 +94,15 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates shared async sequence for StateFlow`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "state",
-            parameters = emptyList(),
-            elementType = SwiftType.Named("AppState"),
-            isProperty = true,
-            isShared = true,
-            replayCount = 1
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "state",
+                parameters = emptyList(),
+                elementType = SwiftType.Named("AppState"),
+                isProperty = true,
+                isShared = true,
+                replayCount = 1,
+            )
 
         val result = generator.generate(spec)
 
@@ -108,12 +114,13 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates internal access level`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "internalStream",
-            parameters = emptyList(),
-            elementType = SwiftType.Named("Data"),
-            accessLevel = SwiftAsyncStreamSpec.AccessLevel.INTERNAL
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "internalStream",
+                parameters = emptyList(),
+                elementType = SwiftType.Named("Data"),
+                accessLevel = SwiftAsyncStreamSpec.AccessLevel.INTERNAL,
+            )
 
         val result = generator.generate(spec)
 
@@ -122,11 +129,12 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generates async sequence with array element type`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "observeItems",
-            parameters = emptyList(),
-            elementType = SwiftType.Array(SwiftType.Named("Item"))
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "observeItems",
+                parameters = emptyList(),
+                elementType = SwiftType.Array(SwiftType.Named("Item")),
+            )
 
         val result = generator.generate(spec)
 
@@ -135,12 +143,13 @@ class SwiftAsyncStreamGeneratorTest {
 
     @Test
     fun `generateFunctionBody adds Stream suffix to property name`() {
-        val spec = SwiftAsyncStreamSpec(
-            name = "currentUser",
-            parameters = emptyList(),
-            elementType = SwiftType.Named("User"),
-            isProperty = true
-        )
+        val spec =
+            SwiftAsyncStreamSpec(
+                name = "currentUser",
+                parameters = emptyList(),
+                elementType = SwiftType.Named("User"),
+                isProperty = true,
+            )
 
         val result = generator.generateFunctionBody(spec)
         println("Generated body:\n$result")

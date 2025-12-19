@@ -9,17 +9,18 @@ import kotlin.test.assertTrue
  * Implementation will come after tests are written.
  */
 class SwiftEnumSpecTest {
-
     @Test
     fun `create simple enum spec with cases`() {
-        val spec = SwiftEnumSpec(
-            name = "NetworkResult",
-            cases = listOf(
-                SwiftEnumCase(name = "success"),
-                SwiftEnumCase(name = "failure"),
-                SwiftEnumCase(name = "loading")
+        val spec =
+            SwiftEnumSpec(
+                name = "NetworkResult",
+                cases =
+                listOf(
+                    SwiftEnumCase(name = "success"),
+                    SwiftEnumCase(name = "failure"),
+                    SwiftEnumCase(name = "loading"),
+                ),
             )
-        )
 
         assertEquals("NetworkResult", spec.name)
         assertEquals(3, spec.cases.size)
@@ -30,29 +31,33 @@ class SwiftEnumSpecTest {
 
     @Test
     fun `create enum case with associated value`() {
-        val spec = SwiftEnumSpec(
-            name = "Result",
-            cases = listOf(
-                SwiftEnumCase(
-                    name = "success",
-                    associatedValues = listOf(
-                        SwiftEnumCase.AssociatedValue(
-                            label = "value",
-                            type = SwiftType.Generic("T")
-                        )
-                    )
+        val spec =
+            SwiftEnumSpec(
+                name = "Result",
+                cases =
+                listOf(
+                    SwiftEnumCase(
+                        name = "success",
+                        associatedValues =
+                        listOf(
+                            SwiftEnumCase.AssociatedValue(
+                                label = "value",
+                                type = SwiftType.Generic("T"),
+                            ),
+                        ),
+                    ),
+                    SwiftEnumCase(
+                        name = "failure",
+                        associatedValues =
+                        listOf(
+                            SwiftEnumCase.AssociatedValue(
+                                label = "error",
+                                type = SwiftType.Named("Error"),
+                            ),
+                        ),
+                    ),
                 ),
-                SwiftEnumCase(
-                    name = "failure",
-                    associatedValues = listOf(
-                        SwiftEnumCase.AssociatedValue(
-                            label = "error",
-                            type = SwiftType.Named("Error")
-                        )
-                    )
-                )
             )
-        )
 
         assertEquals("Result", spec.name)
         assertEquals(2, spec.cases.size)
@@ -71,60 +76,68 @@ class SwiftEnumSpecTest {
 
     @Test
     fun `enum spec can be marked as exhaustive`() {
-        val spec = SwiftEnumSpec(
-            name = "State",
-            cases = listOf(SwiftEnumCase(name = "idle")),
-            isExhaustive = true
-        )
+        val spec =
+            SwiftEnumSpec(
+                name = "State",
+                cases = listOf(SwiftEnumCase(name = "idle")),
+                isExhaustive = true,
+            )
 
         assertTrue(spec.isExhaustive)
     }
 
     @Test
     fun `enum spec can have type parameters`() {
-        val spec = SwiftEnumSpec(
-            name = "Result",
-            typeParameters = listOf("T", "E"),
-            cases = listOf(
-                SwiftEnumCase(
-                    name = "success",
-                    associatedValues = listOf(
-                        SwiftEnumCase.AssociatedValue("value", SwiftType.Generic("T"))
-                    )
+        val spec =
+            SwiftEnumSpec(
+                name = "Result",
+                typeParameters = listOf("T", "E"),
+                cases =
+                listOf(
+                    SwiftEnumCase(
+                        name = "success",
+                        associatedValues =
+                        listOf(
+                            SwiftEnumCase.AssociatedValue("value", SwiftType.Generic("T")),
+                        ),
+                    ),
+                    SwiftEnumCase(
+                        name = "failure",
+                        associatedValues =
+                        listOf(
+                            SwiftEnumCase.AssociatedValue("error", SwiftType.Generic("E")),
+                        ),
+                    ),
                 ),
-                SwiftEnumCase(
-                    name = "failure",
-                    associatedValues = listOf(
-                        SwiftEnumCase.AssociatedValue("error", SwiftType.Generic("E"))
-                    )
-                )
             )
-        )
 
         assertEquals(listOf("T", "E"), spec.typeParameters)
     }
 
     @Test
     fun `enum spec can conform to protocols`() {
-        val spec = SwiftEnumSpec(
-            name = "Status",
-            cases = listOf(SwiftEnumCase(name = "active")),
-            conformances = listOf("Hashable", "Codable")
-        )
+        val spec =
+            SwiftEnumSpec(
+                name = "Status",
+                cases = listOf(SwiftEnumCase(name = "active")),
+                conformances = listOf("Hashable", "Codable"),
+            )
 
         assertEquals(listOf("Hashable", "Codable"), spec.conformances)
     }
 
     @Test
     fun `enum case with multiple associated values`() {
-        val case = SwiftEnumCase(
-            name = "response",
-            associatedValues = listOf(
-                SwiftEnumCase.AssociatedValue("data", SwiftType.Named("Data")),
-                SwiftEnumCase.AssociatedValue("statusCode", SwiftType.Named("Int")),
-                SwiftEnumCase.AssociatedValue("headers", SwiftType.Named("[String: String]"))
+        val case =
+            SwiftEnumCase(
+                name = "response",
+                associatedValues =
+                listOf(
+                    SwiftEnumCase.AssociatedValue("data", SwiftType.Named("Data")),
+                    SwiftEnumCase.AssociatedValue("statusCode", SwiftType.Named("Int")),
+                    SwiftEnumCase.AssociatedValue("headers", SwiftType.Named("[String: String]")),
+                ),
             )
-        )
 
         assertEquals(3, case.associatedValues.size)
         assertEquals("data", case.associatedValues[0].label)

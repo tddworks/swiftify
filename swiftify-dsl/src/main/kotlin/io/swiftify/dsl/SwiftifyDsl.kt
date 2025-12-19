@@ -24,9 +24,7 @@ annotation class SwiftifyDsl
  * }
  * ```
  */
-fun swiftify(block: SwiftifySpecBuilder.() -> Unit): SwiftifySpec {
-    return SwiftifySpecBuilder().apply(block).build()
-}
+fun swiftify(block: SwiftifySpecBuilder.() -> Unit): SwiftifySpec = SwiftifySpecBuilder().apply(block).build()
 
 /**
  * The complete Swiftify configuration specification.
@@ -38,7 +36,7 @@ data class SwiftifySpec(
     val flowRules: List<FlowRule>,
     val packageRules: Map<String, PackageSpec>,
     val explicitMappings: Map<String, ExplicitMapping>,
-    val typeMappings: Map<String, String>
+    val typeMappings: Map<String, String>,
 ) {
     data class Defaults(
         val transformSealedClassesToEnums: Boolean = true,
@@ -49,36 +47,36 @@ data class SwiftifySpec(
          * If true, only process functions with explicit annotations (@SwiftDefaults, @SwiftFlow).
          * If false, process all suspend functions and Flow returns based on DSL rules.
          */
-        val requireAnnotations: Boolean = true
+        val requireAnnotations: Boolean = true,
     )
 }
 
 data class SealedClassRule(
     val exhaustive: Boolean = true,
-    val conformances: List<String> = emptyList()
+    val conformances: List<String> = emptyList(),
 )
 
 /**
  * Rule for generating convenience overloads for functions with default parameters.
  */
 data class DefaultParameterRule(
-    val maxOverloads: Int = 5
+    val maxOverloads: Int = 5,
 )
 
 data class FlowRule(
-    val useAsyncStream: Boolean = true
+    val useAsyncStream: Boolean = true,
 )
 
 data class PackageSpec(
     val sealedClassRules: List<SealedClassRule> = emptyList(),
-    val defaultParameterRules: List<DefaultParameterRule> = emptyList()
+    val defaultParameterRules: List<DefaultParameterRule> = emptyList(),
 )
 
 data class ExplicitMapping(
     val swiftName: String,
     val exhaustive: Boolean = true,
     val conformances: List<String> = emptyList(),
-    val caseRenamings: Map<String, String> = emptyMap()
+    val caseRenamings: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -113,7 +111,10 @@ class SwiftifySpecBuilder {
         flowRules += FlowRuleBuilder().apply(block).build()
     }
 
-    fun inPackage(packageName: String, block: PackageSpecBuilder.() -> Unit) {
+    fun inPackage(
+        packageName: String,
+        block: PackageSpecBuilder.() -> Unit,
+    ) {
         packageRules[packageName] = PackageSpecBuilder().apply(block).build()
     }
 
@@ -132,16 +133,19 @@ class SwiftifySpecBuilder {
         flowRules = flowRules.toList(),
         packageRules = packageRules.toMap(),
         explicitMappings = explicitMappings.toMap(),
-        typeMappings = typeMappings.toMap()
+        typeMappings = typeMappings.toMap(),
     )
 }
 
 @SwiftifyDsl
-class DefaultsBuilder(private var current: SwiftifySpec.Defaults) {
+class DefaultsBuilder(
+    private var current: SwiftifySpec.Defaults,
+) {
     var transformSealedClassesToEnums: Boolean = current.transformSealedClassesToEnums
     var generateDefaultOverloads: Boolean = current.generateDefaultOverloads
     var transformFlowToAsyncStream: Boolean = current.transformFlowToAsyncStream
     var maxDefaultOverloads: Int = current.maxDefaultOverloads
+
     /**
      * If true, only process functions with explicit annotations (@SwiftDefaults, @SwiftFlow).
      * If false, process all matching functions based on DSL rules.
@@ -153,7 +157,7 @@ class DefaultsBuilder(private var current: SwiftifySpec.Defaults) {
         generateDefaultOverloads = generateDefaultOverloads,
         transformFlowToAsyncStream = transformFlowToAsyncStream,
         maxDefaultOverloads = maxDefaultOverloads,
-        requireAnnotations = requireAnnotations
+        requireAnnotations = requireAnnotations,
     )
 }
 
@@ -172,7 +176,7 @@ class SealedClassRuleBuilder {
 
     fun build() = SealedClassRule(
         exhaustive = exhaustive,
-        conformances = conformances.toList()
+        conformances = conformances.toList(),
     )
 }
 
@@ -223,7 +227,7 @@ class PackageSpecBuilder {
 
     fun build() = PackageSpec(
         sealedClassRules = sealedClassRules.toList(),
-        defaultParameterRules = defaultParameterRules.toList()
+        defaultParameterRules = defaultParameterRules.toList(),
     )
 }
 
@@ -238,7 +242,10 @@ class ExplicitMappingBuilder {
         conformances += protocols
     }
 
-    fun case(kotlinName: String, swiftName: String) {
+    fun case(
+        kotlinName: String,
+        swiftName: String,
+    ) {
         caseRenamings[kotlinName] = swiftName
     }
 
@@ -246,12 +253,14 @@ class ExplicitMappingBuilder {
         swiftName = name,
         exhaustive = exhaustive,
         conformances = conformances.toList(),
-        caseRenamings = caseRenamings.toMap()
+        caseRenamings = caseRenamings.toMap(),
     )
 }
 
 @SwiftifyDsl
-class TypeMappingBuilder(private val mappings: MutableMap<String, String>) {
+class TypeMappingBuilder(
+    private val mappings: MutableMap<String, String>,
+) {
     infix fun String.mapTo(swiftType: String) {
         mappings[this] = swiftType
     }

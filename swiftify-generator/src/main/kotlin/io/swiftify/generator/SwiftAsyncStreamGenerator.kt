@@ -12,7 +12,6 @@ import io.swiftify.swift.SwiftifyValidationException
  * using Swift's AsyncStream API.
  */
 class SwiftAsyncStreamGenerator {
-
     /**
      * Generate Swift AsyncSequence declaration (signature only).
      *
@@ -29,7 +28,7 @@ class SwiftAsyncStreamGenerator {
                 "Failed to generate Swift AsyncSequence",
                 specType = "asyncSequence",
                 specName = spec.name,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -40,7 +39,10 @@ class SwiftAsyncStreamGenerator {
      * @param className The Kotlin class name that contains this method/property
      * @return Complete Swift function/property with bridging implementation
      */
-    fun generateWithImplementation(spec: SwiftAsyncStreamSpec, className: String? = null): String {
+    fun generateWithImplementation(
+        spec: SwiftAsyncStreamSpec,
+        className: String? = null,
+    ): String {
         validate(spec)
         return try {
             generateImplementation(spec, className)
@@ -50,7 +52,7 @@ class SwiftAsyncStreamGenerator {
                 "Failed to generate Swift AsyncSequence implementation",
                 specType = "asyncSequence",
                 specName = spec.name,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -59,18 +61,22 @@ class SwiftAsyncStreamGenerator {
         val errors = mutableListOf<SwiftifyValidationException.ValidationError>()
 
         if (spec.name.isBlank()) {
-            errors.add(SwiftifyValidationException.ValidationError(
-                "AsyncSequence name cannot be blank",
-                field = "name"
-            ))
+            errors.add(
+                SwiftifyValidationException.ValidationError(
+                    "AsyncSequence name cannot be blank",
+                    field = "name",
+                ),
+            )
         }
 
         spec.parameters.forEachIndexed { index, param ->
             if (param.name.isBlank()) {
-                errors.add(SwiftifyValidationException.ValidationError(
-                    "Parameter name cannot be blank",
-                    field = "parameters[$index].name"
-                ))
+                errors.add(
+                    SwiftifyValidationException.ValidationError(
+                        "Parameter name cannot be blank",
+                        field = "parameters[$index].name",
+                    ),
+                )
             }
         }
 
@@ -143,14 +149,19 @@ class SwiftAsyncStreamGenerator {
                 append(">")
             }
             append("(")
-            append(spec.parameters.joinToString(", ") { param ->
-                buildString {
-                    if (param.externalName == "_") append("_ ")
-                    else if (param.externalName != null) append("${param.externalName} ")
-                    append("${param.name}: ${param.type.swiftRepresentation}")
-                    if (param.defaultValue != null) append(" = ${param.defaultValue}")
-                }
-            })
+            append(
+                spec.parameters.joinToString(", ") { param ->
+                    buildString {
+                        if (param.externalName == "_") {
+                            append("_ ")
+                        } else if (param.externalName != null) {
+                            append("${param.externalName} ")
+                        }
+                        append("${param.name}: ${param.type.swiftRepresentation}")
+                        if (param.defaultValue != null) append(" = ${param.defaultValue}")
+                    }
+                },
+            )
             append(")")
             append(" -> ")
             appendLine("$streamType {")
@@ -179,7 +190,10 @@ class SwiftAsyncStreamGenerator {
         }
     }
 
-    private fun generateImplementation(spec: SwiftAsyncStreamSpec, className: String?): String = buildString {
+    private fun generateImplementation(
+        spec: SwiftAsyncStreamSpec,
+        className: String?,
+    ): String = buildString {
         val elementTypeStr = spec.elementType.swiftRepresentation
         val streamType = "AsyncStream<$elementTypeStr>"
 
@@ -201,7 +215,10 @@ class SwiftAsyncStreamGenerator {
         }
     }
 
-    private fun StringBuilder.generatePropertySignature(spec: SwiftAsyncStreamSpec, streamType: String) {
+    private fun StringBuilder.generatePropertySignature(
+        spec: SwiftAsyncStreamSpec,
+        streamType: String,
+    ) {
         // Add "Stream" suffix to avoid naming collision with Kotlin property
         val swiftPropertyName = "${spec.name}Stream"
         append(spec.accessLevel.swiftKeyword)
@@ -214,7 +231,7 @@ class SwiftAsyncStreamGenerator {
     private fun StringBuilder.generatePropertyImplementation(
         spec: SwiftAsyncStreamSpec,
         streamType: String,
-        className: String?
+        className: String?,
     ) {
         val elementTypeStr = spec.elementType.swiftRepresentation
         val baseIndent = if (className != null) "    " else ""
@@ -254,7 +271,10 @@ class SwiftAsyncStreamGenerator {
         append("}")
     }
 
-    private fun StringBuilder.generateFunctionSignature(spec: SwiftAsyncStreamSpec, streamType: String) {
+    private fun StringBuilder.generateFunctionSignature(
+        spec: SwiftAsyncStreamSpec,
+        streamType: String,
+    ) {
         // Access level
         append(spec.accessLevel.swiftKeyword)
         append(" func ")
@@ -280,7 +300,7 @@ class SwiftAsyncStreamGenerator {
     private fun StringBuilder.generateFunctionImplementation(
         spec: SwiftAsyncStreamSpec,
         streamType: String,
-        className: String?
+        className: String?,
     ) {
         val elementTypeStr = spec.elementType.swiftRepresentation
         val baseIndent = if (className != null) "    " else ""
@@ -346,9 +366,10 @@ class SwiftAsyncStreamGenerator {
     }
 
     private val SwiftAsyncStreamSpec.AccessLevel.swiftKeyword: String
-        get() = when (this) {
-            SwiftAsyncStreamSpec.AccessLevel.PUBLIC -> "public"
-            SwiftAsyncStreamSpec.AccessLevel.INTERNAL -> "internal"
-            SwiftAsyncStreamSpec.AccessLevel.PRIVATE -> "private"
-        }
+        get() =
+            when (this) {
+                SwiftAsyncStreamSpec.AccessLevel.PUBLIC -> "public"
+                SwiftAsyncStreamSpec.AccessLevel.INTERNAL -> "internal"
+                SwiftAsyncStreamSpec.AccessLevel.PRIVATE -> "private"
+            }
 }

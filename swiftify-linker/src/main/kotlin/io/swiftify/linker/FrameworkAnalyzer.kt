@@ -8,7 +8,6 @@ import java.io.File
  * Single Responsibility: Extract framework information (name, binary, platform, arch).
  */
 class FrameworkAnalyzer {
-
     /**
      * Analyzes a framework and returns its information.
      *
@@ -16,10 +15,8 @@ class FrameworkAnalyzer {
      * @return FrameworkInfo with extracted metadata
      * @throws FrameworkAnalysisException if framework is invalid
      */
-    fun analyze(frameworkDir: File): FrameworkInfo {
-        return analyzeOrNull(frameworkDir)
-            ?: throw FrameworkAnalysisException("Invalid framework: ${frameworkDir.absolutePath}")
-    }
+    fun analyze(frameworkDir: File): FrameworkInfo = analyzeOrNull(frameworkDir)
+        ?: throw FrameworkAnalysisException("Invalid framework: ${frameworkDir.absolutePath}")
 
     /**
      * Analyzes a framework and returns its information, or null if invalid.
@@ -48,7 +45,7 @@ class FrameworkAnalyzer {
             name = name,
             binaryPath = binaryPath,
             platform = platform,
-            targetTriple = targetTriple
+            targetTriple = targetTriple,
         )
     }
 
@@ -60,7 +57,10 @@ class FrameworkAnalyzer {
         return dirName.removeSuffix(".framework")
     }
 
-    private fun locateBinary(frameworkDir: File, name: String): File? {
+    private fun locateBinary(
+        frameworkDir: File,
+        name: String,
+    ): File? {
         // Primary location: direct child with framework name
         val directBinary = File(frameworkDir, name)
         if (directBinary.exists()) {
@@ -106,22 +106,27 @@ class FrameworkAnalyzer {
     /**
      * Detect deployment target from framework's Info.plist.
      */
-    private fun detectDeploymentTarget(frameworkDir: File, platform: Platform): String {
+    private fun detectDeploymentTarget(
+        frameworkDir: File,
+        platform: Platform,
+    ): String {
         // Try to read from Info.plist (check multiple locations)
-        val possiblePaths = listOf(
-            File(frameworkDir, "Info.plist"),
-            File(frameworkDir, "Resources/Info.plist"),
-            File(frameworkDir, "Versions/A/Resources/Info.plist")
-        )
+        val possiblePaths =
+            listOf(
+                File(frameworkDir, "Info.plist"),
+                File(frameworkDir, "Resources/Info.plist"),
+                File(frameworkDir, "Versions/A/Resources/Info.plist"),
+            )
         val infoPlist = possiblePaths.firstOrNull { it.exists() }
         if (infoPlist != null) {
             try {
                 val content = infoPlist.readText()
                 // Look for MinimumOSVersion or similar keys
-                val versionRegex = when (platform) {
-                    Platform.MACOS -> Regex("""<key>LSMinimumSystemVersion</key>\s*<string>([^<]+)</string>""")
-                    else -> Regex("""<key>MinimumOSVersion</key>\s*<string>([^<]+)</string>""")
-                }
+                val versionRegex =
+                    when (platform) {
+                        Platform.MACOS -> Regex("""<key>LSMinimumSystemVersion</key>\s*<string>([^<]+)</string>""")
+                        else -> Regex("""<key>MinimumOSVersion</key>\s*<string>([^<]+)</string>""")
+                    }
                 val match = versionRegex.find(content)
                 if (match != null) {
                     return match.groupValues[1]
@@ -140,19 +145,25 @@ class FrameworkAnalyzer {
         }
     }
 
-    private fun buildTargetTriple(platform: Platform, arch: Architecture, deploymentTarget: String): String {
-        val archString = when (arch) {
-            Architecture.ARM64 -> "arm64"
-            Architecture.X64 -> "x86_64"
-            Architecture.ARM32 -> "armv7"
-        }
+    private fun buildTargetTriple(
+        platform: Platform,
+        arch: Architecture,
+        deploymentTarget: String,
+    ): String {
+        val archString =
+            when (arch) {
+                Architecture.ARM64 -> "arm64"
+                Architecture.X64 -> "x86_64"
+                Architecture.ARM32 -> "armv7"
+            }
 
-        val osString = when (platform) {
-            Platform.IOS -> "apple-ios$deploymentTarget"
-            Platform.MACOS -> "apple-macos$deploymentTarget"
-            Platform.WATCHOS -> "apple-watchos$deploymentTarget"
-            Platform.TVOS -> "apple-tvos$deploymentTarget"
-        }
+        val osString =
+            when (platform) {
+                Platform.IOS -> "apple-ios$deploymentTarget"
+                Platform.MACOS -> "apple-macos$deploymentTarget"
+                Platform.WATCHOS -> "apple-watchos$deploymentTarget"
+                Platform.TVOS -> "apple-tvos$deploymentTarget"
+            }
 
         return "$archString-$osString"
     }
@@ -169,7 +180,7 @@ data class FrameworkInfo(
     /** Target platform */
     val platform: Platform,
     /** Target triple for Swift compiler (e.g., "arm64-apple-macos") */
-    val targetTriple: String
+    val targetTriple: String,
 )
 
 /**
@@ -179,7 +190,7 @@ enum class Platform {
     IOS,
     MACOS,
     WATCHOS,
-    TVOS
+    TVOS,
 }
 
 /**
@@ -188,10 +199,12 @@ enum class Platform {
 enum class Architecture {
     ARM64,
     X64,
-    ARM32
+    ARM32,
 }
 
 /**
  * Exception thrown when framework analysis fails.
  */
-class FrameworkAnalysisException(message: String) : Exception(message)
+class FrameworkAnalysisException(
+    message: String,
+) : Exception(message)

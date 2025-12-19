@@ -6,13 +6,13 @@ package io.swiftify.generator
  * This includes helper classes like SwiftifyFlowCollector for Flow→AsyncStream bridging.
  */
 object SwiftRuntimeSupport {
-
     /**
      * Generate the complete runtime support Swift code.
      *
      * @param frameworkName The name of the Kotlin framework to import
      */
-    fun generate(frameworkName: String = "SharedKit"): String = """
+    fun generate(frameworkName: String = "SharedKit"): String =
+        """
         |// MARK: - Swiftify Runtime Support
         |// Helper classes for Kotlin/Swift bridging
         |
@@ -70,7 +70,7 @@ object SwiftRuntimeSupport {
         |        }
         |    }
         |}
-    """.trimMargin()
+        """.trimMargin()
 
     /**
      * The filename for the runtime support.

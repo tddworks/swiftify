@@ -1,7 +1,7 @@
 package io.swiftify.tests.acceptance
 
-import io.swiftify.generator.SwiftifyTransformer
 import io.swiftify.dsl.swiftify
+import io.swiftify.generator.SwiftifyTransformer
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
@@ -11,25 +11,26 @@ import kotlin.test.assertTrue
  * Uses DSL mode (requireAnnotations = false) to test transformation of all Flow functions.
  */
 class FlowAcceptanceTest {
-
     private val transformer = SwiftifyTransformer()
 
     // DSL mode config - process all functions without annotations
-    private val dslConfig = swiftify {
-        defaults {
-            requireAnnotations = false
+    private val dslConfig =
+        swiftify {
+            defaults {
+                requireAnnotations = false
+            }
         }
-    }
 
     @Test
     fun `Flow function transforms to AsyncStream`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             import kotlinx.coroutines.flow.Flow
 
             fun getUserUpdates(userId: String): Flow<User> {
                 return flowOf(User(userId))
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
@@ -40,11 +41,12 @@ class FlowAcceptanceTest {
 
     @Test
     fun `Flow property transforms to AsyncStream property`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             import kotlinx.coroutines.flow.StateFlow
 
             val currentUser: StateFlow<User?>
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
@@ -54,13 +56,14 @@ class FlowAcceptanceTest {
 
     @Test
     fun `SharedFlow transforms with replay support`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             import kotlinx.coroutines.flow.SharedFlow
 
             fun getEvents(): SharedFlow<Event> {
                 return MutableSharedFlow(replay = 1)
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 

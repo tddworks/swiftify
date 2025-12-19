@@ -5,7 +5,7 @@ package io.swiftify.swift
  */
 open class SwiftifyException(
     message: String,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : Exception(message, cause)
 
 /**
@@ -15,20 +15,21 @@ class SwiftifyAnalysisException(
     message: String,
     val sourceFile: String? = null,
     val lineNumber: Int? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(buildMessage(message, sourceFile, lineNumber), cause) {
-
     companion object {
-        private fun buildMessage(message: String, sourceFile: String?, lineNumber: Int?): String {
-            return buildString {
-                append(message)
-                if (sourceFile != null) {
-                    append(" (file: $sourceFile")
-                    if (lineNumber != null) {
-                        append(":$lineNumber")
-                    }
-                    append(")")
+        private fun buildMessage(
+            message: String,
+            sourceFile: String?,
+            lineNumber: Int?,
+        ): String = buildString {
+            append(message)
+            if (sourceFile != null) {
+                append(" (file: $sourceFile")
+                if (lineNumber != null) {
+                    append(":$lineNumber")
                 }
+                append(")")
             }
         }
     }
@@ -41,19 +42,20 @@ class SwiftifyGenerationException(
     message: String,
     val specType: String? = null,
     val specName: String? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(buildMessage(message, specType, specName), cause) {
-
     companion object {
-        private fun buildMessage(message: String, specType: String?, specName: String?): String {
-            return buildString {
-                append(message)
-                if (specType != null || specName != null) {
-                    append(" [")
-                    if (specType != null) append(specType)
-                    if (specName != null) append(": $specName")
-                    append("]")
-                }
+        private fun buildMessage(
+            message: String,
+            specType: String?,
+            specName: String?,
+        ): String = buildString {
+            append(message)
+            if (specType != null || specName != null) {
+                append(" [")
+                if (specType != null) append(specType)
+                if (specName != null) append(": $specName")
+                append("]")
             }
         }
     }
@@ -65,10 +67,10 @@ class SwiftifyGenerationException(
 class SwiftifyConfigurationException(
     message: String,
     val configKey: String? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(
     if (configKey != null) "$message (key: $configKey)" else message,
-    cause
+    cause,
 )
 
 /**
@@ -77,10 +79,10 @@ class SwiftifyConfigurationException(
 class SwiftifyFrameworkException(
     message: String,
     val frameworkName: String? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(
     if (frameworkName != null) "$message (framework: $frameworkName)" else message,
-    cause
+    cause,
 )
 
 /**
@@ -90,7 +92,7 @@ class SwiftifyCompilationException(
     message: String,
     val compilerOutput: String? = null,
     val exitCode: Int? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(message, cause)
 
 /**
@@ -99,10 +101,10 @@ class SwiftifyCompilationException(
 class SwiftifyKspException(
     message: String,
     val symbolName: String? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(
     if (symbolName != null) "$message (symbol: $symbolName)" else message,
-    cause
+    cause,
 )
 
 /**
@@ -111,35 +113,32 @@ class SwiftifyKspException(
 class SwiftifyFileException(
     message: String,
     val filePath: String? = null,
-    cause: Throwable? = null
+    cause: Throwable? = null,
 ) : SwiftifyException(
     if (filePath != null) "$message (path: $filePath)" else message,
-    cause
+    cause,
 )
 
 /**
  * Container for validation errors that can accumulate multiple issues.
  */
 class SwiftifyValidationException(
-    val errors: List<ValidationError>
+    val errors: List<ValidationError>,
 ) : SwiftifyException(buildMessage(errors)) {
-
     constructor(error: ValidationError) : this(listOf(error))
     constructor(message: String) : this(listOf(ValidationError(message)))
 
     companion object {
-        private fun buildMessage(errors: List<ValidationError>): String {
-            return if (errors.size == 1) {
-                errors.first().message
-            } else {
-                "Multiple validation errors:\n" + errors.joinToString("\n") { "  - ${it.message}" }
-            }
+        private fun buildMessage(errors: List<ValidationError>): String = if (errors.size == 1) {
+            errors.first().message
+        } else {
+            "Multiple validation errors:\n" + errors.joinToString("\n") { "  - ${it.message}" }
         }
     }
 
     data class ValidationError(
         val message: String,
         val field: String? = null,
-        val value: Any? = null
+        val value: Any? = null,
     )
 }

@@ -8,7 +8,6 @@ import java.io.File
  * Single Responsibility: Binary merging using ld.
  */
 class BinaryMerger {
-
     /**
      * Merges object files into the framework binary.
      *
@@ -16,7 +15,10 @@ class BinaryMerger {
      * @param config Merge configuration
      * @return MergeResult with success/failure status
      */
-    fun merge(objectFiles: List<File>, config: MergeConfig): MergeResult {
+    fun merge(
+        objectFiles: List<File>,
+        config: MergeConfig,
+    ): MergeResult {
         if (objectFiles.isEmpty()) {
             return MergeResult.Error("No object files provided")
         }
@@ -42,10 +44,11 @@ class BinaryMerger {
             // Create temp output to avoid overwriting original during merge
             val tempOutput = File(config.originalBinary.parentFile, "${config.originalBinary.name}.merged")
 
-            val process = ProcessBuilder(command)
-                .directory(config.originalBinary.parentFile)
-                .redirectErrorStream(true)
-                .start()
+            val process =
+                ProcessBuilder(command)
+                    .directory(config.originalBinary.parentFile)
+                    .redirectErrorStream(true)
+                    .start()
 
             val output = process.inputStream.bufferedReader().readText()
             val exitCode = process.waitFor()
@@ -71,10 +74,14 @@ class BinaryMerger {
      * Builds the ld command for merging.
      * Exposed for testing.
      */
-    fun buildCommand(objectFiles: List<File>, config: MergeConfig): List<String> {
+    fun buildCommand(
+        objectFiles: List<File>,
+        config: MergeConfig,
+    ): List<String> {
         val arch = extractArchitecture(config.targetTriple)
-        val outputFile = config.outputBinary
-            ?: File(config.originalBinary.parentFile, "${config.originalBinary.name}.merged")
+        val outputFile =
+            config.outputBinary
+                ?: File(config.originalBinary.parentFile, "${config.originalBinary.name}.merged")
 
         return buildList {
             add("ld")
@@ -98,13 +105,11 @@ class BinaryMerger {
         }
     }
 
-    private fun extractArchitecture(targetTriple: String): String {
-        return when {
-            targetTriple.startsWith("arm64") -> "arm64"
-            targetTriple.startsWith("x86_64") -> "x86_64"
-            targetTriple.startsWith("armv7") -> "armv7"
-            else -> "arm64" // Default
-        }
+    private fun extractArchitecture(targetTriple: String): String = when {
+        targetTriple.startsWith("arm64") -> "arm64"
+        targetTriple.startsWith("x86_64") -> "x86_64"
+        targetTriple.startsWith("armv7") -> "armv7"
+        else -> "arm64" // Default
     }
 }
 
@@ -121,7 +126,7 @@ data class MergeConfig(
     /** Dry run mode - don't execute, just return command */
     val dryRun: Boolean = false,
     /** Logger for output */
-    val logger: ((String) -> Unit)? = null
+    val logger: ((String) -> Unit)? = null,
 )
 
 /**
@@ -129,7 +134,12 @@ data class MergeConfig(
  */
 sealed class MergeResult {
     /** Successful merge with output binary path */
-    data class Success(val outputBinary: File) : MergeResult()
+    data class Success(
+        val outputBinary: File,
+    ) : MergeResult()
+
     /** Merge failed with error message */
-    data class Error(val message: String) : MergeResult()
+    data class Error(
+        val message: String,
+    ) : MergeResult()
 }

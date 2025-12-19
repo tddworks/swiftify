@@ -1,7 +1,7 @@
 package io.swiftify.tests.acceptance
 
-import io.swiftify.generator.SwiftifyTransformer
 import io.swiftify.dsl.swiftify
+import io.swiftify.generator.SwiftifyTransformer
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
@@ -11,23 +11,24 @@ import kotlin.test.assertTrue
  * Uses DSL mode (requireAnnotations = false) to test transformation of all suspend functions.
  */
 class SuspendFunctionAcceptanceTest {
-
     private val transformer = SwiftifyTransformer()
 
     // DSL mode config - process all functions without annotations
-    private val dslConfig = swiftify {
-        defaults {
-            requireAnnotations = false
+    private val dslConfig =
+        swiftify {
+            defaults {
+                requireAnnotations = false
+            }
         }
-    }
 
     @Test
     fun `simple suspend function transforms to async`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             suspend fun fetchUser(id: String): User {
                 return User(id)
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
@@ -38,11 +39,12 @@ class SuspendFunctionAcceptanceTest {
 
     @Test
     fun `suspend function with multiple parameters transforms correctly`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             suspend fun login(username: String, password: String): AuthResult {
                 return AuthResult.Success
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
@@ -55,11 +57,12 @@ class SuspendFunctionAcceptanceTest {
 
     @Test
     fun `suspend function returning Unit transforms correctly`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             suspend fun logout() {
                 // logout logic
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
@@ -70,11 +73,12 @@ class SuspendFunctionAcceptanceTest {
 
     @Test
     fun `throwing suspend function has throws modifier`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             suspend fun riskyOperation(): String {
                 throw Exception("Error")
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 

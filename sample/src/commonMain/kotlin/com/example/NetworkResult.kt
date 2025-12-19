@@ -7,8 +7,15 @@ import io.swiftify.annotations.SwiftEnum
  */
 @SwiftEnum(name = "NetworkResult", exhaustive = true)
 sealed class NetworkResult<out T> {
-    data class Success<T>(val data: T) : NetworkResult<T>()
-    data class Error(val message: String, val code: Int) : NetworkResult<Nothing>()
+    data class Success<T>(
+        val data: T,
+    ) : NetworkResult<T>()
+
+    data class Error(
+        val message: String,
+        val code: Int,
+    ) : NetworkResult<Nothing>()
+
     data object Loading : NetworkResult<Nothing>()
 }
 
@@ -17,6 +24,13 @@ sealed class NetworkResult<out T> {
  */
 sealed class AuthState {
     data object LoggedOut : AuthState()
-    data class LoggedIn(val userId: String, val token: String) : AuthState()
-    data class Error(val reason: String) : AuthState()
+
+    data class LoggedIn(
+        val userId: String,
+        val token: String,
+    ) : AuthState()
+
+    data class Error(
+        val reason: String,
+    ) : AuthState()
 }

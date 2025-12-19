@@ -4,15 +4,14 @@ import io.swiftify.annotations.SwiftDefaults
 import io.swiftify.annotations.SwiftFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
 
 /**
  * Sample repository with suspend functions and Flow.
  */
 class UserRepository {
-
     private val _currentUser = MutableStateFlow(User("current", "Current User", "current@example.com"))
 
     /**
@@ -37,7 +36,7 @@ class UserRepository {
     suspend fun fetchUserWithOptions(
         id: String,
         includeProfile: Boolean = true,
-        limit: Int = 10
+        limit: Int = 10,
     ): User {
         delay(500) // Simulate network delay
         return User(id = id, name = "John", email = "john@example.com")
@@ -60,7 +59,10 @@ class UserRepository {
      * Login user.
      */
     @SwiftDefaults
-    suspend fun login(username: String, password: String): NetworkResult<User> {
+    suspend fun login(
+        username: String,
+        password: String,
+    ): NetworkResult<User> {
         delay(500) // Simulate network delay
         val user = User("1", username, "$username@example.com")
         _currentUser.value = user
@@ -83,5 +85,5 @@ class UserRepository {
 data class User(
     val id: String,
     val name: String,
-    val email: String
+    val email: String,
 )

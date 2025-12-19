@@ -12,16 +12,16 @@ import kotlin.test.assertTrue
  * TDD RED PHASE: Tests for Swift async function code generation.
  */
 class SwiftDefaultsGeneratorTest {
-
     private val generator = SwiftDefaultsGenerator()
 
     @Test
     fun `generates simple async function`() {
-        val spec = SwiftDefaultsSpec(
-            name = "fetchData",
-            parameters = emptyList(),
-            returnType = SwiftType.Named("String")
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "fetchData",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("String"),
+            )
 
         val result = generator.generate(spec)
 
@@ -31,14 +31,16 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async throwing function`() {
-        val spec = SwiftDefaultsSpec(
-            name = "loadResource",
-            parameters = listOf(
-                SwiftParameter(name = "url", type = SwiftType.Named("URL"))
-            ),
-            returnType = SwiftType.Named("Data"),
-            isThrowing = true
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "loadResource",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "url", type = SwiftType.Named("URL")),
+                ),
+                returnType = SwiftType.Named("Data"),
+                isThrowing = true,
+            )
 
         val result = generator.generate(spec)
 
@@ -48,13 +50,15 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async function with void return`() {
-        val spec = SwiftDefaultsSpec(
-            name = "saveData",
-            parameters = listOf(
-                SwiftParameter(name = "data", type = SwiftType.Named("Data"))
-            ),
-            returnType = SwiftType.Void
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "saveData",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "data", type = SwiftType.Named("Data")),
+                ),
+                returnType = SwiftType.Void,
+            )
 
         val result = generator.generate(spec)
 
@@ -64,15 +68,17 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async function with multiple parameters`() {
-        val spec = SwiftDefaultsSpec(
-            name = "search",
-            parameters = listOf(
-                SwiftParameter(name = "query", type = SwiftType.Named("String")),
-                SwiftParameter(name = "limit", type = SwiftType.Named("Int")),
-                SwiftParameter(name = "offset", type = SwiftType.Named("Int"))
-            ),
-            returnType = SwiftType.Array(SwiftType.Named("Result"))
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "search",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "query", type = SwiftType.Named("String")),
+                    SwiftParameter(name = "limit", type = SwiftType.Named("Int")),
+                    SwiftParameter(name = "offset", type = SwiftType.Named("Int")),
+                ),
+                returnType = SwiftType.Array(SwiftType.Named("Result")),
+            )
 
         val result = generator.generate(spec)
 
@@ -82,17 +88,19 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async function with external parameter names`() {
-        val spec = SwiftDefaultsSpec(
-            name = "move",
-            parameters = listOf(
-                SwiftParameter(
-                    name = "point",
-                    externalName = "to",
-                    type = SwiftType.Named("Point")
-                )
-            ),
-            returnType = SwiftType.Void
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "move",
+                parameters =
+                listOf(
+                    SwiftParameter(
+                        name = "point",
+                        externalName = "to",
+                        type = SwiftType.Named("Point"),
+                    ),
+                ),
+                returnType = SwiftType.Void,
+            )
 
         val result = generator.generate(spec)
 
@@ -102,17 +110,19 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async function with no argument label`() {
-        val spec = SwiftDefaultsSpec(
-            name = "print",
-            parameters = listOf(
-                SwiftParameter(
-                    name = "message",
-                    externalName = "_",
-                    type = SwiftType.Named("String")
-                )
-            ),
-            returnType = SwiftType.Void
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "print",
+                parameters =
+                listOf(
+                    SwiftParameter(
+                        name = "message",
+                        externalName = "_",
+                        type = SwiftType.Named("String"),
+                    ),
+                ),
+                returnType = SwiftType.Void,
+            )
 
         val result = generator.generate(spec)
 
@@ -122,14 +132,16 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates generic async function`() {
-        val spec = SwiftDefaultsSpec(
-            name = "fetch",
-            typeParameters = listOf("T"),
-            parameters = listOf(
-                SwiftParameter(name = "request", type = SwiftType.Named("Request"))
-            ),
-            returnType = SwiftType.Generic("T")
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "fetch",
+                typeParameters = listOf("T"),
+                parameters =
+                listOf(
+                    SwiftParameter(name = "request", type = SwiftType.Named("Request")),
+                ),
+                returnType = SwiftType.Generic("T"),
+            )
 
         val result = generator.generate(spec)
 
@@ -139,18 +151,20 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async function with default parameter values`() {
-        val spec = SwiftDefaultsSpec(
-            name = "query",
-            parameters = listOf(
-                SwiftParameter(name = "sql", type = SwiftType.Named("String")),
-                SwiftParameter(
-                    name = "timeout",
-                    type = SwiftType.Named("Int"),
-                    defaultValue = "30"
-                )
-            ),
-            returnType = SwiftType.Array(SwiftType.Named("Row"))
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "query",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "sql", type = SwiftType.Named("String")),
+                    SwiftParameter(
+                        name = "timeout",
+                        type = SwiftType.Named("Int"),
+                        defaultValue = "30",
+                    ),
+                ),
+                returnType = SwiftType.Array(SwiftType.Named("Row")),
+            )
 
         val result = generator.generate(spec)
 
@@ -160,12 +174,13 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates internal async function`() {
-        val spec = SwiftDefaultsSpec(
-            name = "internalFetch",
-            parameters = emptyList(),
-            returnType = SwiftType.Named("Data"),
-            accessLevel = SwiftDefaultsSpec.AccessLevel.INTERNAL
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "internalFetch",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Data"),
+                accessLevel = SwiftDefaultsSpec.AccessLevel.INTERNAL,
+            )
 
         val result = generator.generate(spec)
 
@@ -174,13 +189,15 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `generates async function with optional return type`() {
-        val spec = SwiftDefaultsSpec(
-            name = "findUser",
-            parameters = listOf(
-                SwiftParameter(name = "id", type = SwiftType.Named("Int"))
-            ),
-            returnType = SwiftType.Optional(SwiftType.Named("User"))
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "findUser",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "id", type = SwiftType.Named("Int")),
+                ),
+                returnType = SwiftType.Optional(SwiftType.Named("User")),
+            )
 
         val result = generator.generate(spec)
 
@@ -193,13 +210,15 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `convenience overloads returns empty for function without defaults`() {
-        val spec = SwiftDefaultsSpec(
-            name = "simpleFunc",
-            parameters = listOf(
-                SwiftParameter(name = "value", type = SwiftType.Named("Int"))
-            ),
-            returnType = SwiftType.Void
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "simpleFunc",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "value", type = SwiftType.Named("Int")),
+                ),
+                returnType = SwiftType.Void,
+            )
 
         val result = generator.generateConvenienceOverloads(spec, "MyClass")
 
@@ -209,19 +228,21 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `convenience overloads generates distinct overloads for single default param`() {
-        val spec = SwiftDefaultsSpec(
-            name = "fetchUser",
-            parameters = listOf(
-                SwiftParameter(name = "id", type = SwiftType.Named("String")),
-                SwiftParameter(
-                    name = "includeProfile",
-                    type = SwiftType.Named("Bool"),
-                    defaultValue = "true"
-                )
-            ),
-            returnType = SwiftType.Named("User"),
-            isThrowing = true
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "fetchUser",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "id", type = SwiftType.Named("String")),
+                    SwiftParameter(
+                        name = "includeProfile",
+                        type = SwiftType.Named("Bool"),
+                        defaultValue = "true",
+                    ),
+                ),
+                returnType = SwiftType.Named("User"),
+                isThrowing = true,
+            )
 
         val result = generator.generateConvenienceOverloads(spec, "MyClass")
 
@@ -237,24 +258,26 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `convenience overloads generates multiple overloads for multiple defaults`() {
-        val spec = SwiftDefaultsSpec(
-            name = "search",
-            parameters = listOf(
-                SwiftParameter(name = "query", type = SwiftType.Named("String")),
-                SwiftParameter(
-                    name = "limit",
-                    type = SwiftType.Named("Int"),
-                    defaultValue = "10"
+        val spec =
+            SwiftDefaultsSpec(
+                name = "search",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "query", type = SwiftType.Named("String")),
+                    SwiftParameter(
+                        name = "limit",
+                        type = SwiftType.Named("Int"),
+                        defaultValue = "10",
+                    ),
+                    SwiftParameter(
+                        name = "offset",
+                        type = SwiftType.Named("Int"),
+                        defaultValue = "0",
+                    ),
                 ),
-                SwiftParameter(
-                    name = "offset",
-                    type = SwiftType.Named("Int"),
-                    defaultValue = "0"
-                )
-            ),
-            returnType = SwiftType.Array(SwiftType.Named("Result")),
-            isThrowing = true
-        )
+                returnType = SwiftType.Array(SwiftType.Named("Result")),
+                isThrowing = true,
+            )
 
         val result = generator.generateConvenienceOverloads(spec, "SearchService")
 
@@ -270,19 +293,21 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `convenience overload bodies returns list of function bodies`() {
-        val spec = SwiftDefaultsSpec(
-            name = "getData",
-            parameters = listOf(
-                SwiftParameter(name = "id", type = SwiftType.Named("Int")),
-                SwiftParameter(
-                    name = "cache",
-                    type = SwiftType.Named("Bool"),
-                    defaultValue = "true"
-                )
-            ),
-            returnType = SwiftType.Named("Data"),
-            isThrowing = true
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "getData",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "id", type = SwiftType.Named("Int")),
+                    SwiftParameter(
+                        name = "cache",
+                        type = SwiftType.Named("Bool"),
+                        defaultValue = "true",
+                    ),
+                ),
+                returnType = SwiftType.Named("Data"),
+                isThrowing = true,
+            )
 
         val result = generator.generateConvenienceOverloadBodies(spec)
 
@@ -294,14 +319,16 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `convenience overload bodies returns empty list when no defaults`() {
-        val spec = SwiftDefaultsSpec(
-            name = "noDefaults",
-            parameters = listOf(
-                SwiftParameter(name = "a", type = SwiftType.Named("Int")),
-                SwiftParameter(name = "b", type = SwiftType.Named("String"))
-            ),
-            returnType = SwiftType.Void
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "noDefaults",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "a", type = SwiftType.Named("Int")),
+                    SwiftParameter(name = "b", type = SwiftType.Named("String")),
+                ),
+                returnType = SwiftType.Void,
+            )
 
         val result = generator.generateConvenienceOverloadBodies(spec)
 
@@ -311,18 +338,20 @@ class SwiftDefaultsGeneratorTest {
 
     @Test
     fun `convenience overloads without class name generates top-level functions`() {
-        val spec = SwiftDefaultsSpec(
-            name = "topLevelFunc",
-            parameters = listOf(
-                SwiftParameter(name = "x", type = SwiftType.Named("Int")),
-                SwiftParameter(
-                    name = "y",
-                    type = SwiftType.Named("Int"),
-                    defaultValue = "0"
-                )
-            ),
-            returnType = SwiftType.Void
-        )
+        val spec =
+            SwiftDefaultsSpec(
+                name = "topLevelFunc",
+                parameters =
+                listOf(
+                    SwiftParameter(name = "x", type = SwiftType.Named("Int")),
+                    SwiftParameter(
+                        name = "y",
+                        type = SwiftType.Named("Int"),
+                        defaultValue = "0",
+                    ),
+                ),
+                returnType = SwiftType.Void,
+            )
 
         val result = generator.generateConvenienceOverloads(spec, className = null)
 

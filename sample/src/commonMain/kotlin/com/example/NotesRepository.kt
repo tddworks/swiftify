@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.flow
  * - @SwiftFlow: Kotlin Flow → Swift AsyncStream
  */
 class NotesRepository {
-
     private val _notes = MutableStateFlow<List<Note>>(sampleNotes())
     private var nextId = 100
 
@@ -36,7 +35,7 @@ class NotesRepository {
     @SwiftDefaults
     suspend fun getNotes(
         limit: Int = 10,
-        includeArchived: Boolean = false
+        includeArchived: Boolean = false,
     ): List<Note> {
         delay(100)
         return _notes.value
@@ -64,15 +63,16 @@ class NotesRepository {
     suspend fun createNote(
         title: String,
         content: String = "",
-        pinned: Boolean = false
+        pinned: Boolean = false,
     ): Note {
         delay(100)
-        val note = Note(
-            id = "note_${nextId++}",
-            title = title,
-            content = content,
-            pinned = pinned
-        )
+        val note =
+            Note(
+                id = "note_${nextId++}",
+                title = title,
+                content = content,
+                pinned = pinned,
+            )
         _notes.value = listOf(note) + _notes.value
         return note
     }
@@ -102,7 +102,7 @@ class NotesRepository {
     private fun sampleNotes() = listOf(
         Note("1", "Welcome", "Welcome to Swiftify!", pinned = true),
         Note("2", "Shopping List", "Milk, Eggs, Bread"),
-        Note("3", "Ideas", "Build something awesome")
+        Note("3", "Ideas", "Build something awesome"),
     )
 }
 
@@ -111,5 +111,5 @@ data class Note(
     val title: String,
     val content: String = "",
     val pinned: Boolean = false,
-    val archived: Boolean = false
+    val archived: Boolean = false,
 )

@@ -20,7 +20,6 @@ import java.io.File
  * ```
  */
 abstract class SwiftifyPreviewTask : DefaultTask() {
-
     /**
      * Specific class to preview. If not set, previews all transformable declarations.
      */
@@ -87,32 +86,43 @@ abstract class SwiftifyPreviewTask : DefaultTask() {
         }
 
         // Fall back to finding sources in the project
-        val srcDirs = listOf(
-            project.file("src/commonMain/kotlin"),
-            project.file("src/main/kotlin"),
-            project.file("src/iosMain/kotlin")
-        )
+        val srcDirs =
+            listOf(
+                project.file("src/commonMain/kotlin"),
+                project.file("src/main/kotlin"),
+                project.file("src/iosMain/kotlin"),
+            )
 
-        return srcDirs.filter { it.exists() }
+        return srcDirs
+            .filter { it.exists() }
             .flatMap { it.walkTopDown().filter { f -> f.extension == "kt" }.toList() }
     }
 
-    private fun buildPreviewHeader(): String = """
+    private fun buildPreviewHeader(): String =
+        """
         |
         |╔════════════════════════════════════════════════════════════════╗
         |║                    Swiftify Preview                            ║
         |╚════════════════════════════════════════════════════════════════╝
         |
-    """.trimMargin()
+        """.trimMargin()
 
-    private fun buildPreview(fileName: String, kotlinSource: String, swiftCode: String): String {
-        val kotlinPreview = kotlinSource.lines()
-            .filter { it.isNotBlank() }
-            .take(15)
-            .joinToString("\n") { "│ $it" }
+    private fun buildPreview(
+        fileName: String,
+        kotlinSource: String,
+        swiftCode: String,
+    ): String {
+        val kotlinPreview =
+            kotlinSource
+                .lines()
+                .filter { it.isNotBlank() }
+                .take(15)
+                .joinToString("\n") { "│ $it" }
 
-        val swiftPreview = swiftCode.lines()
-            .joinToString("\n") { "│ $it" }
+        val swiftPreview =
+            swiftCode
+                .lines()
+                .joinToString("\n") { "│ $it" }
 
         return """
             |┌─────────────────────────────────────────────────────────────────

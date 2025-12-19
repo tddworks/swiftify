@@ -12,6 +12,7 @@ import kotlin.time.TimeSource
 // Multiplatform time helper
 private val timeSource = TimeSource.Monotonic
 private val startMark = timeSource.markNow()
+
 private fun currentTimeMillis(): Long = startMark.elapsedNow().inWholeMilliseconds
 
 /**
@@ -19,7 +20,6 @@ private fun currentTimeMillis(): Long = startMark.elapsedNow().inWholeMillisecon
  * Common patterns for real-time messaging apps
  */
 class ChatRepository {
-
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
     private val _unreadCount = MutableStateFlow(0)
 
@@ -65,7 +65,7 @@ class ChatRepository {
     @SwiftDefaults
     suspend fun getConversations(
         page: Int = 1,
-        includeArchived: Boolean = false
+        includeArchived: Boolean = false,
     ): List<Conversation> {
         delay(200)
         return listOf(
@@ -75,7 +75,7 @@ class ChatRepository {
                 lastMessage = "Hey, how are you?",
                 lastMessageTime = currentTimeMillis() - 60000,
                 unreadCount = 2,
-                isOnline = true
+                isOnline = true,
             ),
             Conversation(
                 id = "conv_2",
@@ -83,7 +83,7 @@ class ChatRepository {
                 lastMessage = "See you tomorrow!",
                 lastMessageTime = currentTimeMillis() - 3600000,
                 unreadCount = 0,
-                isOnline = false
+                isOnline = false,
             ),
             Conversation(
                 id = "conv_3",
@@ -91,8 +91,8 @@ class ChatRepository {
                 lastMessage = "Meeting at 3pm",
                 lastMessageTime = currentTimeMillis() - 7200000,
                 unreadCount = 5,
-                isOnline = true
-            )
+                isOnline = true,
+            ),
         )
     }
 
@@ -103,23 +103,24 @@ class ChatRepository {
     suspend fun getMessages(
         conversationId: String,
         beforeMessageId: String? = null,
-        limit: Int = 50
+        limit: Int = 50,
     ): MessagePage {
         delay(150)
-        val messages = (1..limit).map { i ->
-            Message(
-                id = "msg_${conversationId}_$i",
-                conversationId = conversationId,
-                senderId = if (i % 2 == 0) "me" else "other",
-                content = "Message $i in conversation $conversationId",
-                timestamp = currentTimeMillis() - (i * 60000L),
-                status = if (i % 2 == 0) MessageStatus.READ else MessageStatus.DELIVERED
-            )
-        }
+        val messages =
+            (1..limit).map { i ->
+                Message(
+                    id = "msg_${conversationId}_$i",
+                    conversationId = conversationId,
+                    senderId = if (i % 2 == 0) "me" else "other",
+                    content = "Message $i in conversation $conversationId",
+                    timestamp = currentTimeMillis() - (i * 60000L),
+                    status = if (i % 2 == 0) MessageStatus.READ else MessageStatus.DELIVERED,
+                )
+            }
         return MessagePage(
             messages = messages,
             hasMore = true,
-            oldestMessageId = messages.lastOrNull()?.id
+            oldestMessageId = messages.lastOrNull()?.id,
         )
     }
 
@@ -131,7 +132,7 @@ class ChatRepository {
     @SwiftDefaults
     suspend fun sendMessage(
         conversationId: String,
-        content: String
+        content: String,
     ): Message {
         delay(100)
         return Message(
@@ -140,7 +141,7 @@ class ChatRepository {
             senderId = "me",
             content = content,
             timestamp = currentTimeMillis(),
-            status = MessageStatus.SENT
+            status = MessageStatus.SENT,
         )
     }
 
@@ -152,7 +153,7 @@ class ChatRepository {
         conversationId: String,
         content: String,
         attachmentType: AttachmentType,
-        attachmentUrl: String
+        attachmentUrl: String,
     ): Message {
         delay(300) // Longer for upload simulation
         return Message(
@@ -162,7 +163,7 @@ class ChatRepository {
             content = content,
             timestamp = currentTimeMillis(),
             status = MessageStatus.SENT,
-            attachment = Attachment(attachmentType, attachmentUrl)
+            attachment = Attachment(attachmentType, attachmentUrl),
         )
     }
 
@@ -186,14 +187,16 @@ class ChatRepository {
         while (true) {
             delay(3000) // New message every 3 seconds for demo
             messageCount++
-            emit(Message(
-                id = "realtime_msg_$messageCount",
-                conversationId = conversationId,
-                senderId = "other",
-                content = "New incoming message #$messageCount",
-                timestamp = currentTimeMillis(),
-                status = MessageStatus.DELIVERED
-            ))
+            emit(
+                Message(
+                    id = "realtime_msg_$messageCount",
+                    conversationId = conversationId,
+                    senderId = "other",
+                    content = "New incoming message #$messageCount",
+                    timestamp = currentTimeMillis(),
+                    status = MessageStatus.DELIVERED,
+                ),
+            )
             _unreadCount.value++
         }
     }
@@ -232,7 +235,7 @@ enum class ConnectionState {
     DISCONNECTED,
     CONNECTING,
     CONNECTED,
-    RECONNECTING
+    RECONNECTING,
 }
 
 data class Conversation(
@@ -241,7 +244,7 @@ data class Conversation(
     val lastMessage: String,
     val lastMessageTime: Long,
     val unreadCount: Int,
-    val isOnline: Boolean
+    val isOnline: Boolean,
 )
 
 data class Message(
@@ -251,13 +254,13 @@ data class Message(
     val content: String,
     val timestamp: Long,
     val status: MessageStatus,
-    val attachment: Attachment? = null
+    val attachment: Attachment? = null,
 )
 
 data class MessagePage(
     val messages: List<Message>,
     val hasMore: Boolean,
-    val oldestMessageId: String?
+    val oldestMessageId: String?,
 )
 
 enum class MessageStatus {
@@ -265,29 +268,29 @@ enum class MessageStatus {
     SENT,
     DELIVERED,
     READ,
-    FAILED
+    FAILED,
 }
 
 enum class AttachmentType {
     IMAGE,
     VIDEO,
     AUDIO,
-    FILE
+    FILE,
 }
 
 data class Attachment(
     val type: AttachmentType,
-    val url: String
+    val url: String,
 )
 
 data class TypingStatus(
     val conversationId: String,
     val userName: String,
-    val isTyping: Boolean
+    val isTyping: Boolean,
 )
 
 data class OnlineStatus(
     val userId: String,
     val isOnline: Boolean,
-    val lastSeen: Long
+    val lastSeen: Long,
 )

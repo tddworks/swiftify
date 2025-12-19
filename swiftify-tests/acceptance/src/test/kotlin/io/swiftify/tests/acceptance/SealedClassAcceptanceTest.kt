@@ -10,12 +10,12 @@ import kotlin.test.assertTrue
  * End-to-end acceptance tests for sealed class → Swift enum transformation.
  */
 class SealedClassAcceptanceTest {
-
     private val transformer = SwiftifyTransformer()
 
     @Test
     fun `NetworkResult sealed class transforms to Swift enum`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             sealed class NetworkResult<out T> {
@@ -23,7 +23,7 @@ class SealedClassAcceptanceTest {
                 data class Error(val message: String, val code: Int) : NetworkResult<Nothing>()
                 data object Loading : NetworkResult<Nothing>()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
 
@@ -36,7 +36,8 @@ class SealedClassAcceptanceTest {
 
     @Test
     fun `AuthState sealed class transforms to Swift enum with associated values`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             package com.example
 
             sealed class AuthState {
@@ -44,7 +45,7 @@ class SealedClassAcceptanceTest {
                 data class LoggedIn(val userId: String, val token: String) : AuthState()
                 data class Error(val reason: String) : AuthState()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
 
@@ -57,13 +58,14 @@ class SealedClassAcceptanceTest {
 
     @Test
     fun `exhaustive sealed class gets @frozen attribute`() {
-        val kotlinSource = """
+        val kotlinSource =
+            """
             sealed class Color {
                 data object Red : Color()
                 data object Green : Color()
                 data object Blue : Color()
             }
-        """.trimIndent()
+            """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
 

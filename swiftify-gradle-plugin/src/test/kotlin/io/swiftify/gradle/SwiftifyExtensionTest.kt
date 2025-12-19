@@ -11,7 +11,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SwiftifyExtensionTest {
-
     private lateinit var project: Project
     private lateinit var extension: SwiftifyExtension
 
@@ -20,10 +19,12 @@ class SwiftifyExtensionTest {
 
     @BeforeEach
     fun setup() {
-        project = ProjectBuilder.builder()
-            .withProjectDir(tempDir)
-            .withName("testProject")
-            .build()
+        project =
+            ProjectBuilder
+                .builder()
+                .withProjectDir(tempDir)
+                .withName("testProject")
+                .build()
         project.plugins.apply("io.swiftify")
         extension = project.extensions.getByType(SwiftifyExtension::class.java)
     }

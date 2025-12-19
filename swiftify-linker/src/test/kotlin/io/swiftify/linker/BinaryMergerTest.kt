@@ -3,11 +3,10 @@ package io.swiftify.linker
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import kotlin.test.assertTrue
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class BinaryMergerTest {
-
     @TempDir
     lateinit var tempDir: File
 
@@ -16,10 +15,11 @@ class BinaryMergerTest {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
         val objectFile = createObjectFile("Swiftify.o")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val command = merger.buildCommand(listOf(objectFile), config)
 
@@ -35,11 +35,12 @@ class BinaryMergerTest {
         val originalBinary = createMockBinary("MyKit")
         val objectFile = createObjectFile("Swiftify.o")
         val outputFile = File(tempDir, "output/MyKit")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0",
-            outputBinary = outputFile
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+                outputBinary = outputFile,
+            )
 
         val command = merger.buildCommand(listOf(objectFile), config)
 
@@ -52,10 +53,11 @@ class BinaryMergerTest {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
         val objectFile = createObjectFile("Swiftify.o")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val command = merger.buildCommand(listOf(objectFile), config)
 
@@ -68,10 +70,11 @@ class BinaryMergerTest {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
         val objectFile = createObjectFile("Swiftify.o")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "x86_64-apple-macos14.0"
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "x86_64-apple-macos14.0",
+            )
 
         val command = merger.buildCommand(listOf(objectFile), config)
 
@@ -84,11 +87,12 @@ class BinaryMergerTest {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
         val objectFile = createObjectFile("Swiftify.o")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0",
-            dryRun = true
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+                dryRun = true,
+            )
 
         val result = merger.merge(listOf(objectFile), config)
 
@@ -99,10 +103,11 @@ class BinaryMergerTest {
     fun `merge returns error for empty object list`() {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val result = merger.merge(emptyList(), config)
 
@@ -114,11 +119,12 @@ class BinaryMergerTest {
         val merger = BinaryMerger()
         val nonExistent = File(tempDir, "NonExistent")
         val objectFile = createObjectFile("Swiftify.o")
-        val config = MergeConfig(
-            originalBinary = nonExistent,
-            targetTriple = "arm64-apple-macos14.0",
-            dryRun = true
-        )
+        val config =
+            MergeConfig(
+                originalBinary = nonExistent,
+                targetTriple = "arm64-apple-macos14.0",
+                dryRun = true,
+            )
 
         val result = merger.merge(listOf(objectFile), config)
 
@@ -130,11 +136,12 @@ class BinaryMergerTest {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
         val nonExistent = File(tempDir, "NonExistent.o")
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0",
-            dryRun = true
-        )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+                dryRun = true,
+            )
 
         val result = merger.merge(listOf(nonExistent), config)
 
@@ -145,15 +152,17 @@ class BinaryMergerTest {
     fun `handles multiple object files`() {
         val merger = BinaryMerger()
         val originalBinary = createMockBinary("MyKit")
-        val objectFiles = listOf(
-            createObjectFile("Swiftify1.o"),
-            createObjectFile("Swiftify2.o"),
-            createObjectFile("Swiftify3.o")
-        )
-        val config = MergeConfig(
-            originalBinary = originalBinary,
-            targetTriple = "arm64-apple-macos14.0"
-        )
+        val objectFiles =
+            listOf(
+                createObjectFile("Swiftify1.o"),
+                createObjectFile("Swiftify2.o"),
+                createObjectFile("Swiftify3.o"),
+            )
+        val config =
+            MergeConfig(
+                originalBinary = originalBinary,
+                targetTriple = "arm64-apple-macos14.0",
+            )
 
         val command = merger.buildCommand(objectFiles, config)
 

@@ -12,7 +12,6 @@ import io.swiftify.swift.SwiftifyValidationException
  * compiled alongside the Kotlin/Native framework.
  */
 class SwiftEnumGenerator {
-
     /**
      * Generate Swift source code for the given enum specification.
      *
@@ -29,7 +28,7 @@ class SwiftEnumGenerator {
                 "Failed to generate Swift enum",
                 specType = "enum",
                 specName = spec.name,
-                cause = e
+                cause = e,
             )
         }
     }
@@ -38,33 +37,41 @@ class SwiftEnumGenerator {
         val errors = mutableListOf<SwiftifyValidationException.ValidationError>()
 
         if (spec.name.isBlank()) {
-            errors.add(SwiftifyValidationException.ValidationError(
-                "Enum name cannot be blank",
-                field = "name"
-            ))
+            errors.add(
+                SwiftifyValidationException.ValidationError(
+                    "Enum name cannot be blank",
+                    field = "name",
+                ),
+            )
         }
 
         if (spec.name.isNotBlank() && !spec.name.first().isUpperCase()) {
-            errors.add(SwiftifyValidationException.ValidationError(
-                "Enum name should start with uppercase letter",
-                field = "name",
-                value = spec.name
-            ))
+            errors.add(
+                SwiftifyValidationException.ValidationError(
+                    "Enum name should start with uppercase letter",
+                    field = "name",
+                    value = spec.name,
+                ),
+            )
         }
 
         if (spec.cases.isEmpty()) {
-            errors.add(SwiftifyValidationException.ValidationError(
-                "Enum must have at least one case",
-                field = "cases"
-            ))
+            errors.add(
+                SwiftifyValidationException.ValidationError(
+                    "Enum must have at least one case",
+                    field = "cases",
+                ),
+            )
         }
 
         spec.cases.forEachIndexed { index, case ->
             if (case.name.isBlank()) {
-                errors.add(SwiftifyValidationException.ValidationError(
-                    "Case name cannot be blank",
-                    field = "cases[$index].name"
-                ))
+                errors.add(
+                    SwiftifyValidationException.ValidationError(
+                        "Case name cannot be blank",
+                        field = "cases[$index].name",
+                    ),
+                )
             }
         }
 
@@ -87,10 +94,12 @@ class SwiftEnumGenerator {
         // Add type parameters if present (strip Kotlin variance modifiers)
         if (spec.typeParameters.isNotEmpty()) {
             append("<")
-            append(spec.typeParameters.joinToString(", ") { param ->
-                // Remove 'out' and 'in' variance modifiers for Swift
-                param.removePrefix("out ").removePrefix("in ").trim()
-            })
+            append(
+                spec.typeParameters.joinToString(", ") { param ->
+                    // Remove 'out' and 'in' variance modifiers for Swift
+                    param.removePrefix("out ").removePrefix("in ").trim()
+                },
+            )
             append(">")
         }
 
@@ -109,9 +118,11 @@ class SwiftEnumGenerator {
 
             if (case.associatedValues.isNotEmpty()) {
                 append("(")
-                append(case.associatedValues.joinToString(", ") { av ->
-                    "${av.label}: ${av.type.swiftRepresentation}"
-                })
+                append(
+                    case.associatedValues.joinToString(", ") { av ->
+                        "${av.label}: ${av.type.swiftRepresentation}"
+                    },
+                )
                 append(")")
             }
             appendLine()
@@ -121,9 +132,10 @@ class SwiftEnumGenerator {
     }
 
     private val SwiftEnumSpec.AccessLevel.swiftKeyword: String
-        get() = when (this) {
-            SwiftEnumSpec.AccessLevel.PUBLIC -> "public"
-            SwiftEnumSpec.AccessLevel.INTERNAL -> "internal"
-            SwiftEnumSpec.AccessLevel.PRIVATE -> "private"
-        }
+        get() =
+            when (this) {
+                SwiftEnumSpec.AccessLevel.PUBLIC -> "public"
+                SwiftEnumSpec.AccessLevel.INTERNAL -> "internal"
+                SwiftEnumSpec.AccessLevel.PRIVATE -> "private"
+            }
 }
