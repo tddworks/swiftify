@@ -1,5 +1,8 @@
+import io.swiftify.gradle.AnalysisMode
+
 plugins {
     kotlin("multiplatform") version "2.3.0"
+    id("com.google.devtools.ksp") version "2.3.0"
     id("io.swiftify")
 }
 
@@ -29,10 +32,16 @@ kotlin {
     }
 }
 
+// KSP processor for Swiftify
+dependencies {
+    add("kspJvm", "io.swiftify:swiftify-analyzer:0.1.0-SNAPSHOT")
+}
+
 // Swiftify DSL configuration
 // Note: frameworkName is auto-detected from KMP's baseName = "SampleKit"
 // Note: Kotlin 2.0+ already exports suspend functions as Swift async/await automatically.
 swiftify {
+    analysisMode(AnalysisMode.KSP)
     sealedClasses {
         transformToEnum(exhaustive = true)
     }
