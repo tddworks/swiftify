@@ -94,8 +94,14 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         val fwName = frameworkName.orNull ?: project.name.replaceFirstChar { it.uppercase() }
         logger.lifecycle("Swiftify: Generating Swift code for target: $target, framework: $fwName, mode: $mode")
 
+        // Find sources once (used for both provider creation and file-by-file generation in REGEX mode)
+        val sourceFiles = if (mode == AnalysisMode.REGEX) findKotlinSources() else emptyList()
+
         // Create the appropriate provider based on mode
-        val provider: DeclarationProvider = createProvider(mode)
+        val provider: DeclarationProvider = when (mode) {
+            AnalysisMode.REGEX -> RegexDeclarationProvider(sourceFiles)
+            AnalysisMode.KSP -> KspDeclarationProvider.fromFiles(manifestFiles.getOrElse(emptyList()))
+        }
 
         if (!provider.hasValidInput()) {
             val message = when (mode) {
@@ -129,7 +135,6 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         when (mode) {
             AnalysisMode.REGEX -> {
                 // In REGEX mode, generate per-file for better organization
-                val sourceFiles = findKotlinSources()
                 sourceFiles.forEach { file ->
                     val source = file.readText()
                     val result = transformer.transform(source, options = options)
@@ -179,20 +184,6 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         }
 
         logger.lifecycle("Swiftify: Transformed $totalTransformed declarations in mode $mode")
-    }
-
-    /**
-     * Creates the appropriate DeclarationProvider based on the analysis mode.
-     */
-    private fun createProvider(mode: AnalysisMode): DeclarationProvider = when (mode) {
-        AnalysisMode.REGEX -> {
-            val sourceFiles = findKotlinSources()
-            RegexDeclarationProvider(sourceFiles)
-        }
-        AnalysisMode.KSP -> {
-            val manifests = manifestFiles.getOrElse(emptyList())
-            KspDeclarationProvider.fromFiles(manifests)
-        }
     }
 
     private fun findKotlinSources(): List<File> {
