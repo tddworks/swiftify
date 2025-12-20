@@ -142,24 +142,46 @@ class SwiftifyPlugin : Plugin<Project> {
     private fun registerGenerateTask(
         project: Project,
         extension: SwiftifyExtension,
-    ): TaskProvider<SwiftifyGenerateTask> = project.tasks.register("swiftifyGenerate", SwiftifyGenerateTask::class.java) { task ->
-        task.group = "swiftify"
-        task.description = "Generate Swift code from Kotlin declarations (regex mode)"
-        task.outputDirectory.set(extension.outputDirectory)
-        task.frameworkName.set(extension.frameworkName)
+    ): TaskProvider<SwiftifyGenerateTask> {
+        val taskProvider =
+            project.tasks.register("swiftifyGenerate", SwiftifyGenerateTask::class.java) { task ->
+                task.group = "swiftify"
+                task.description = "Generate Swift code from Kotlin declarations"
+                task.outputDirectory.set(extension.outputDirectory)
+                task.frameworkName.set(extension.frameworkName)
+                task.analysisMode.set(extension.analysisMode)
 
-        // Only enable in REGEX mode
-        task.onlyIf { extension.analysisMode.get() == AnalysisMode.REGEX }
+                // Configure manifest files for KSP mode
+                val locator = ManifestLocator(project)
+                task.manifestFiles.set(
+                    project.provider { locator.locateManifests() },
+                )
+            }
+
+        // Depend on KSP tasks if KSP mode is selected
+        project.tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach { kspTask ->
+            taskProvider.configure { task ->
+                task.mustRunAfter(kspTask)
+                // Only add actual dependency in KSP mode
+                if (extension.analysisMode.get() == AnalysisMode.KSP) {
+                    task.dependsOn(kspTask)
+                }
+            }
+        }
+
+        return taskProvider
     }
 
     private fun registerProcessManifestTask(
         project: Project,
         extension: SwiftifyExtension,
     ): TaskProvider<SwiftifyProcessManifestTask> {
+        // Deprecated: Use swiftifyGenerate instead
+        // Kept for backwards compatibility
         val taskProvider =
             project.tasks.register("swiftifyProcessManifest", SwiftifyProcessManifestTask::class.java) { task ->
                 task.group = "swiftify"
-                task.description = "Process KSP manifest and generate Swift code (KSP mode)"
+                task.description = "[Deprecated] Use swiftifyGenerate instead"
                 task.outputDirectory.set(extension.outputDirectory)
 
                 // Auto-detect manifest files from all KSP targets
@@ -188,16 +210,8 @@ class SwiftifyPlugin : Plugin<Project> {
         task.description = "Embed Swift extensions into framework binary"
         task.swiftSourceDirectory.set(extension.outputDirectory)
 
-        // Depend on the appropriate generate task based on mode
-        task.dependsOn(
-            project.provider {
-                if (extension.analysisMode.get() == AnalysisMode.KSP) {
-                    "swiftifyProcessManifest"
-                } else {
-                    "swiftifyGenerate"
-                }
-            },
-        )
+        // Always depend on swiftifyGenerate (works for both REGEX and KSP modes)
+        task.dependsOn("swiftifyGenerate")
     }
 
     private fun configureSwiftifyIntegration(
@@ -337,16 +351,8 @@ class SwiftifyPlugin : Plugin<Project> {
                         )
                     embedTask.frameworkDirectory.set(frameworkDir)
 
-                    // Depend on appropriate generate task based on mode
-                    embedTask.dependsOn(
-                        project.provider {
-                            if (extension.analysisMode.get() == AnalysisMode.KSP) {
-                                "swiftifyProcessManifest"
-                            } else {
-                                "swiftifyGenerate"
-                            }
-                        },
-                    )
+                    // Always depend on swiftifyGenerate (works for both REGEX and KSP modes)
+                    embedTask.dependsOn("swiftifyGenerate")
                 }
 
             project.tasks.matching { it.name == linkTaskName }.configureEach { linkTask ->

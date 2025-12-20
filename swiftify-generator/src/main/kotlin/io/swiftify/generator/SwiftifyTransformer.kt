@@ -23,6 +23,13 @@ data class TransformOptions(
      * Framework name for imports.
      */
     val frameworkName: String? = null,
+
+    /**
+     * Whether to include sealed class transformations.
+     * When false (default), sealed classes are skipped because Kotlin/Native exports them.
+     * When true (KSP mode), sealed classes are transformed to Swift enums.
+     */
+    val includeSealedClasses: Boolean = false,
 )
 
 /**
@@ -64,6 +71,28 @@ class SwiftifyTransformer {
         options: TransformOptions,
     ): TransformResult {
         val declarations = analyzer.analyze(kotlinSource)
+        return transformDeclarations(declarations, config, options)
+    }
+
+    /**
+     * Transform pre-analyzed declarations to Swift.
+     *
+     * Use this when declarations come from a source other than regex analysis
+     * (e.g., KSP manifest parsing).
+     */
+    fun transformDeclarations(
+        declarations: List<KotlinDeclaration>,
+        options: TransformOptions,
+    ): TransformResult = transformDeclarations(declarations, swiftify { }, options)
+
+    /**
+     * Transform pre-analyzed declarations to Swift with full configuration.
+     */
+    fun transformDeclarations(
+        declarations: List<KotlinDeclaration>,
+        config: SwiftifySpec,
+        options: TransformOptions,
+    ): TransformResult {
         val swiftCodeParts = mutableListOf<String>()
         var transformedCount = 0
 
@@ -74,10 +103,11 @@ class SwiftifyTransformer {
         val suspendFunctions = declarations.filterIsInstance<SuspendFunctionDeclaration>()
         val flowFunctions = declarations.filterIsInstance<FlowFunctionDeclaration>()
 
-        // Transform sealed classes (only for preview mode, not for implementation)
-        // When generating implementations, Kotlin/Native already exports the sealed classes
-        // and we would create type conflicts by regenerating them as Swift enums
-        if (!options.generateImplementations) {
+        // Transform sealed classes:
+        // - Preview mode (!generateImplementations): always transform
+        // - KSP mode (includeSealedClasses): transform because user explicitly requested
+        // - REGEX implementation mode: skip because Kotlin/Native exports them
+        if (!options.generateImplementations || options.includeSealedClasses) {
             sealedClasses.forEach { declaration ->
                 if (config.defaults.transformSealedClassesToEnums) {
                     val swiftCode = transformSealedClass(declaration, config, options)

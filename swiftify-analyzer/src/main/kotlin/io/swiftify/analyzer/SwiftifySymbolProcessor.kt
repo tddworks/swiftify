@@ -64,6 +64,61 @@ class SwiftifySymbolProcessor(
         if (declaration.modifiers.contains(Modifier.SEALED)) {
             processSealedClass(declaration)
         }
+
+        // Process member functions and properties inside the class
+        val className = declaration.simpleName.asString()
+        declaration.getAllFunctions().forEach { function ->
+            processMemberFunction(function, className)
+        }
+        declaration.getAllProperties().forEach { property ->
+            processMemberProperty(property, className)
+        }
+    }
+
+    private fun processMemberFunction(
+        declaration: KSFunctionDeclaration,
+        containingClassName: String,
+    ) {
+        val modifiers = declaration.modifiers
+
+        // Check for @SwiftDefaults or @SwiftAsync on suspend functions
+        val hasSwiftDefaults =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftDefaults"
+            }
+        val hasSwiftAsync =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftAsync"
+            }
+
+        if (modifiers.contains(Modifier.SUSPEND) && (hasSwiftDefaults || hasSwiftAsync)) {
+            processSuspendFunction(declaration, containingClassName)
+        }
+
+        // Check for @SwiftFlow on Flow-returning functions
+        val hasSwiftFlow =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftFlow"
+            }
+
+        if (hasSwiftFlow && isFlowReturning(declaration)) {
+            processFlowFunction(declaration, containingClassName)
+        }
+    }
+
+    private fun processMemberProperty(
+        declaration: KSPropertyDeclaration,
+        containingClassName: String,
+    ) {
+        // Check for @SwiftFlow annotation on properties
+        val hasSwiftFlow =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftFlow"
+            }
+
+        if (hasSwiftFlow) {
+            processFlowProperty(declaration, containingClassName)
+        }
     }
 
     private fun processSealedClass(declaration: KSClassDeclaration) {
@@ -131,35 +186,60 @@ class SwiftifySymbolProcessor(
     private fun processFunction(declaration: KSFunctionDeclaration) {
         val modifiers = declaration.modifiers
 
+        // Check for annotations
+        val hasSwiftDefaults =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftDefaults"
+            }
+        val hasSwiftAsync =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftAsync"
+            }
+        val hasSwiftFlow =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftFlow"
+            }
+
         when {
-            modifiers.contains(Modifier.SUSPEND) -> processSuspendFunction(declaration)
-            isFlowReturning(declaration) -> processFlowFunction(declaration)
+            modifiers.contains(Modifier.SUSPEND) && (hasSwiftDefaults || hasSwiftAsync) ->
+                processSuspendFunction(declaration, null)
+            hasSwiftFlow && isFlowReturning(declaration) -> processFlowFunction(declaration, null)
         }
     }
 
-    private fun processSuspendFunction(declaration: KSFunctionDeclaration) {
+    private fun processSuspendFunction(
+        declaration: KSFunctionDeclaration,
+        containingClassName: String?,
+    ) {
         val qualifiedName = declaration.qualifiedName?.asString() ?: return
         val simpleName = declaration.simpleName.asString()
         val packageName = declaration.packageName.asString()
 
-        // Get SwiftAsync annotation if present
-        val swiftAsyncAnnotation = declaration.annotations.find {
-            it.shortName.asString() == "SwiftAsync"
-        }
+        // Get SwiftAsync or SwiftDefaults annotation if present
+        val swiftAsyncAnnotation =
+            declaration.annotations.find {
+                it.shortName.asString() == "SwiftAsync"
+            }
+        val swiftDefaultsAnnotation =
+            declaration.annotations.find {
+                it.shortName.asString() == "SwiftDefaults"
+            }
 
-        val isThrowing = swiftAsyncAnnotation?.arguments?.find {
-            it.name?.asString() == "throwing"
-        }?.value as? Boolean ?: true
+        val isThrowing =
+            swiftAsyncAnnotation?.arguments?.find {
+                it.name?.asString() == "throwing"
+            }?.value as? Boolean ?: true
 
         // Get parameters
-        val parameters = declaration.parameters.map { param ->
-            ParameterDeclaration(
-                name = param.name?.asString() ?: "",
-                typeName = param.type.resolve().declaration.simpleName.asString(),
-                isNullable = param.type.resolve().isMarkedNullable,
-                defaultValue = if (param.hasDefault) "default" else null,
-            )
-        }
+        val parameters =
+            declaration.parameters.map { param ->
+                ParameterDeclaration(
+                    name = param.name?.asString() ?: "",
+                    typeName = param.type.resolve().declaration.simpleName.asString(),
+                    isNullable = param.type.resolve().isMarkedNullable,
+                    defaultValue = if (param.hasDefault) "default" else null,
+                )
+            }
 
         // Get return type
         val returnType = declaration.returnType?.resolve()
@@ -174,15 +254,19 @@ class SwiftifySymbolProcessor(
                 parameters = parameters,
                 returnTypeName = returnTypeName,
                 typeParameters = declaration.typeParameters.map { it.name.asString() },
-                hasSwiftAsyncAnnotation = swiftAsyncAnnotation != null,
+                hasSwiftAsyncAnnotation = swiftAsyncAnnotation != null || swiftDefaultsAnnotation != null,
                 isThrowing = isThrowing,
+                containingClassName = containingClassName,
             ),
         )
 
         logger.info("Swiftify: Found suspend function $qualifiedName")
     }
 
-    private fun processFlowFunction(declaration: KSFunctionDeclaration) {
+    private fun processFlowFunction(
+        declaration: KSFunctionDeclaration,
+        containingClassName: String?,
+    ) {
         val qualifiedName = declaration.qualifiedName?.asString() ?: return
         val simpleName = declaration.simpleName.asString()
         val packageName = declaration.packageName.asString()
@@ -193,14 +277,20 @@ class SwiftifySymbolProcessor(
         val elementTypeName = elementType?.declaration?.simpleName?.asString() ?: "Any"
 
         // Get parameters
-        val parameters = declaration.parameters.map { param ->
-            ParameterDeclaration(
-                name = param.name?.asString() ?: "",
-                typeName = param.type.resolve().declaration.simpleName.asString(),
-                isNullable = param.type.resolve().isMarkedNullable,
-                defaultValue = if (param.hasDefault) "default" else null,
-            )
-        }
+        val parameters =
+            declaration.parameters.map { param ->
+                ParameterDeclaration(
+                    name = param.name?.asString() ?: "",
+                    typeName = param.type.resolve().declaration.simpleName.asString(),
+                    isNullable = param.type.resolve().isMarkedNullable,
+                    defaultValue = if (param.hasDefault) "default" else null,
+                )
+            }
+
+        val hasSwiftFlow =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftFlow"
+            }
 
         declarations.add(
             FlowFunctionDeclaration(
@@ -210,6 +300,8 @@ class SwiftifySymbolProcessor(
                 name = simpleName,
                 parameters = parameters,
                 elementTypeName = elementTypeName,
+                hasSwiftFlowAnnotation = hasSwiftFlow,
+                containingClassName = containingClassName,
             ),
         )
 
@@ -217,12 +309,20 @@ class SwiftifySymbolProcessor(
     }
 
     private fun processProperty(declaration: KSPropertyDeclaration) {
-        if (isFlowProperty(declaration)) {
-            processFlowProperty(declaration)
+        // Check for @SwiftFlow annotation
+        val hasSwiftFlow =
+            declaration.annotations.any {
+                it.shortName.asString() == "SwiftFlow"
+            }
+        if (hasSwiftFlow && isFlowProperty(declaration)) {
+            processFlowProperty(declaration, null)
         }
     }
 
-    private fun processFlowProperty(declaration: KSPropertyDeclaration) {
+    private fun processFlowProperty(
+        declaration: KSPropertyDeclaration,
+        containingClassName: String?,
+    ) {
         val qualifiedName = declaration.qualifiedName?.asString() ?: return
         val simpleName = declaration.simpleName.asString()
         val packageName = declaration.packageName.asString()
@@ -239,9 +339,9 @@ class SwiftifySymbolProcessor(
                 name = simpleName,
                 parameters = emptyList(),
                 elementTypeName = elementTypeName,
-                hasSwiftFlowAnnotation = declaration.annotations.any {
-                    it.shortName.asString() == "SwiftFlow"
-                },
+                hasSwiftFlowAnnotation = true,
+                isProperty = true,
+                containingClassName = containingClassName,
             ),
         )
 
@@ -275,8 +375,15 @@ class SwiftifySymbolProcessor(
                         if (decl.swiftEnumName != null) {
                             appendLine("swiftName=${decl.swiftEnumName}")
                         }
+                        if (decl.typeParameters.isNotEmpty()) {
+                            appendLine("typeParams=${decl.typeParameters.joinToString(",")}")
+                        }
                         decl.subclasses.forEach { sub ->
-                            appendLine("subclass=${sub.simpleName}:${sub.isObject}")
+                            // Format: subclass=name|property1:type1,property2:type2|isObject
+                            val propsStr = sub.properties.joinToString(",") { prop ->
+                                "${prop.name}:${prop.typeName}${if (prop.isNullable) "?" else ""}"
+                            }
+                            appendLine("subclass=${sub.simpleName}|$propsStr|${sub.isObject}")
                         }
                         appendLine()
                     }
@@ -286,8 +393,15 @@ class SwiftifySymbolProcessor(
                         appendLine("package=${decl.packageName}")
                         appendLine("throwing=${decl.isThrowing}")
                         appendLine("return=${decl.returnTypeName}")
+                        if (decl.containingClassName != null) {
+                            appendLine("class=${decl.containingClassName}")
+                        }
+                        if (decl.hasSwiftAsyncAnnotation) {
+                            appendLine("hasAnnotation=true")
+                        }
                         decl.parameters.forEach { param ->
-                            appendLine("param=${param.name}:${param.typeName}")
+                            val defaultSuffix = if (param.defaultValue != null) "=default" else ""
+                            appendLine("param=${param.name}:${param.typeName}$defaultSuffix")
                         }
                         appendLine()
                     }
@@ -296,6 +410,18 @@ class SwiftifySymbolProcessor(
                         appendLine("name=${decl.name}")
                         appendLine("package=${decl.packageName}")
                         appendLine("element=${decl.elementTypeName}")
+                        if (decl.containingClassName != null) {
+                            appendLine("class=${decl.containingClassName}")
+                        }
+                        if (decl.isProperty) {
+                            appendLine("isProperty=true")
+                        }
+                        if (decl.hasSwiftFlowAnnotation) {
+                            appendLine("hasAnnotation=true")
+                        }
+                        decl.parameters.forEach { param ->
+                            appendLine("param=${param.name}:${param.typeName}")
+                        }
                         appendLine()
                     }
                 }
