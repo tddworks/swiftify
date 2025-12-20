@@ -149,13 +149,18 @@ class ManifestDeclarationParser {
 
                 val params =
                     parameters.map { (paramName, typeInfo) ->
-                        val hasDefault = typeInfo.endsWith("=default")
-                        val typeName = typeInfo.removeSuffix("=default")
+                        // typeInfo can be "Int", "Int=1", "Boolean=false", "String?=null"
+                        val (typeName, defaultValue) = if (typeInfo.contains("=")) {
+                            val parts = typeInfo.split("=", limit = 2)
+                            parts[0] to parts[1]
+                        } else {
+                            typeInfo to null
+                        }
                         ParameterDeclaration(
                             name = paramName,
                             typeName = typeName.removeSuffix("?"),
                             isNullable = typeName.endsWith("?"),
-                            defaultValue = if (hasDefault) "default" else null,
+                            defaultValue = defaultValue,
                         )
                     }
 
@@ -182,11 +187,19 @@ class ManifestDeclarationParser {
                 val hasAnnotation = section["hasAnnotation"]?.toBooleanStrictOrNull() ?: false
 
                 val params =
-                    parameters.map { (paramName, typeName) ->
+                    parameters.map { (paramName, typeInfo) ->
+                        // typeInfo can be "String", "List<String>", etc.
+                        val (typeName, defaultValue) = if (typeInfo.contains("=")) {
+                            val parts = typeInfo.split("=", limit = 2)
+                            parts[0] to parts[1]
+                        } else {
+                            typeInfo to null
+                        }
                         ParameterDeclaration(
                             name = paramName,
                             typeName = typeName.removeSuffix("?"),
                             isNullable = typeName.endsWith("?"),
+                            defaultValue = defaultValue,
                         )
                     }
 

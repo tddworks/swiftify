@@ -1,8 +1,8 @@
 package io.swiftify.gradle
 
-import io.swiftify.analyzer.KotlinDeclaration
-import io.swiftify.analyzer.KotlinDeclarationAnalyzer
-import io.swiftify.analyzer.ManifestDeclarationParser
+import io.swiftify.analyzer.DeclarationProvider
+import io.swiftify.analyzer.KspDeclarationProvider
+import io.swiftify.analyzer.RegexDeclarationProvider
 import io.swiftify.generator.ApiNotesGenerator
 import io.swiftify.generator.SwiftRuntimeSupport
 import io.swiftify.generator.SwiftifyTransformer
@@ -75,8 +75,6 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
     abstract val manifestFiles: ListProperty<File>
 
     private val transformer = SwiftifyTransformer()
-    private val analyzer = KotlinDeclarationAnalyzer()
-    private val manifestParser = ManifestDeclarationParser()
     private val apiNotesGenerator = ApiNotesGenerator()
 
     init {
@@ -96,25 +94,42 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         val fwName = frameworkName.orNull ?: project.name.replaceFirstChar { it.uppercase() }
         logger.lifecycle("Swiftify: Generating Swift code for target: $target, framework: $fwName, mode: $mode")
 
+        // Create the appropriate provider based on mode
+        val provider: DeclarationProvider = createProvider(mode)
+
+        if (!provider.hasValidInput()) {
+            val message = when (mode) {
+                AnalysisMode.REGEX -> "No Kotlin source files found."
+                AnalysisMode.KSP -> "No manifest files found. Ensure KSP is configured and has run."
+            }
+            logger.lifecycle("Swiftify: $message")
+            return
+        }
+
+        logger.lifecycle("Swiftify: Using ${provider.getSourceDescription()}")
+
+        // Get declarations from provider
+        val allDeclarations = provider.getDeclarations()
+        if (allDeclarations.isEmpty()) {
+            logger.lifecycle("Swiftify: No declarations found to transform")
+            return
+        }
+
         // Generate with implementations so the code is actually usable
+        // In KSP mode, include sealed classes since user explicitly uses @SwiftEnum
         val options = TransformOptions(
             generateImplementations = true,
             frameworkName = fwName,
+            includeSealedClasses = mode == AnalysisMode.KSP,
         )
 
-        val allDeclarations: List<KotlinDeclaration>
         val generatedFiles = mutableListOf<File>()
         var totalTransformed = 0
 
         when (mode) {
             AnalysisMode.REGEX -> {
+                // In REGEX mode, generate per-file for better organization
                 val sourceFiles = findKotlinSources()
-                if (sourceFiles.isEmpty()) {
-                    logger.lifecycle("Swiftify: No Kotlin source files found.")
-                    return
-                }
-
-                val declarationsFromSources = mutableListOf<KotlinDeclaration>()
                 sourceFiles.forEach { file ->
                     val source = file.readText()
                     val result = transformer.transform(source, options = options)
@@ -124,39 +139,13 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
                         outputFile.writeText(buildSwiftFile(file.nameWithoutExtension, fwName, result.swiftCode))
                         generatedFiles.add(outputFile)
                         totalTransformed += result.declarationsTransformed
-                        declarationsFromSources.addAll(result.declarations)
                         logger.info("Swiftify: Generated ${outputFile.name}")
                     }
                 }
-                allDeclarations = declarationsFromSources
             }
             AnalysisMode.KSP -> {
-                val manifests = manifestFiles.getOrElse(emptyList()).filter { it.exists() }
-                if (manifests.isEmpty()) {
-                    logger.lifecycle("Swiftify: No manifest files found. Ensure KSP is configured and has run.")
-                    return
-                }
-
-                logger.lifecycle("Swiftify: Processing ${manifests.size} manifest(s) from KSP")
-
-                // Merge all manifests
-                val mergedContent = ManifestMerger().merge(manifests)
-                if (mergedContent.isBlank()) {
-                    logger.lifecycle("Swiftify: All manifests are empty")
-                    return
-                }
-
-                // Parse manifest to declarations
-                val declarations = manifestParser.parse(mergedContent)
-                if (declarations.isEmpty()) {
-                    logger.lifecycle("Swiftify: No declarations found in manifests")
-                    return
-                }
-
-                // Transform declarations to Swift
-                // In KSP mode, include sealed classes since user explicitly uses @SwiftEnum
-                val kspOptions = options.copy(includeSealedClasses = true)
-                val result = transformer.transformDeclarations(declarations, kspOptions)
+                // In KSP mode, generate single combined file
+                val result = transformer.transformDeclarations(allDeclarations, options)
 
                 if (result.swiftCode.isNotBlank()) {
                     val outputFile = File(outputDir, "Swiftify.swift")
@@ -165,8 +154,6 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
                     totalTransformed = result.declarationsTransformed
                     logger.info("Swiftify: Generated ${outputFile.name}")
                 }
-
-                allDeclarations = declarations
             }
         }
 
@@ -192,6 +179,20 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
         }
 
         logger.lifecycle("Swiftify: Transformed $totalTransformed declarations in mode $mode")
+    }
+
+    /**
+     * Creates the appropriate DeclarationProvider based on the analysis mode.
+     */
+    private fun createProvider(mode: AnalysisMode): DeclarationProvider = when (mode) {
+        AnalysisMode.REGEX -> {
+            val sourceFiles = findKotlinSources()
+            RegexDeclarationProvider(sourceFiles)
+        }
+        AnalysisMode.KSP -> {
+            val manifests = manifestFiles.getOrElse(emptyList())
+            KspDeclarationProvider.fromFiles(manifests)
+        }
     }
 
     private fun findKotlinSources(): List<File> {

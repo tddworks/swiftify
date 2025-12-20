@@ -149,10 +149,11 @@ class SwiftifySymbolProcessor(
                 emptyList()
             } else {
                 subclass.primaryConstructor?.parameters?.map { param ->
+                    val type = param.type.resolve()
                     PropertyDeclaration(
                         name = param.name?.asString() ?: "",
-                        typeName = param.type.resolve().declaration.simpleName.asString(),
-                        isNullable = param.type.resolve().isMarkedNullable,
+                        typeName = getFullTypeName(type),
+                        isNullable = type.isMarkedNullable,
                     )
                 } ?: emptyList()
             }
@@ -230,20 +231,21 @@ class SwiftifySymbolProcessor(
                 it.name?.asString() == "throwing"
             }?.value as? Boolean ?: true
 
-        // Get parameters
+        // Get parameters with full type names and extracted default values
         val parameters =
             declaration.parameters.map { param ->
+                val type = param.type.resolve()
                 ParameterDeclaration(
                     name = param.name?.asString() ?: "",
-                    typeName = param.type.resolve().declaration.simpleName.asString(),
-                    isNullable = param.type.resolve().isMarkedNullable,
-                    defaultValue = if (param.hasDefault) "default" else null,
+                    typeName = getFullTypeName(type),
+                    isNullable = type.isMarkedNullable,
+                    defaultValue = extractDefaultValue(param),
                 )
             }
 
-        // Get return type
+        // Get return type with full generic info
         val returnType = declaration.returnType?.resolve()
-        val returnTypeName = returnType?.declaration?.simpleName?.asString() ?: "Unit"
+        val returnTypeName = if (returnType != null) getFullTypeName(returnType) else "Unit"
 
         declarations.add(
             SuspendFunctionDeclaration(
@@ -271,19 +273,20 @@ class SwiftifySymbolProcessor(
         val simpleName = declaration.simpleName.asString()
         val packageName = declaration.packageName.asString()
 
-        // Get element type from Flow<T>
+        // Get element type from Flow<T> with full generic info
         val returnType = declaration.returnType?.resolve()
         val elementType = returnType?.arguments?.firstOrNull()?.type?.resolve()
-        val elementTypeName = elementType?.declaration?.simpleName?.asString() ?: "Any"
+        val elementTypeName = if (elementType != null) getFullTypeName(elementType) else "Any"
 
-        // Get parameters
+        // Get parameters with full type names and extracted default values
         val parameters =
             declaration.parameters.map { param ->
+                val type = param.type.resolve()
                 ParameterDeclaration(
                     name = param.name?.asString() ?: "",
-                    typeName = param.type.resolve().declaration.simpleName.asString(),
-                    isNullable = param.type.resolve().isMarkedNullable,
-                    defaultValue = if (param.hasDefault) "default" else null,
+                    typeName = getFullTypeName(type),
+                    isNullable = type.isMarkedNullable,
+                    defaultValue = extractDefaultValue(param),
                 )
             }
 
@@ -327,9 +330,10 @@ class SwiftifySymbolProcessor(
         val simpleName = declaration.simpleName.asString()
         val packageName = declaration.packageName.asString()
 
+        // Get element type from Flow<T> with full generic info
         val returnType = declaration.type.resolve()
         val elementType = returnType.arguments.firstOrNull()?.type?.resolve()
-        val elementTypeName = elementType?.declaration?.simpleName?.asString() ?: "Any"
+        val elementTypeName = if (elementType != null) getFullTypeName(elementType) else "Any"
 
         declarations.add(
             FlowFunctionDeclaration(
@@ -400,7 +404,7 @@ class SwiftifySymbolProcessor(
                             appendLine("hasAnnotation=true")
                         }
                         decl.parameters.forEach { param ->
-                            val defaultSuffix = if (param.defaultValue != null) "=default" else ""
+                            val defaultSuffix = if (param.defaultValue != null) "=${param.defaultValue}" else ""
                             appendLine("param=${param.name}:${param.typeName}$defaultSuffix")
                         }
                         appendLine()
@@ -434,6 +438,78 @@ class SwiftifySymbolProcessor(
             fileName = "swiftify-manifest",
             extensionName = "txt",
         ).bufferedWriter().use { it.write(manifest) }
+    }
+
+    /**
+     * Get the full type name including generic arguments.
+     * For example: List<String>, Map<String, Int>, etc.
+     */
+    private fun getFullTypeName(type: KSType): String {
+        val baseName = type.declaration.simpleName.asString()
+        val typeArgs = type.arguments
+        return if (typeArgs.isEmpty()) {
+            baseName
+        } else {
+            val argsStr = typeArgs.joinToString(", ") { arg ->
+                val argType = arg.type?.resolve()
+                if (argType != null) {
+                    getFullTypeName(argType)
+                } else {
+                    "Any"
+                }
+            }
+            "$baseName<$argsStr>"
+        }
+    }
+
+    /**
+     * Extract default value expression from source text if possible.
+     * This uses a regex-based approach since KSP doesn't directly expose default values.
+     */
+    private fun extractDefaultValue(param: KSValueParameter): String? {
+        if (!param.hasDefault) return null
+
+        // Try to get source text from the containing declaration
+        val containingDecl = param.parent as? KSFunctionDeclaration ?: return "default"
+
+        try {
+            // Get the source text of the function
+            val location = containingDecl.location as? com.google.devtools.ksp.symbol.FileLocation
+                ?: return "default"
+
+            val file = java.io.File(location.filePath)
+            if (!file.exists()) return "default"
+
+            val source = file.readText()
+            val paramName = param.name?.asString() ?: return "default"
+
+            // Pattern to match "paramName: Type = value" across multiple lines
+            // Handles: page: Int = 1, or includeArchived: Boolean = false,
+            // Type pattern: word chars, optionally followed by <generic>, optionally nullable
+            val pattern = Regex(
+                """$paramName\s*:\s*(\w+(?:<[^>]+>)?)\??\s*=\s*([^\n,)]+)""",
+                RegexOption.MULTILINE,
+            )
+            val match = pattern.find(source)
+
+            if (match != null) {
+                // groupValues[1] is the type, groupValues[2] is the value
+                val value = match.groupValues[2].trim()
+                // Validate it's a simple literal value we can use in Swift
+                return when {
+                    value == "null" -> "null"
+                    value == "true" || value == "false" -> value
+                    value.matches(Regex("""-?\d+(\.\d+)?""")) -> value
+                    value.startsWith("\"") && value.endsWith("\"") -> value
+                    value.matches(Regex("""\w+\.\w+""")) -> value // Enum values like Color.RED
+                    else -> "default" // Complex expression, can't safely extract
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Swiftify: Could not extract default value for $param: ${e.message}")
+        }
+
+        return "default"
     }
 
     companion object {

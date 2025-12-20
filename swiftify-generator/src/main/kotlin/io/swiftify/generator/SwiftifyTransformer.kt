@@ -434,10 +434,17 @@ class SwiftifyTransformer {
 
     /**
      * Convert Kotlin default value to Swift.
+     *
+     * Returns null if the default value is unknown (e.g., KSP mode only knows a default
+     * exists but not what it is). This will skip generating convenience overloads for
+     * parameters where we don't know the actual default value.
      */
     private fun mapKotlinDefaultValueToSwift(kotlinDefaultValue: String?): String? = when (kotlinDefaultValue) {
         null -> null
         "null" -> "nil"
+        // "default" is a marker from KSP mode indicating a default exists but value is unknown
+        // Skip generating overloads for these - Kotlin/Native already handles defaults
+        "default" -> null
         else -> kotlinDefaultValue
     }
 }
