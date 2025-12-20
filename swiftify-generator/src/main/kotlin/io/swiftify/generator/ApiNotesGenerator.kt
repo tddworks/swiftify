@@ -37,7 +37,7 @@ class ApiNotesGenerator {
                     // Sealed classes get their own entry
                     appendLine(generateSealedClassNotes(decl))
                 }
-                is SuspendFunctionDeclaration -> {
+                is FunctionDeclaration -> {
                     // Group by package for now (could be by class if we had that info)
                     val key = decl.packageName.ifEmpty { "Global" }
                     classDeclarations.getOrPut(key) { mutableListOf() }.add(decl)
@@ -80,7 +80,7 @@ class ApiNotesGenerator {
 
         declarations.forEach { decl ->
             when (decl) {
-                is SuspendFunctionDeclaration -> {
+                is FunctionDeclaration -> {
                     appendLine(generateMethodNotes(decl))
                 }
                 is FlowFunctionDeclaration -> {
@@ -91,7 +91,7 @@ class ApiNotesGenerator {
         }
     }
 
-    private fun generateMethodNotes(decl: SuspendFunctionDeclaration): String = buildString {
+    private fun generateMethodNotes(decl: FunctionDeclaration): String = buildString {
         // Generate selector for Objective-C method
         val selector = generateObjCSelector(decl.name, decl.parameters)
 

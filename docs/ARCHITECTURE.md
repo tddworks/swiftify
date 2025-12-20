@@ -48,9 +48,9 @@ class KotlinDeclarationAnalyzer {
 }
 
 sealed class KotlinDeclaration {
-    data class SuspendFunctionDeclaration(...)
-    data class FlowFunctionDeclaration(...)
-    data class SealedClassDeclaration(...)
+    data class FunctionDeclaration(...)      // Functions with @SwiftDefaults
+    data class FlowFunctionDeclaration(...)  // Flow functions with @SwiftFlow
+    data class SealedClassDeclaration(...)   // Sealed classes with @SwiftEnum
 }
 ```
 

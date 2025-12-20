@@ -100,7 +100,7 @@ class SwiftifyTransformer {
         val sealedClasses = declarations.filterIsInstance<SealedClassDeclaration>()
 
         // Group functions by containing class for cleaner extension generation
-        val suspendFunctions = declarations.filterIsInstance<SuspendFunctionDeclaration>()
+        val suspendFunctions = declarations.filterIsInstance<FunctionDeclaration>()
         val flowFunctions = declarations.filterIsInstance<FlowFunctionDeclaration>()
 
         // Transform sealed classes:
@@ -121,7 +121,7 @@ class SwiftifyTransformer {
         if (options.generateImplementations) {
             val functionsByClass = (suspendFunctions + flowFunctions).groupBy { decl ->
                 when (decl) {
-                    is SuspendFunctionDeclaration -> decl.containingClassName
+                    is FunctionDeclaration -> decl.containingClassName
                     is FlowFunctionDeclaration -> decl.containingClassName
                     else -> null
                 }
@@ -132,7 +132,7 @@ class SwiftifyTransformer {
 
                 funcs.forEach { declaration ->
                     when (declaration) {
-                        is SuspendFunctionDeclaration -> {
+                        is FunctionDeclaration -> {
                             // Check if we should process this function:
                             // - If requireAnnotations=true, only process annotated functions
                             // - If requireAnnotations=false, process all functions
@@ -185,7 +185,7 @@ class SwiftifyTransformer {
             // Signature-only mode (for preview)
             declarations.forEach { declaration ->
                 when (declaration) {
-                    is SuspendFunctionDeclaration -> {
+                    is FunctionDeclaration -> {
                         val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftAsyncAnnotation
                         if (shouldProcess && config.defaults.generateDefaultOverloads) {
                             val swiftCode = transformSuspendFunction(declaration, config, options)
@@ -265,7 +265,7 @@ class SwiftifyTransformer {
      * For actual code generation, the implementation mode uses transformSuspendFunctionBodies().
      */
     private fun transformSuspendFunction(
-        declaration: SuspendFunctionDeclaration,
+        declaration: FunctionDeclaration,
         config: SwiftifySpec,
         options: TransformOptions,
     ): String {
@@ -286,6 +286,7 @@ class SwiftifyTransformer {
             parameters = parameters,
             returnType = mapKotlinTypeToSwift(declaration.returnTypeName, false),
             isThrowing = isThrowing,
+            isAsync = declaration.isSuspend,
         )
 
         // For preview mode, just generate the signature
@@ -334,7 +335,7 @@ class SwiftifyTransformer {
      * @return List of convenience overload bodies, or empty if none needed
      */
     private fun transformSuspendFunctionBodies(
-        declaration: SuspendFunctionDeclaration,
+        declaration: FunctionDeclaration,
         config: SwiftifySpec,
     ): List<String> {
         // Kotlin 2.0+ suspend functions are always async throws
@@ -360,6 +361,7 @@ class SwiftifyTransformer {
             parameters = parameters,
             returnType = mapKotlinTypeToSwift(declaration.returnTypeName, false),
             isThrowing = isThrowing,
+            isAsync = declaration.isSuspend,
         )
 
         // Generate convenience overload bodies (without extension wrapper)

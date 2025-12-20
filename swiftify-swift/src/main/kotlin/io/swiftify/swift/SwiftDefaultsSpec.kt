@@ -34,11 +34,11 @@ data class SwiftDefaultsSpec(
      * Access level for the generated function.
      */
     val accessLevel: AccessLevel = AccessLevel.PUBLIC,
-) {
     /**
-     * Async functions are always async by definition.
+     * Whether this function is async (from suspend in Kotlin).
      */
-    val isAsync: Boolean = true
+    val isAsync: Boolean = true,
+) {
 
     enum class AccessLevel {
         PUBLIC,

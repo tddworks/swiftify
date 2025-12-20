@@ -127,6 +127,32 @@ class SwiftifyGenerateTaskTest {
     }
 
     @Test
+    fun `generate creates convenience overload for non-suspend function with SwiftDefaults`() {
+        createSourceFile("Calculator.kt", """
+            package com.example
+
+            import io.swiftify.annotations.SwiftDefaults
+
+            class Calculator {
+                @SwiftDefaults
+                fun calculate(
+                    value: Int,
+                    multiplier: Int = 2
+                ): Int = value * multiplier
+            }
+        """.trimIndent())
+
+        val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
+        task.outputDirectory.set(outputDir)
+
+        task.generate()
+
+        val swiftContent = findGeneratedSwiftContent()
+        assertContains(swiftContent, "func calculate(value:", message = "Expected convenience overload for non-suspend function")
+        assertContains(swiftContent, "multiplier: 2", message = "Expected default value for multiplier")
+    }
+
+    @Test
     fun `generate creates AsyncStream wrapper for SwiftFlow function`() {
         createSourceFile("MessageRepository.kt", """
             package com.example

@@ -46,9 +46,11 @@ data class PropertyDeclaration(
 )
 
 /**
- * Represents a suspend function that can be transformed to Swift async.
+ * Represents a function that can be transformed to Swift.
+ * For suspend functions, generates async Swift code.
+ * For regular functions with @SwiftDefaults, generates convenience overloads.
  */
-data class SuspendFunctionDeclaration(
+data class FunctionDeclaration(
     override val qualifiedName: String,
     override val simpleName: String,
     override val packageName: String,
@@ -61,6 +63,8 @@ data class SuspendFunctionDeclaration(
     val receiverTypeName: String? = null,
     /** The name of the class containing this function, if any */
     val containingClassName: String? = null,
+    /** Whether this is a suspend function (generates async in Swift) */
+    val isSuspend: Boolean = true,
 ) : KotlinDeclaration
 
 /**

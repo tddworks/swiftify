@@ -165,7 +165,7 @@ class ManifestDeclarationParser {
                     }
 
                 declarations.add(
-                    SuspendFunctionDeclaration(
+                    FunctionDeclaration(
                         qualifiedName = qualifiedName,
                         simpleName = name,
                         packageName = packageName,

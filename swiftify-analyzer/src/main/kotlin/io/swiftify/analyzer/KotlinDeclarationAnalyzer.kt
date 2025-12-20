@@ -24,6 +24,10 @@ class KotlinDeclarationAnalyzer {
         Regex(
             """(@SwiftDefaults\s*(?:\([^)]*\))?\s*|@SwiftAsync\s*(?:\([^)]*\))?\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
         )
+    private val regularFunctionWithDefaultsPattern =
+        Regex(
+            """@SwiftDefaults\s*(?:\([^)]*\))?\s*fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
+        )
     private val flowFunctionPattern =
         Regex(
             """(@SwiftFlow\s*(?:\([^)]*\))?\s*)?fun\s+(\w+)\s*\(([^)]*)\)\s*:\s*(?:Flow|StateFlow|SharedFlow)<(\w+\??)>""",
@@ -76,6 +80,9 @@ class KotlinDeclarationAnalyzer {
 
         // Analyze suspend functions
         declarations += analyzeSuspendFunctions(cleanedSource, packageName, classRanges)
+
+        // Analyze regular functions with @SwiftDefaults
+        declarations += analyzeRegularFunctionsWithDefaults(cleanedSource, packageName, classRanges)
 
         // Analyze Flow-returning functions
         declarations += analyzeFlowFunctions(cleanedSource, packageName, classRanges)
@@ -259,8 +266,8 @@ class KotlinDeclarationAnalyzer {
         source: String,
         packageName: String,
         classRanges: List<Pair<String, IntRange>>,
-    ): List<SuspendFunctionDeclaration> {
-        val results = mutableListOf<SuspendFunctionDeclaration>()
+    ): List<FunctionDeclaration> {
+        val results = mutableListOf<FunctionDeclaration>()
 
         suspendFunctionPattern.findAll(source).forEach { match ->
             val annotation = match.groupValues[1]
@@ -291,7 +298,7 @@ class KotlinDeclarationAnalyzer {
             val containingClass = findContainingClass(match.range.first, classRanges)
 
             results +=
-                SuspendFunctionDeclaration(
+                FunctionDeclaration(
                     qualifiedName = if (packageName.isNotEmpty()) "$packageName.$funcName" else funcName,
                     simpleName = funcName,
                     packageName = packageName,
@@ -302,6 +309,49 @@ class KotlinDeclarationAnalyzer {
                     hasSwiftAsyncAnnotation = hasAnnotation,
                     isThrowing = isThrowing,
                     containingClassName = containingClass,
+                    isSuspend = true,
+                )
+        }
+
+        return results
+    }
+
+    private fun analyzeRegularFunctionsWithDefaults(
+        source: String,
+        packageName: String,
+        classRanges: List<Pair<String, IntRange>>,
+    ): List<FunctionDeclaration> {
+        val results = mutableListOf<FunctionDeclaration>()
+
+        regularFunctionWithDefaultsPattern.findAll(source).forEach { match ->
+            val funcName = match.groupValues[1]
+            val typeParams =
+                match.groupValues[2]
+                    .takeIf { it.isNotBlank() }
+                    ?.split(",")
+                    ?.map { it.trim() }
+                    ?: emptyList()
+            val paramsStr = match.groupValues[3]
+            val returnType = match.groupValues.getOrNull(4)?.takeIf { it.isNotBlank() } ?: "Unit"
+
+            val parameters = parseParameters(paramsStr)
+
+            // Find containing class
+            val containingClass = findContainingClass(match.range.first, classRanges)
+
+            results +=
+                FunctionDeclaration(
+                    qualifiedName = if (packageName.isNotEmpty()) "$packageName.$funcName" else funcName,
+                    simpleName = funcName,
+                    packageName = packageName,
+                    name = funcName,
+                    parameters = parameters,
+                    returnTypeName = returnType,
+                    typeParameters = typeParams,
+                    hasSwiftAsyncAnnotation = true,
+                    isThrowing = false,
+                    containingClassName = containingClass,
+                    isSuspend = false,
                 )
         }
 

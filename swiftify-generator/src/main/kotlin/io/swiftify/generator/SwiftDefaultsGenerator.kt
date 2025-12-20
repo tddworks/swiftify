@@ -226,7 +226,7 @@ class SwiftDefaultsGenerator {
             },
         )
         append(")")
-        append(" async")
+        if (overloadSpec.isAsync) append(" async")
         if (overloadSpec.isThrowing) append(" throws")
         if (fullSpec.returnType !is SwiftType.Void) {
             append(" -> ")
@@ -242,7 +242,7 @@ class SwiftDefaultsGenerator {
             append(indent)
         }
         if (overloadSpec.isThrowing) append("try ")
-        append("await ")
+        if (overloadSpec.isAsync) append("await ")
         append(fullSpec.name)
         append("(")
 
@@ -485,8 +485,10 @@ class SwiftDefaultsGenerator {
         append(spec.parameters.joinToString(", ") { it.toSwift() })
         append(")")
 
-        // Async modifier (always present for async functions)
-        append(" async")
+        // Async modifier (only for async/suspend functions)
+        if (spec.isAsync) {
+            append(" async")
+        }
 
         // Throws modifier
         if (spec.isThrowing) {

@@ -39,7 +39,7 @@ class SwiftifySymbolProcessor(
 
                 when (declaration) {
                     is KSClassDeclaration -> processClass(declaration)
-                    is KSFunctionDeclaration -> processFunction(declaration)
+                    is KSFunctionDeclaration -> processTopLevelFunction(declaration)
                     is KSPropertyDeclaration -> processProperty(declaration)
                 }
             }
@@ -81,7 +81,7 @@ class SwiftifySymbolProcessor(
     ) {
         val modifiers = declaration.modifiers
 
-        // Check for @SwiftDefaults or @SwiftAsync on suspend functions
+        // Check for @SwiftDefaults or @SwiftAsync annotations
         val hasSwiftDefaults =
             declaration.annotations.any {
                 it.shortName.asString() == "SwiftDefaults"
@@ -91,8 +91,11 @@ class SwiftifySymbolProcessor(
                 it.shortName.asString() == "SwiftAsync"
             }
 
-        if (modifiers.contains(Modifier.SUSPEND) && (hasSwiftDefaults || hasSwiftAsync)) {
-            processSuspendFunction(declaration, containingClassName)
+        val isSuspend = modifiers.contains(Modifier.SUSPEND)
+
+        // Process suspend functions with annotations, or any function with @SwiftDefaults
+        if ((isSuspend && (hasSwiftDefaults || hasSwiftAsync)) || (!isSuspend && hasSwiftDefaults)) {
+            processFunction(declaration, containingClassName, isSuspend)
         }
 
         // Check for @SwiftFlow on Flow-returning functions
@@ -184,7 +187,7 @@ class SwiftifySymbolProcessor(
         logger.info("Swiftify: Found sealed class $qualifiedName")
     }
 
-    private fun processFunction(declaration: KSFunctionDeclaration) {
+    private fun processTopLevelFunction(declaration: KSFunctionDeclaration) {
         val modifiers = declaration.modifiers
 
         // Check for annotations
@@ -201,16 +204,19 @@ class SwiftifySymbolProcessor(
                 it.shortName.asString() == "SwiftFlow"
             }
 
+        val isSuspend = modifiers.contains(Modifier.SUSPEND)
+
         when {
-            modifiers.contains(Modifier.SUSPEND) && (hasSwiftDefaults || hasSwiftAsync) ->
-                processSuspendFunction(declaration, null)
+            (isSuspend && (hasSwiftDefaults || hasSwiftAsync)) || (!isSuspend && hasSwiftDefaults) ->
+                processFunction(declaration, null, isSuspend)
             hasSwiftFlow && isFlowReturning(declaration) -> processFlowFunction(declaration, null)
         }
     }
 
-    private fun processSuspendFunction(
+    private fun processFunction(
         declaration: KSFunctionDeclaration,
         containingClassName: String?,
+        isSuspend: Boolean,
     ) {
         val qualifiedName = declaration.qualifiedName?.asString() ?: return
         val simpleName = declaration.simpleName.asString()
@@ -248,7 +254,7 @@ class SwiftifySymbolProcessor(
         val returnTypeName = if (returnType != null) getFullTypeName(returnType) else "Unit"
 
         declarations.add(
-            SuspendFunctionDeclaration(
+            FunctionDeclaration(
                 qualifiedName = qualifiedName,
                 simpleName = simpleName,
                 packageName = packageName,
@@ -257,12 +263,14 @@ class SwiftifySymbolProcessor(
                 returnTypeName = returnTypeName,
                 typeParameters = declaration.typeParameters.map { it.name.asString() },
                 hasSwiftAsyncAnnotation = swiftAsyncAnnotation != null || swiftDefaultsAnnotation != null,
-                isThrowing = isThrowing,
+                isThrowing = if (isSuspend) isThrowing else false,
                 containingClassName = containingClassName,
+                isSuspend = isSuspend,
             ),
         )
 
-        logger.info("Swiftify: Found suspend function $qualifiedName")
+        val functionType = if (isSuspend) "suspend" else "regular"
+        logger.info("Swiftify: Found $functionType function $qualifiedName")
     }
 
     private fun processFlowFunction(
@@ -391,7 +399,7 @@ class SwiftifySymbolProcessor(
                         }
                         appendLine()
                     }
-                    is SuspendFunctionDeclaration -> {
+                    is FunctionDeclaration -> {
                         appendLine("[suspend:${decl.qualifiedName}]")
                         appendLine("name=${decl.name}")
                         appendLine("package=${decl.packageName}")

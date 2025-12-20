@@ -72,7 +72,7 @@ class KotlinDeclarationAnalyzerTest {
         val declarations = analyzer.analyze(kotlinSource)
 
         assertEquals(1, declarations.size)
-        val suspendFn = declarations[0] as SuspendFunctionDeclaration
+        val suspendFn = declarations[0] as FunctionDeclaration
         assertEquals("fetchUser", suspendFn.name)
         assertEquals(1, suspendFn.parameters.size)
         assertEquals("id", suspendFn.parameters[0].name)
@@ -95,7 +95,7 @@ class KotlinDeclarationAnalyzerTest {
 
         val declarations = analyzer.analyze(kotlinSource)
 
-        val suspendFn = declarations[0] as SuspendFunctionDeclaration
+        val suspendFn = declarations[0] as FunctionDeclaration
         assertEquals(3, suspendFn.parameters.size)
         assertEquals("10", suspendFn.parameters[1].defaultValue)
         assertEquals("0", suspendFn.parameters[2].defaultValue)
@@ -153,7 +153,7 @@ class KotlinDeclarationAnalyzerTest {
 
         val declarations = analyzer.analyze(kotlinSource)
 
-        val suspendFn = declarations[0] as SuspendFunctionDeclaration
+        val suspendFn = declarations[0] as FunctionDeclaration
         assertTrue(suspendFn.hasSwiftAsyncAnnotation) // Field name kept for backwards compat
     }
 
@@ -169,7 +169,7 @@ class KotlinDeclarationAnalyzerTest {
 
         val declarations = analyzer.analyze(kotlinSource)
 
-        val suspendFn = declarations[0] as SuspendFunctionDeclaration
+        val suspendFn = declarations[0] as FunctionDeclaration
         assertTrue(suspendFn.hasSwiftAsyncAnnotation)
         assertTrue(suspendFn.isThrowing)
     }
@@ -195,7 +195,7 @@ class KotlinDeclarationAnalyzerTest {
 
         assertEquals(3, declarations.size)
         assertTrue(declarations.any { it is SealedClassDeclaration })
-        assertTrue(declarations.any { it is SuspendFunctionDeclaration })
+        assertTrue(declarations.any { it is FunctionDeclaration })
         assertTrue(declarations.any { it is FlowFunctionDeclaration })
     }
 

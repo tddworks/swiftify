@@ -72,7 +72,7 @@ class DeclarationProviderTest {
 
             val declarations = provider.getDeclarations()
 
-            val suspendFuncs = declarations.filterIsInstance<SuspendFunctionDeclaration>()
+            val suspendFuncs = declarations.filterIsInstance<FunctionDeclaration>()
             assertEquals(1, suspendFuncs.size)
             assertEquals("getItems", suspendFuncs[0].name)
         }
@@ -126,7 +126,7 @@ class DeclarationProviderTest {
             val provider = RegexDeclarationProvider(listOf(sourceFile))
 
             val declarations = provider.getDeclarations()
-            val func = declarations.filterIsInstance<SuspendFunctionDeclaration>().first()
+            val func = declarations.filterIsInstance<FunctionDeclaration>().first()
 
             assertEquals(3, func.parameters.size)
             assertEquals("20", func.parameters[1].defaultValue)
@@ -194,7 +194,7 @@ class DeclarationProviderTest {
 
             val declarations = provider.getDeclarations()
 
-            val suspendFuncs = declarations.filterIsInstance<SuspendFunctionDeclaration>()
+            val suspendFuncs = declarations.filterIsInstance<FunctionDeclaration>()
             assertEquals(1, suspendFuncs.size)
             assertEquals("getItems", suspendFuncs[0].name)
             assertEquals("1", suspendFuncs[0].parameters[0].defaultValue)
@@ -332,8 +332,8 @@ class DeclarationProviderTest {
             val kspDeclarations = kspProvider.getDeclarations()
 
             // Both should have 1 suspend function
-            val regexFunc = regexDeclarations.filterIsInstance<SuspendFunctionDeclaration>().first()
-            val kspFunc = kspDeclarations.filterIsInstance<SuspendFunctionDeclaration>().first()
+            val regexFunc = regexDeclarations.filterIsInstance<FunctionDeclaration>().first()
+            val kspFunc = kspDeclarations.filterIsInstance<FunctionDeclaration>().first()
 
             // Key properties should match
             assertEquals(regexFunc.name, kspFunc.name)
