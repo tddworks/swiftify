@@ -4,11 +4,15 @@ import io.swiftify.dsl.swiftify
 import io.swiftify.generator.SwiftifyTransformer
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
  * End-to-end acceptance tests for suspend function → Swift async transformation.
- * Uses DSL mode (requireAnnotations = false) to test transformation of all suspend functions.
+ *
+ * NOTE: Kotlin 2.0+ automatically generates async/await for suspend functions.
+ * Swiftify only generates CONVENIENCE OVERLOADS for functions WITH default parameters.
+ * Functions without default parameters don't need transformation (Kotlin handles them).
  */
 class SuspendFunctionAcceptanceTest {
     private val transformer = SwiftifyTransformer()
@@ -22,7 +26,7 @@ class SuspendFunctionAcceptanceTest {
         }
 
     @Test
-    fun `simple suspend function transforms to async`() {
+    fun `suspend function WITHOUT defaults is not transformed`() {
         val kotlinSource =
             """
             suspend fun fetchUser(id: String): User {
@@ -32,16 +36,34 @@ class SuspendFunctionAcceptanceTest {
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
-        assertTrue(result.declarationsTransformed > 0)
-        assertContains(result.swiftCode, "func fetchUser")
-        assertContains(result.swiftCode, "async")
+        // No default parameters, so no transformation needed
+        // Kotlin 2.0+ already provides the async function
+        assertEquals(0, result.declarationsTransformed)
     }
 
     @Test
-    fun `suspend function with multiple parameters transforms correctly`() {
+    fun `suspend function WITH defaults generates convenience overload`() {
         val kotlinSource =
             """
-            suspend fun login(username: String, password: String): AuthResult {
+            suspend fun fetchUser(id: String, limit: Int = 10): User {
+                return User(id)
+            }
+            """.trimIndent()
+
+        val result = transformer.transform(kotlinSource, dslConfig)
+
+        // Has default parameter, so generates convenience overload
+        assertTrue(result.declarationsTransformed > 0)
+        assertContains(result.swiftCode, "func fetchUser")
+        // Should have overload without limit parameter
+        assertContains(result.swiftCode, "fetchUser(id: id, limit: 10)")
+    }
+
+    @Test
+    fun `suspend function with multiple default parameters generates overloads`() {
+        val kotlinSource =
+            """
+            suspend fun login(username: String, password: String, rememberMe: Boolean = false): AuthResult {
                 return AuthResult.Success
             }
             """.trimIndent()
@@ -50,16 +72,14 @@ class SuspendFunctionAcceptanceTest {
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func login")
-        assertContains(result.swiftCode, "username")
-        assertContains(result.swiftCode, "password")
-        assertContains(result.swiftCode, "async")
+        assertContains(result.swiftCode, "rememberMe: false")
     }
 
     @Test
-    fun `suspend function returning Unit transforms correctly`() {
+    fun `suspend function returning Unit with defaults transforms correctly`() {
         val kotlinSource =
             """
-            suspend fun logout() {
+            suspend fun logout(force: Boolean = false) {
                 // logout logic
             }
             """.trimIndent()
@@ -68,14 +88,14 @@ class SuspendFunctionAcceptanceTest {
 
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "func logout")
-        assertContains(result.swiftCode, "async")
+        assertContains(result.swiftCode, "force: false")
     }
 
     @Test
-    fun `throwing suspend function has throws modifier`() {
+    fun `throwing suspend function with defaults has async throws`() {
         val kotlinSource =
             """
-            suspend fun riskyOperation(): String {
+            suspend fun riskyOperation(retries: Int = 3): String {
                 throw Exception("Error")
             }
             """.trimIndent()
@@ -83,7 +103,6 @@ class SuspendFunctionAcceptanceTest {
         val result = transformer.transform(kotlinSource, dslConfig)
 
         assertTrue(result.declarationsTransformed > 0)
-        assertContains(result.swiftCode, "async")
-        assertContains(result.swiftCode, "throws")
+        assertContains(result.swiftCode, "async throws")
     }
 }

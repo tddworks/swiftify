@@ -7,29 +7,16 @@ import io.swiftify.swift.*
 
 /**
  * Configuration for the transformer.
+ *
+ * The transformer always generates complete, usable Swift code.
+ * This simplified API reflects the user's mental model:
+ * "I annotate my Kotlin → Swiftify generates Swift → I use it"
  */
 data class TransformOptions(
-    /**
-     * Whether to generate full implementations (true) or just signatures (false).
-     */
-    val generateImplementations: Boolean = false,
-
-    /**
-     * The Kotlin class name for extension methods (if applicable).
-     */
-    val className: String? = null,
-
     /**
      * Framework name for imports.
      */
     val frameworkName: String? = null,
-
-    /**
-     * Whether to include sealed class transformations.
-     * When false (default), sealed classes are skipped because Kotlin/Native exports them.
-     * When true (KSP mode), sealed classes are transformed to Swift enums.
-     */
-    val includeSealedClasses: Boolean = false,
 )
 
 /**
@@ -87,6 +74,11 @@ class SwiftifyTransformer {
 
     /**
      * Transform pre-analyzed declarations to Swift with full configuration.
+     *
+     * Always generates complete, usable Swift code:
+     * - Functions are grouped by containing class into single extension blocks
+     * - Sealed classes are only transformed when annotated with @SwiftEnum
+     * - Convenience overloads are generated for functions with default parameters
      */
     fun transformDeclarations(
         declarations: List<KotlinDeclaration>,
@@ -103,105 +95,76 @@ class SwiftifyTransformer {
         val suspendFunctions = declarations.filterIsInstance<FunctionDeclaration>()
         val flowFunctions = declarations.filterIsInstance<FlowFunctionDeclaration>()
 
-        // Transform sealed classes:
-        // - Preview mode (!generateImplementations): always transform
-        // - KSP mode (includeSealedClasses): transform because user explicitly requested
-        // - REGEX implementation mode: skip because Kotlin/Native exports them
-        if (!options.generateImplementations || options.includeSealedClasses) {
-            sealedClasses.forEach { declaration ->
-                if (config.defaults.transformSealedClassesToEnums) {
-                    val swiftCode = transformSealedClass(declaration, config, options)
-                    swiftCodeParts += swiftCode
-                    transformedCount++
-                }
+        // Transform sealed classes ONLY when explicitly annotated with @SwiftEnum
+        // Kotlin/Native already exports sealed classes, so we skip unannotated ones
+        sealedClasses.forEach { declaration ->
+            if (declaration.hasSwiftEnumAnnotation && config.defaults.transformSealedClassesToEnums) {
+                val swiftCode = transformSealedClass(declaration, config)
+                swiftCodeParts += swiftCode
+                transformedCount++
             }
         }
 
         // Group functions by class and generate merged extensions
-        if (options.generateImplementations) {
-            val functionsByClass = (suspendFunctions + flowFunctions).groupBy { decl ->
-                when (decl) {
-                    is FunctionDeclaration -> decl.containingClassName
-                    is FlowFunctionDeclaration -> decl.containingClassName
-                    else -> null
-                }
+        val functionsByClass = (suspendFunctions + flowFunctions).groupBy { decl ->
+            when (decl) {
+                is FunctionDeclaration -> decl.containingClassName
+                is FlowFunctionDeclaration -> decl.containingClassName
+                else -> null
             }
+        }
 
-            functionsByClass.forEach { (className, funcs) ->
-                val functionBodies = mutableListOf<String>()
+        functionsByClass.forEach { (className, funcs) ->
+            val functionBodies = mutableListOf<String>()
 
-                funcs.forEach { declaration ->
-                    when (declaration) {
-                        is FunctionDeclaration -> {
-                            // Check if we should process this function:
-                            // - If requireAnnotations=true, only process annotated functions
-                            // - If requireAnnotations=false, process all functions
-                            val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftDefaultsAnnotation
-                            if (shouldProcess && config.defaults.generateDefaultOverloads) {
-                                // Since Kotlin 2.0+ generates async/await natively, we only generate:
-                                // 1. Nothing for functions without default params (Kotlin has them)
-                                // 2. Convenience overloads for functions WITH default params
-                                val bodies = transformSuspendFunctionBodies(declaration, config)
-                                if (bodies.isNotEmpty()) {
-                                    functionBodies += bodies
-                                    transformedCount++
-                                }
-                            }
-                        }
-                        is FlowFunctionDeclaration -> {
-                            // Check if we should process this function:
-                            // - If requireAnnotations=true, only process annotated functions
-                            // - If requireAnnotations=false, process all Flow functions
-                            val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftFlowAnnotation
-                            if (shouldProcess && config.defaults.transformFlowToAsyncStream) {
-                                // Flow -> AsyncStream wrappers are always needed
-                                // (Kotlin only exposes raw Flow, not AsyncStream)
-                                val body = transformFlowFunctionBody(declaration, config)
-                                functionBodies += body
+            funcs.forEach { declaration ->
+                when (declaration) {
+                    is FunctionDeclaration -> {
+                        // Check if we should process this function:
+                        // - If requireAnnotations=true, only process annotated functions
+                        // - If requireAnnotations=false, process all functions
+                        val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftDefaultsAnnotation
+                        if (shouldProcess && config.defaults.generateDefaultOverloads) {
+                            // Since Kotlin 2.0+ generates async/await natively, we only generate:
+                            // 1. Nothing for functions without default params (Kotlin has them)
+                            // 2. Convenience overloads for functions WITH default params
+                            val bodies = transformSuspendFunctionBodies(declaration, config)
+                            if (bodies.isNotEmpty()) {
+                                functionBodies += bodies
                                 transformedCount++
                             }
                         }
-                        is SealedClassDeclaration -> { /* already handled */ }
-                    }
-                }
-
-                if (functionBodies.isNotEmpty()) {
-                    if (className != null) {
-                        // Wrap all functions in a single extension
-                        val extensionCode = buildString {
-                            appendLine("extension $className {")
-                            append(functionBodies.joinToString("\n\n") { "    $it".replace("\n", "\n    ").trimEnd() })
-                            appendLine()
-                            append("}")
-                        }
-                        swiftCodeParts += extensionCode
-                    } else {
-                        // Top-level functions, no extension needed
-                        swiftCodeParts += functionBodies.joinToString("\n\n")
-                    }
-                }
-            }
-        } else {
-            // Signature-only mode (for preview)
-            declarations.forEach { declaration ->
-                when (declaration) {
-                    is FunctionDeclaration -> {
-                        val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftDefaultsAnnotation
-                        if (shouldProcess && config.defaults.generateDefaultOverloads) {
-                            val swiftCode = transformSuspendFunction(declaration, config, options)
-                            swiftCodeParts += swiftCode
-                            transformedCount++
-                        }
                     }
                     is FlowFunctionDeclaration -> {
+                        // Check if we should process this function:
+                        // - If requireAnnotations=true, only process annotated functions
+                        // - If requireAnnotations=false, process all Flow functions
                         val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftFlowAnnotation
                         if (shouldProcess && config.defaults.transformFlowToAsyncStream) {
-                            val swiftCode = transformFlowFunction(declaration, config, options)
-                            swiftCodeParts += swiftCode
+                            // Flow -> AsyncStream wrappers are always needed
+                            // (Kotlin only exposes raw Flow, not AsyncStream)
+                            val body = transformFlowFunctionBody(declaration, config)
+                            functionBodies += body
                             transformedCount++
                         }
                     }
-                    else -> { /* already handled */ }
+                    is SealedClassDeclaration -> { /* already handled */ }
+                }
+            }
+
+            if (functionBodies.isNotEmpty()) {
+                if (className != null) {
+                    // Wrap all functions in a single extension
+                    val extensionCode = buildString {
+                        appendLine("extension $className {")
+                        append(functionBodies.joinToString("\n\n") { "    $it".replace("\n", "\n    ").trimEnd() })
+                        appendLine()
+                        append("}")
+                    }
+                    swiftCodeParts += extensionCode
+                } else {
+                    // Top-level functions, no extension needed
+                    swiftCodeParts += functionBodies.joinToString("\n\n")
                 }
             }
         }
@@ -216,7 +179,6 @@ class SwiftifyTransformer {
     private fun transformSealedClass(
         declaration: SealedClassDeclaration,
         config: SwiftifySpec,
-        options: TransformOptions,
     ): String {
         // Determine configuration from annotation or DSL
         val swiftName = declaration.swiftEnumName ?: declaration.simpleName
@@ -256,72 +218,6 @@ class SwiftifyTransformer {
         // Enums are data types - they don't need bridging implementations
         // The enum definition itself is complete
         return enumGenerator.generate(spec)
-    }
-
-    /**
-     * Transform suspend function for preview mode (signatures only).
-     *
-     * NOTE: This is only used for preview/signature mode, not for generating actual code.
-     * For actual code generation, the implementation mode uses transformSuspendFunctionBodies().
-     */
-    private fun transformSuspendFunction(
-        declaration: FunctionDeclaration,
-        config: SwiftifySpec,
-        options: TransformOptions,
-    ): String {
-        // Kotlin 2.0+ suspend functions are always async throws
-        val isThrowing = declaration.isThrowing
-
-        val parameters = declaration.parameters.map { param ->
-            SwiftParameter(
-                name = param.name,
-                type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue),
-            )
-        }
-
-        val spec = SwiftDefaultsSpec(
-            name = declaration.name,
-            typeParameters = declaration.typeParameters,
-            parameters = parameters,
-            returnType = mapKotlinTypeToSwift(declaration.returnTypeName, false),
-            isThrowing = isThrowing,
-            isAsync = declaration.isSuspend,
-        )
-
-        // For preview mode, just generate the signature
-        // (Kotlin 2.0+ will generate the actual implementation)
-        return defaultsGenerator.generate(spec)
-    }
-
-    private fun transformFlowFunction(
-        declaration: FlowFunctionDeclaration,
-        config: SwiftifySpec,
-        options: TransformOptions,
-    ): String {
-        val parameters = declaration.parameters.map { param ->
-            SwiftParameter(
-                name = param.name,
-                type = mapKotlinTypeToSwift(param.typeName, param.isNullable),
-                defaultValue = mapKotlinDefaultValueToSwift(param.defaultValue),
-            )
-        }
-
-        val spec = SwiftAsyncStreamSpec(
-            name = declaration.name,
-            parameters = parameters,
-            elementType = mapKotlinTypeToSwift(declaration.elementTypeName, false),
-            isProperty = declaration.isProperty,
-        )
-
-        // Use the containing class name from the declaration
-        val className = declaration.containingClassName
-
-        return if (options.generateImplementations) {
-            asyncStreamGenerator.generateWithImplementation(spec, className)
-        } else {
-            asyncStreamGenerator.generate(spec)
-        }
     }
 
     /**

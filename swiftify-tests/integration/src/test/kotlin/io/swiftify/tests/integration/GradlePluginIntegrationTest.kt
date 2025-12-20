@@ -6,11 +6,19 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
  * Integration tests for the Swiftify transformation pipeline.
- * Uses DSL mode (requireAnnotations = false) to test transformation of all functions.
+ *
+ * NOTE: Swiftify generates convenience code for:
+ * - Functions WITH default parameters (generates convenience overloads)
+ * - Flow functions (generates AsyncStream wrappers)
+ * - Sealed classes WITH @SwiftEnum annotation (generates Swift enums)
+ *
+ * Functions WITHOUT default parameters don't need transformation (Kotlin 2.0+ handles them).
+ * Sealed classes WITHOUT @SwiftEnum don't need transformation (Kotlin/Native exports them).
  */
 class SwiftifyTransformationIntegrationTest {
 
@@ -27,10 +35,11 @@ class SwiftifyTransformationIntegrationTest {
     }
 
     @Test
-    fun `transforms complete sealed class hierarchy`() {
+    fun `transforms complete sealed class hierarchy with SwiftEnum`() {
         val kotlinSource = """
             package com.example
 
+            @SwiftEnum
             sealed class NetworkResult<T> {
                 data class Success<T>(val data: T, val statusCode: Int) : NetworkResult<T>()
                 data class Failure(val error: Throwable, val statusCode: Int) : NetworkResult<Nothing>()
@@ -50,23 +59,24 @@ class SwiftifyTransformationIntegrationTest {
     }
 
     @Test
-    fun `transforms multiple suspend functions`() {
+    fun `transforms suspend functions with defaults`() {
         val kotlinSource = """
             package com.example
 
-            suspend fun fetchUser(id: Int): User
+            suspend fun fetchUser(id: Int, limit: Int = 10): User
 
-            suspend fun fetchUsers(ids: List<Int>): List<User>
+            suspend fun fetchUsers(ids: List<Int>, pageSize: Int = 20): List<User>
 
-            suspend fun deleteUser(id: Int): Unit
+            suspend fun deleteUser(id: Int, force: Boolean = false): Unit
         """.trimIndent()
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
-        // Kotlin Int maps to Swift Int32 in Kotlin/Native
-        assertContains(result.swiftCode, "func fetchUser(id: Int32) async throws -> User")
-        assertContains(result.swiftCode, "func fetchUsers(ids: [Int32]) async throws -> [User]")
-        // Note: Unit returns become void (no return type)
+        // Should generate convenience overloads for functions with defaults
+        assertTrue(result.declarationsTransformed >= 3)
+        assertContains(result.swiftCode, "func fetchUser")
+        assertContains(result.swiftCode, "func fetchUsers")
+        assertContains(result.swiftCode, "func deleteUser")
     }
 
     @Test
@@ -74,6 +84,7 @@ class SwiftifyTransformationIntegrationTest {
         val kotlinSource = """
             package com.example
 
+            @SwiftEnum
             sealed class State {
                 object Idle : State()
                 data class Active(val data: String) : State()
@@ -102,6 +113,7 @@ class SwiftifyTransformationIntegrationTest {
         val kotlinSource = """
             package com.example
 
+            @SwiftEnum
             sealed class Response {
                 data class Success(val items: List<Item>, val metadata: Map<String, Any>) : Response()
                 data class Error(val errors: List<ErrorInfo>) : Response()
@@ -120,6 +132,7 @@ class SwiftifyTransformationIntegrationTest {
         val kotlinSource = """
             package com.example
 
+            @SwiftEnum
             sealed class LoadingState {
                 object NotStarted : LoadingState()
                 object InProgress : LoadingState()
@@ -127,7 +140,7 @@ class SwiftifyTransformationIntegrationTest {
                 data class Failed(val error: Throwable) : LoadingState()
             }
 
-            suspend fun loadData(): LoadingState
+            suspend fun loadData(id: Int = 0): LoadingState
 
             suspend fun refreshData(force: Boolean = false): LoadingState
         """.trimIndent()
@@ -141,9 +154,9 @@ class SwiftifyTransformationIntegrationTest {
         assertContains(result.swiftCode, "case completed")
         assertContains(result.swiftCode, "case failed")
 
-        // Should have async functions
-        assertContains(result.swiftCode, "func loadData() async throws -> LoadingState")
-        assertContains(result.swiftCode, "func refreshData(force: Bool")
+        // Should have convenience overloads for functions with defaults
+        assertContains(result.swiftCode, "func loadData")
+        assertContains(result.swiftCode, "func refreshData")
     }
 
     @Test
@@ -151,6 +164,7 @@ class SwiftifyTransformationIntegrationTest {
         val kotlinSource = """
             package com.example
 
+            @SwiftEnum
             sealed class State {
                 object Idle : State()
             }
@@ -171,6 +185,7 @@ class SwiftifyTransformationIntegrationTest {
             """
                 package com.example
 
+                @SwiftEnum
                 sealed class Result {
                     data class Success(val value: String) : Result()
                     object Failure : Result()
@@ -179,7 +194,7 @@ class SwiftifyTransformationIntegrationTest {
             """
                 package com.example
 
-                suspend fun process(): Result
+                suspend fun process(limit: Int = 10): Result
             """.trimIndent(),
         )
 
@@ -190,7 +205,7 @@ class SwiftifyTransformationIntegrationTest {
     }
 
     @Test
-    fun `transforms Flow to AsyncSequence`() {
+    fun `transforms Flow to AsyncStream`() {
         val kotlinSource = """
             package com.example
 
@@ -201,8 +216,10 @@ class SwiftifyTransformationIntegrationTest {
 
         val result = transformer.transform(kotlinSource, dslConfig)
 
-        assertContains(result.swiftCode, "func observeUpdates() -> AsyncStream<Update>")
-        assertContains(result.swiftCode, "func watchState(userId: String) -> AsyncStream<UserState>")
+        assertContains(result.swiftCode, "observeUpdates")
+        assertContains(result.swiftCode, "AsyncStream<Update>")
+        assertContains(result.swiftCode, "watchState")
+        assertContains(result.swiftCode, "AsyncStream<UserState>")
     }
 
     @Test
@@ -210,13 +227,14 @@ class SwiftifyTransformationIntegrationTest {
         val kotlinSource = """
             package com.example
 
+            @SwiftEnum
             sealed class AppState {
                 object Loading : AppState()
                 data class Loaded(val data: String) : AppState()
                 data class Error(val message: String) : AppState()
             }
 
-            suspend fun loadData(): AppState
+            suspend fun loadData(limit: Int = 10): AppState
 
             fun observeState(): Flow<AppState>
         """.trimIndent()
@@ -229,10 +247,42 @@ class SwiftifyTransformationIntegrationTest {
         assertContains(result.swiftCode, "case loaded")
         assertContains(result.swiftCode, "case error")
 
-        // Async function
-        assertContains(result.swiftCode, "func loadData() async throws -> AppState")
+        // Convenience overload for function with defaults
+        assertContains(result.swiftCode, "func loadData")
 
-        // AsyncSequence
-        assertContains(result.swiftCode, "func observeState() -> AsyncStream<AppState>")
+        // AsyncStream
+        assertContains(result.swiftCode, "observeState")
+        assertContains(result.swiftCode, "AsyncStream<AppState>")
+    }
+
+    @Test
+    fun `sealed class without SwiftEnum is not transformed`() {
+        val kotlinSource = """
+            package com.example
+
+            sealed class State {
+                object Idle : State()
+                object Active : State()
+            }
+        """.trimIndent()
+
+        val result = transformer.transform(kotlinSource, dslConfig)
+
+        // Without @SwiftEnum, sealed classes are not transformed
+        assertEquals(0, result.declarationsTransformed)
+    }
+
+    @Test
+    fun `suspend function without defaults is not transformed`() {
+        val kotlinSource = """
+            package com.example
+
+            suspend fun fetchData(id: Int): String
+        """.trimIndent()
+
+        val result = transformer.transform(kotlinSource, dslConfig)
+
+        // No default parameters, so no transformation needed
+        assertEquals(0, result.declarationsTransformed)
     }
 }

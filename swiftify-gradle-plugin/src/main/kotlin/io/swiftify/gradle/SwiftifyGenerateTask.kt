@@ -121,12 +121,10 @@ abstract class SwiftifyGenerateTask : DefaultTask() {
             return
         }
 
-        // Generate with implementations so the code is actually usable
-        // In KSP mode, include sealed classes since user explicitly uses @SwiftEnum
+        // Transformer always generates complete, usable Swift code
+        // Sealed classes are only transformed when annotated with @SwiftEnum
         val options = TransformOptions(
-            generateImplementations = true,
             frameworkName = fwName,
-            includeSealedClasses = mode == AnalysisMode.KSP,
         )
 
         val generatedFiles = mutableListOf<File>()

@@ -13,11 +13,12 @@ class SealedClassAcceptanceTest {
     private val transformer = SwiftifyTransformer()
 
     @Test
-    fun `NetworkResult sealed class transforms to Swift enum`() {
+    fun `NetworkResult sealed class with SwiftEnum transforms to Swift enum`() {
         val kotlinSource =
             """
             package com.example
 
+            @SwiftEnum
             sealed class NetworkResult<out T> {
                 data class Success<T>(val data: T) : NetworkResult<T>()
                 data class Error(val message: String, val code: Int) : NetworkResult<Nothing>()
@@ -35,11 +36,12 @@ class SealedClassAcceptanceTest {
     }
 
     @Test
-    fun `AuthState sealed class transforms to Swift enum with associated values`() {
+    fun `AuthState sealed class with SwiftEnum transforms to Swift enum with associated values`() {
         val kotlinSource =
             """
             package com.example
 
+            @SwiftEnum
             sealed class AuthState {
                 data object LoggedOut : AuthState()
                 data class LoggedIn(val userId: String, val token: String) : AuthState()
@@ -57,9 +59,10 @@ class SealedClassAcceptanceTest {
     }
 
     @Test
-    fun `exhaustive sealed class gets @frozen attribute`() {
+    fun `exhaustive sealed class with SwiftEnum gets @frozen attribute`() {
         val kotlinSource =
             """
+            @SwiftEnum
             sealed class Color {
                 data object Red : Color()
                 data object Green : Color()
@@ -72,5 +75,24 @@ class SealedClassAcceptanceTest {
         // The transformer should mark it as exhaustive by default
         assertTrue(result.declarationsTransformed > 0)
         assertContains(result.swiftCode, "enum Color")
+    }
+
+    @Test
+    fun `sealed class without SwiftEnum annotation is not transformed`() {
+        val kotlinSource =
+            """
+            package com.example
+
+            sealed class State {
+                object Idle : State()
+                object Active : State()
+            }
+            """.trimIndent()
+
+        val result = transformer.transform(kotlinSource)
+
+        // Without @SwiftEnum, sealed classes are not transformed
+        // because Kotlin/Native already exports them
+        assertEquals(0, result.declarationsTransformed)
     }
 }

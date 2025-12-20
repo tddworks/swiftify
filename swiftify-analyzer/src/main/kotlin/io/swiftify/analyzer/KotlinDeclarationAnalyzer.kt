@@ -8,9 +8,10 @@ package io.swiftify.analyzer
  */
 class KotlinDeclarationAnalyzer {
     private val packagePattern = Regex("""package\s+([\w.]+)""")
+    // Matches @SwiftEnum annotation (with or without parentheses) followed by sealed class
     private val sealedClassPattern =
         Regex(
-            """(@SwiftEnum\s*\([^)]*\)\s*)?sealed\s+class\s+(\w+)(?:<([^>]+)>)?""",
+            """(@SwiftEnum\s*(?:\([^)]*\))?\s*)?sealed\s+class\s+(\w+)(?:<([^>]+)>)?""",
         )
     private val dataClassPattern =
         Regex(
@@ -166,8 +167,9 @@ class KotlinDeclarationAnalyzer {
                     ?: emptyList()
 
             // Parse annotation if present
+            // Check for @SwiftEnum presence (with or without parameters)
+            val hasAnnotation = annotation.contains("@SwiftEnum")
             val swiftEnumMatch = swiftEnumAnnotationPattern.find(annotation)
-            val hasAnnotation = swiftEnumMatch != null
             val swiftName = swiftEnumMatch?.groupValues?.get(1)
             val exhaustive = swiftEnumMatch?.groupValues?.get(2)?.toBooleanStrictOrNull() ?: true
 

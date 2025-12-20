@@ -8,7 +8,14 @@ import kotlin.test.assertTrue
 
 /**
  * Full end-to-end pipeline test using realistic sample code.
- * Uses DSL mode (requireAnnotations = false) to test transformation of all functions.
+ *
+ * NOTE: Swiftify generates convenience code for:
+ * - Functions WITH default parameters (@SwiftDefaults or DSL mode)
+ * - Flow functions (@SwiftFlow or DSL mode)
+ * - Sealed classes WITH @SwiftEnum annotation
+ *
+ * Functions WITHOUT default parameters don't need transformation (Kotlin 2.0+ handles them).
+ * Sealed classes WITHOUT @SwiftEnum don't need transformation (Kotlin/Native exports them).
  */
 class FullPipelineAcceptanceTest {
     private val transformer = SwiftifyTransformer()
@@ -36,10 +43,12 @@ class FullPipelineAcceptanceTest {
 
                 val currentUser: StateFlow<User?> = _currentUser
 
+                // No defaults - won't be transformed (Kotlin 2.0+ handles it)
                 suspend fun fetchUser(id: String): User {
                     return User(id = id, name = "John Doe", email = "john@example.com")
                 }
 
+                // Has defaults - WILL be transformed (convenience overloads)
                 suspend fun fetchUserWithOptions(
                     id: String,
                     includeProfile: Boolean = true,
@@ -48,14 +57,17 @@ class FullPipelineAcceptanceTest {
                     return User(id = id, name = "John", email = "john@example.com")
                 }
 
+                // Flow function - WILL be transformed (AsyncStream wrapper)
                 fun getUserUpdates(userId: String): Flow<User> {
                     throw NotImplementedError("Stub")
                 }
 
+                // No defaults - won't be transformed
                 suspend fun login(username: String, password: String): NetworkResult<User> {
                     return NetworkResult.Success(User("1", username, "${'$'}username@example.com"))
                 }
 
+                // No defaults - won't be transformed
                 suspend fun logout() {
                     _currentUser.value = null
                 }
@@ -74,29 +86,32 @@ class FullPipelineAcceptanceTest {
         println(result.swiftCode)
         println("=== End ===")
 
-        assertTrue(result.declarationsTransformed >= 4, "Should transform at least 4 declarations")
+        // Should transform: fetchUserWithOptions (has defaults) + getUserUpdates (Flow)
+        assertTrue(result.declarationsTransformed >= 2, "Should transform at least 2 declarations")
 
-        // Check suspend functions are transformed
-        assertContains(result.swiftCode, "func fetchUser")
-        assertContains(result.swiftCode, "async")
+        // Check function with defaults is transformed
+        assertContains(result.swiftCode, "func fetchUserWithOptions")
+        assertContains(result.swiftCode, "includeProfile: true")
 
         // Check Flow functions are transformed
-        assertContains(result.swiftCode, "func getUserUpdates")
+        assertContains(result.swiftCode, "getUserUpdates")
         assertContains(result.swiftCode, "AsyncStream")
     }
 
     @Test
-    fun `full NetworkResult sealed class transforms correctly`() {
+    fun `full NetworkResult sealed class with SwiftEnum transforms correctly`() {
         val kotlinSource =
             """
             package com.example
 
+            @SwiftEnum
             sealed class NetworkResult<out T> {
                 data class Success<T>(val data: T) : NetworkResult<T>()
                 data class Error(val message: String, val code: Int) : NetworkResult<Nothing>()
                 data object Loading : NetworkResult<Nothing>()
             }
 
+            @SwiftEnum
             sealed class AuthState {
                 data object LoggedOut : AuthState()
                 data class LoggedIn(val userId: String, val token: String) : AuthState()
@@ -128,6 +143,7 @@ class FullPipelineAcceptanceTest {
     fun `combined file generates valid Swift`() {
         val kotlinSource1 =
             """
+            @SwiftEnum
             sealed class Result<out T> {
                 data class Success<T>(val value: T) : Result<T>()
                 data class Failure(val error: String) : Result<Nothing>()
@@ -136,7 +152,7 @@ class FullPipelineAcceptanceTest {
 
         val kotlinSource2 =
             """
-            suspend fun fetchData(id: Int): String {
+            suspend fun fetchData(id: Int, limit: Int = 100): String {
                 return "data"
             }
             """.trimIndent()

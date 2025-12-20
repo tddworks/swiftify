@@ -14,11 +14,12 @@ class SwiftifyTransformerTest {
     private val transformer = SwiftifyTransformer()
 
     @Test
-    fun `transform sealed class to swift enum`() {
+    fun `transform sealed class with SwiftEnum annotation to swift enum`() {
         val kotlinSource =
             """
             package com.example
 
+            @SwiftEnum
             sealed class NetworkResult {
                 data class Success(val data: String) : NetworkResult()
                 data class Failure(val error: Throwable) : NetworkResult()
@@ -35,23 +36,24 @@ class SwiftifyTransformerTest {
     }
 
     @Test
-    fun `transform suspend function to async with annotation`() {
+    fun `transform suspend function with default param to convenience overload`() {
         val kotlinSource =
             """
             package com.example
 
             @SwiftDefaults
-            suspend fun fetchUser(id: Int): User
+            suspend fun fetchUser(id: Int, limit: Int = 10): User
             """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
 
-        // Kotlin Int maps to Swift Int32 in Kotlin/Native
-        assertContains(result.swiftCode, "public func fetchUser(id: Int32) async throws -> User")
+        // Generates convenience overload without the default param
+        assertContains(result.swiftCode, "func fetchUser(id: Int32)")
+        assertContains(result.swiftCode, "limit: 10")
     }
 
     @Test
-    fun `transform suspend function with DSL mode`() {
+    fun `transform suspend function without defaults is not transformed`() {
         val kotlinSource =
             """
             package com.example
@@ -68,7 +70,8 @@ class SwiftifyTransformerTest {
             }
         val result = transformer.transform(kotlinSource, config)
 
-        assertContains(result.swiftCode, "public func fetchUser(id: Int32) async throws -> User")
+        // No default params, so no transformation needed (Kotlin 2.0+ handles it)
+        assertEquals(0, result.declarationsTransformed)
     }
 
     @Test
@@ -77,6 +80,7 @@ class SwiftifyTransformerTest {
             """
             package com.example
 
+            @SwiftEnum
             sealed class State {
                 object Idle : State()
                 data class Loading(val progress: Float) : State()
@@ -121,12 +125,13 @@ class SwiftifyTransformerTest {
             """
             package com.example
 
+            @SwiftEnum
             sealed class State {
                 object Idle : State()
                 object Loading : State()
             }
 
-            suspend fun loadState(): State
+            suspend fun loadState(limit: Int = 10): State
 
             fun observeState(): Flow<State>
             """.trimIndent()
@@ -140,10 +145,10 @@ class SwiftifyTransformerTest {
             }
         val result = transformer.transform(kotlinSource, config)
 
-        // Should generate enum
+        // Should generate enum (has @SwiftEnum annotation)
         assertContains(result.swiftCode, "public enum State")
 
-        // Should generate async function
+        // Should generate convenience overload for function with default param
         assertContains(result.swiftCode, "func loadState() async")
     }
 
@@ -153,14 +158,17 @@ class SwiftifyTransformerTest {
             """
             package com.example
 
+            @SwiftEnum
             sealed class A { object X : A() }
+            @SwiftEnum
             sealed class B { object Y : B() }
             @SwiftDefaults
-            suspend fun foo(): String
+            suspend fun foo(x: Int = 1): String
             """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
 
+        // 2 sealed classes with @SwiftEnum + 1 function with @SwiftDefaults and default param
         assertTrue(result.declarationsTransformed >= 3)
     }
 
@@ -170,6 +178,7 @@ class SwiftifyTransformerTest {
             """
             package com.example
 
+            @SwiftEnum
             sealed class Result<T> {
                 data class Success<T>(val value: T) : Result<T>()
                 data class Error(val message: String) : Result<Nothing>()
@@ -183,7 +192,7 @@ class SwiftifyTransformerTest {
     }
 
     // ============================================================
-    // Type Mapping Tests
+    // Type Mapping Tests (via sealed classes which always get transformed)
     // ============================================================
 
     @Test
@@ -193,7 +202,7 @@ class SwiftifyTransformerTest {
             package com.example
 
             @SwiftDefaults
-            suspend fun calculate(value: Int): Int
+            suspend fun calculate(value: Int, extra: Int = 0): Int
             """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
@@ -209,7 +218,7 @@ class SwiftifyTransformerTest {
             package com.example
 
             @SwiftDefaults
-            suspend fun processLong(value: Long): Long
+            suspend fun processLong(value: Long, extra: Long = 0): Long
             """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
@@ -224,7 +233,7 @@ class SwiftifyTransformerTest {
             package com.example
 
             @SwiftDefaults
-            suspend fun toggle(flag: Boolean): Boolean
+            suspend fun toggle(flag: Boolean, extra: Boolean = true): Boolean
             """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
@@ -238,6 +247,7 @@ class SwiftifyTransformerTest {
             """
             package com.example
 
+            @SwiftEnum
             sealed class Container {
                 data class Items(val items: List<String>) : Container()
             }
@@ -255,6 +265,7 @@ class SwiftifyTransformerTest {
             """
             package com.example
 
+            @SwiftEnum
             sealed class Wrapper {
                 data class Optional(val value: String?) : Wrapper()
             }
@@ -272,7 +283,7 @@ class SwiftifyTransformerTest {
             package com.example
 
             @SwiftDefaults
-            suspend fun doWork(): Unit
+            suspend fun doWork(extra: Int = 0): Unit
             """.trimIndent()
 
         val result = transformer.transform(kotlinSource)
@@ -286,7 +297,7 @@ class SwiftifyTransformerTest {
     // ============================================================
 
     @Test
-    fun `transform with generateImplementations creates extension blocks`() {
+    fun `transform creates extension blocks for class methods`() {
         val kotlinSource =
             """
             package com.example
@@ -297,14 +308,13 @@ class SwiftifyTransformerTest {
             }
             """.trimIndent()
 
-        val options = TransformOptions(generateImplementations = true)
-        val result = transformer.transform(kotlinSource, options)
+        val result = transformer.transform(kotlinSource)
 
         assertContains(result.swiftCode, "extension Repository")
     }
 
     @Test
-    fun `transform without generateImplementations creates signatures only`() {
+    fun `transform always generates complete code`() {
         val kotlinSource =
             """
             package com.example
@@ -313,10 +323,9 @@ class SwiftifyTransformerTest {
             suspend fun fetchData(id: Int = 1): Data
             """.trimIndent()
 
-        val options = TransformOptions(generateImplementations = false)
-        val result = transformer.transform(kotlinSource, options)
+        val result = transformer.transform(kotlinSource)
 
-        // Should have signature but not implementation details
+        // Always generates complete code with function body
         assertContains(result.swiftCode, "func fetchData")
     }
 
@@ -335,8 +344,7 @@ class SwiftifyTransformerTest {
             }
             """.trimIndent()
 
-        val options = TransformOptions(generateImplementations = true)
-        val result = transformer.transform(kotlinSource, options)
+        val result = transformer.transform(kotlinSource)
 
         // Both functions should be in same extension block
         val extensionCount = "extension UserRepository".toRegex().findAll(result.swiftCode).count()
@@ -610,17 +618,18 @@ class SwiftifyTransformerTest {
                         properties = emptyList(),
                     )
                 ),
+                hasSwiftEnumAnnotation = true, // Must have annotation to be transformed
             )
         )
 
-        val options = TransformOptions(generateImplementations = false)
+        val options = TransformOptions()
         val result = transformer.transformDeclarations(declarations, options)
 
         assertContains(result.swiftCode, "enum State")
     }
 
     @Test
-    fun `transform skips sealed classes in REGEX implementation mode`() {
+    fun `transform skips sealed classes without SwiftEnum annotation`() {
         val kotlinSource =
             """
             package com.example
@@ -630,34 +639,27 @@ class SwiftifyTransformerTest {
             }
             """.trimIndent()
 
-        // REGEX mode with generateImplementations = true should skip sealed classes
+        // Sealed classes without @SwiftEnum annotation are skipped
         // because Kotlin/Native already exports them
-        val options = TransformOptions(
-            generateImplementations = true,
-            includeSealedClasses = false,
-        )
-        val result = transformer.transform(kotlinSource, options)
+        val result = transformer.transform(kotlinSource)
 
         // Sealed class should be skipped (Kotlin/Native handles it)
         assertEquals(0, result.declarationsTransformed)
     }
 
     @Test
-    fun `transform includes sealed classes when includeSealedClasses is true`() {
+    fun `transform includes sealed classes with SwiftEnum annotation`() {
         val kotlinSource =
             """
             package com.example
 
+            @SwiftEnum
             sealed class State {
                 object Idle : State()
             }
             """.trimIndent()
 
-        val options = TransformOptions(
-            generateImplementations = true,
-            includeSealedClasses = true,
-        )
-        val result = transformer.transform(kotlinSource, options)
+        val result = transformer.transform(kotlinSource)
 
         assertContains(result.swiftCode, "enum State")
     }
