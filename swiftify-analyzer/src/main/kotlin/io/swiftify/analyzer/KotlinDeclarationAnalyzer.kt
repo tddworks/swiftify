@@ -8,6 +8,7 @@ package io.swiftify.analyzer
  */
 class KotlinDeclarationAnalyzer {
     private val packagePattern = Regex("""package\s+([\w.]+)""")
+
     // Matches @SwiftEnum annotation (with or without parentheses) followed by sealed class
     private val sealedClassPattern =
         Regex(
@@ -21,6 +22,7 @@ class KotlinDeclarationAnalyzer {
         Regex(
             """(?:data\s+)?object\s+(\w+)\s*:\s*(\w+)(?:<[^>]*>)?(?:\(\))?""",
         )
+
     // Matches functions with optional @SwiftDefaults and optional suspend keyword
     // Group 1: @SwiftDefaults annotation (optional)
     // Group 2: suspend keyword (optional)

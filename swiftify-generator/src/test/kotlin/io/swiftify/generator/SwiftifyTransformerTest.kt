@@ -577,9 +577,11 @@ class SwiftifyTransformerTest {
 
         val result = transformer.transform(kotlinSource)
 
-        assertTrue(result.declarations.any {
-            it.packageName == "com.example.feature.subfeature"
-        })
+        assertTrue(
+            result.declarations.any {
+                it.packageName == "com.example.feature.subfeature"
+            },
+        )
     }
 
     @Test
@@ -616,10 +618,10 @@ class SwiftifyTransformerTest {
                         isObject = true,
                         isDataClass = false,
                         properties = emptyList(),
-                    )
+                    ),
                 ),
                 hasSwiftEnumAnnotation = true, // Must have annotation to be transformed
-            )
+            ),
         )
 
         val options = TransformOptions()

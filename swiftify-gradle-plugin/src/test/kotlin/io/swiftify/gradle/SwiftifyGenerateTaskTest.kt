@@ -52,7 +52,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate creates Swift file for suspend function with SwiftDefaults`() {
-        createSourceFile("UserRepository.kt", """
+        createSourceFile(
+            "UserRepository.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftDefaults
@@ -64,7 +66,8 @@ class SwiftifyGenerateTaskTest {
                     limit: Int = 20
                 ): List<String> = emptyList()
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -77,7 +80,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate creates convenience overload with no arguments for SwiftDefaults function`() {
-        createSourceFile("UserRepository.kt", """
+        createSourceFile(
+            "UserRepository.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftDefaults
@@ -89,7 +94,8 @@ class SwiftifyGenerateTaskTest {
                     limit: Int = 20
                 ): List<String> = emptyList()
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -102,7 +108,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate includes default values in convenience overload`() {
-        createSourceFile("UserRepository.kt", """
+        createSourceFile(
+            "UserRepository.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftDefaults
@@ -114,7 +122,8 @@ class SwiftifyGenerateTaskTest {
                     limit: Int = 20
                 ): List<String> = emptyList()
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -128,7 +137,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate creates convenience overload for non-suspend function with SwiftDefaults`() {
-        createSourceFile("Calculator.kt", """
+        createSourceFile(
+            "Calculator.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftDefaults
@@ -140,7 +151,8 @@ class SwiftifyGenerateTaskTest {
                     multiplier: Int = 2
                 ): Int = value * multiplier
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -154,7 +166,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate creates AsyncStream wrapper for SwiftFlow function`() {
-        createSourceFile("MessageRepository.kt", """
+        createSourceFile(
+            "MessageRepository.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftFlow
@@ -165,7 +179,8 @@ class SwiftifyGenerateTaskTest {
                 @SwiftFlow
                 fun watchMessages(roomId: String): Flow<String> = flowOf("message")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -178,7 +193,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate uses SwiftifyFlowCollector for SwiftFlow function`() {
-        createSourceFile("MessageRepository.kt", """
+        createSourceFile(
+            "MessageRepository.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftFlow
@@ -189,7 +206,8 @@ class SwiftifyGenerateTaskTest {
                 @SwiftFlow
                 fun watchMessages(roomId: String): Flow<String> = flowOf("message")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -202,7 +220,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate imports configured framework name`() {
-        createSourceFile("Api.kt", """
+        createSourceFile(
+            "Api.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftDefaults
@@ -211,7 +231,8 @@ class SwiftifyGenerateTaskTest {
                 @SwiftDefaults
                 suspend fun ping(): String = "pong"
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -225,7 +246,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `generate creates SwiftifyRuntime file for SwiftFlow function`() {
-        createSourceFile("Repo.kt", """
+        createSourceFile(
+            "Repo.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftFlow
@@ -236,7 +259,8 @@ class SwiftifyGenerateTaskTest {
                 @SwiftFlow
                 fun watch(): Flow<String> = flowOf("x")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
@@ -249,7 +273,9 @@ class SwiftifyGenerateTaskTest {
 
     @Test
     fun `SwiftifyRuntime contains SwiftifyFlowCollector`() {
-        createSourceFile("Repo.kt", """
+        createSourceFile(
+            "Repo.kt",
+            """
             package com.example
 
             import io.swiftify.annotations.SwiftFlow
@@ -260,7 +286,8 @@ class SwiftifyGenerateTaskTest {
                 @SwiftFlow
                 fun watch(): Flow<String> = flowOf("x")
             }
-        """.trimIndent())
+            """.trimIndent(),
+        )
 
         val task = project.tasks.getByName("swiftifyGenerate") as SwiftifyGenerateTask
         task.outputDirectory.set(outputDir)
