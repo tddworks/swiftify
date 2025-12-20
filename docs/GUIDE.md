@@ -516,24 +516,6 @@ Always test your API from actual Swift code to ensure:
 
 ---
 
-## Migration from @SwiftAsync
-
-If you were using the deprecated `@SwiftAsync` annotation:
-
-```kotlin
-// Before (deprecated)
-@SwiftAsync
-suspend fun getData(): Data
-
-// After
-@SwiftDefaults
-suspend fun getData(): Data
-```
-
-The `@SwiftAsync` annotation is deprecated because Kotlin 2.0+ automatically exports suspend functions as Swift `async throws`. Use `@SwiftDefaults` when you have default parameters that need convenience overloads.
-
----
-
 ## Requirements
 
 - Kotlin 2.0+

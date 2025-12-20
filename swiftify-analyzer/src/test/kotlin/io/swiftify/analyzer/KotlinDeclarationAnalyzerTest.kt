@@ -2,6 +2,7 @@ package io.swiftify.analyzer
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -78,6 +79,7 @@ class KotlinDeclarationAnalyzerTest {
         assertEquals("id", suspendFn.parameters[0].name)
         assertEquals("Int", suspendFn.parameters[0].typeName)
         assertEquals("User", suspendFn.returnTypeName)
+        assertFalse(suspendFn.hasSwiftDefaultsAnnotation)
     }
 
     @Test
@@ -99,6 +101,43 @@ class KotlinDeclarationAnalyzerTest {
         assertEquals(3, suspendFn.parameters.size)
         assertEquals("10", suspendFn.parameters[1].defaultValue)
         assertEquals("0", suspendFn.parameters[2].defaultValue)
+    }
+
+    @Test
+    fun `regular function without SwiftDefaults is not analyzed`() {
+        val kotlinSource =
+            """
+            package com.example
+
+            fun calculate(x: Int): Int {
+                return x * 2
+            }
+            """.trimIndent()
+
+        val declarations = analyzer.analyze(kotlinSource)
+
+        assertEquals(0, declarations.size)
+    }
+
+    @Test
+    fun `regular function with SwiftDefaults is analyzed`() {
+        val kotlinSource =
+            """
+            package com.example
+
+            @SwiftDefaults
+            fun calculate(x: Int, multiplier: Int = 2): Int {
+                return x * multiplier
+            }
+            """.trimIndent()
+
+        val declarations = analyzer.analyze(kotlinSource)
+
+        assertEquals(1, declarations.size)
+        val fn = declarations[0] as FunctionDeclaration
+        assertEquals("calculate", fn.name)
+        assertTrue(fn.hasSwiftDefaultsAnnotation)
+        assertFalse(fn.isSuspend)
     }
 
     @Test

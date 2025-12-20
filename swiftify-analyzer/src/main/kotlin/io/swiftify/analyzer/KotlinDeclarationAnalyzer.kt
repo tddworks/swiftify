@@ -20,13 +20,16 @@ class KotlinDeclarationAnalyzer {
         Regex(
             """(?:data\s+)?object\s+(\w+)\s*:\s*(\w+)(?:<[^>]*>)?(?:\(\))?""",
         )
-    private val suspendFunctionPattern =
+    // Matches functions with optional @SwiftDefaults and optional suspend keyword
+    // Group 1: @SwiftDefaults annotation (optional)
+    // Group 2: suspend keyword (optional)
+    // Group 3: function name
+    // Group 4: type parameters (optional)
+    // Group 5: parameters
+    // Group 6: return type (optional)
+    private val functionPattern =
         Regex(
-            """@SwiftDefaults\s*(?:\([^)]*\))?\s*suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
-        )
-    private val regularFunctionWithDefaultsPattern =
-        Regex(
-            """@SwiftDefaults\s*(?:\([^)]*\))?\s*fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
+            """(@SwiftDefaults\s*(?:\([^)]*\))?\s*)?(suspend\s+)?fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
         )
     private val flowFunctionPattern =
         Regex(
@@ -74,11 +77,8 @@ class KotlinDeclarationAnalyzer {
         // Analyze sealed classes
         declarations += analyzeSealedClasses(cleanedSource, packageName)
 
-        // Analyze suspend functions
-        declarations += analyzeSuspendFunctions(cleanedSource, packageName, classRanges)
-
-        // Analyze regular functions with @SwiftDefaults
-        declarations += analyzeRegularFunctionsWithDefaults(cleanedSource, packageName, classRanges)
+        // Analyze functions (suspend and regular with @SwiftDefaults)
+        declarations += analyzeFunctions(cleanedSource, packageName, classRanges)
 
         // Analyze Flow-returning functions
         declarations += analyzeFlowFunctions(cleanedSource, packageName, classRanges)
@@ -258,28 +258,40 @@ class KotlinDeclarationAnalyzer {
             }.toList()
     }
 
-    private fun analyzeSuspendFunctions(
+    /**
+     * Analyze functions from source code.
+     * - Suspend functions: always included (DSL mode can process all)
+     * - Regular functions: only included if they have @SwiftDefaults
+     */
+    private fun analyzeFunctions(
         source: String,
         packageName: String,
         classRanges: List<Pair<String, IntRange>>,
     ): List<FunctionDeclaration> {
         val results = mutableListOf<FunctionDeclaration>()
 
-        suspendFunctionPattern.findAll(source).forEach { match ->
-            val funcName = match.groupValues[1]
+        functionPattern.findAll(source).forEach { match ->
+            val annotation = match.groupValues[1]
+            val suspendKeyword = match.groupValues[2]
+            val funcName = match.groupValues[3]
             val typeParams =
-                match.groupValues[2]
+                match.groupValues[4]
                     .takeIf { it.isNotBlank() }
                     ?.split(",")
                     ?.map { it.trim() }
                     ?: emptyList()
-            val paramsStr = match.groupValues[3]
-            // Return type is optional - if not specified, it's Unit
-            val returnType = match.groupValues.getOrNull(4)?.takeIf { it.isNotBlank() } ?: "Unit"
+            val paramsStr = match.groupValues[5]
+            val returnType = match.groupValues.getOrNull(6)?.takeIf { it.isNotBlank() } ?: "Unit"
+
+            val isSuspend = suspendKeyword.isNotBlank()
+            val hasSwiftDefaults = annotation.contains("@SwiftDefaults")
+
+            // Include suspend functions (DSL mode processes all) or regular functions with @SwiftDefaults
+            if (!isSuspend && !hasSwiftDefaults) {
+                return@forEach // Skip regular functions without @SwiftDefaults
+            }
 
             val parameters = parseParameters(paramsStr)
-
-            // Find containing class
             val containingClass = findContainingClass(match.range.first, classRanges)
 
             results +=
@@ -291,52 +303,10 @@ class KotlinDeclarationAnalyzer {
                     parameters = parameters,
                     returnTypeName = returnType,
                     typeParameters = typeParams,
-                    hasSwiftDefaultsAnnotation = true,
-                    isThrowing = true, // Suspend functions are throwing by default
+                    hasSwiftDefaultsAnnotation = hasSwiftDefaults,
+                    isThrowing = isSuspend, // Suspend functions are throwing by default
                     containingClassName = containingClass,
-                    isSuspend = true,
-                )
-        }
-
-        return results
-    }
-
-    private fun analyzeRegularFunctionsWithDefaults(
-        source: String,
-        packageName: String,
-        classRanges: List<Pair<String, IntRange>>,
-    ): List<FunctionDeclaration> {
-        val results = mutableListOf<FunctionDeclaration>()
-
-        regularFunctionWithDefaultsPattern.findAll(source).forEach { match ->
-            val funcName = match.groupValues[1]
-            val typeParams =
-                match.groupValues[2]
-                    .takeIf { it.isNotBlank() }
-                    ?.split(",")
-                    ?.map { it.trim() }
-                    ?: emptyList()
-            val paramsStr = match.groupValues[3]
-            val returnType = match.groupValues.getOrNull(4)?.takeIf { it.isNotBlank() } ?: "Unit"
-
-            val parameters = parseParameters(paramsStr)
-
-            // Find containing class
-            val containingClass = findContainingClass(match.range.first, classRanges)
-
-            results +=
-                FunctionDeclaration(
-                    qualifiedName = if (packageName.isNotEmpty()) "$packageName.$funcName" else funcName,
-                    simpleName = funcName,
-                    packageName = packageName,
-                    name = funcName,
-                    parameters = parameters,
-                    returnTypeName = returnType,
-                    typeParameters = typeParams,
-                    hasSwiftDefaultsAnnotation = true,
-                    isThrowing = false,
-                    containingClassName = containingClass,
-                    isSuspend = false,
+                    isSuspend = isSuspend,
                 )
         }
 

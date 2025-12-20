@@ -56,7 +56,7 @@ sealed class KotlinDeclaration {
 
 **Key Features:**
 - Regex-based source analysis (fast, no compilation needed)
-- Supports both `@SwiftDefaults` and deprecated `@SwiftAsync`
+- Processes functions with `@SwiftDefaults` annotation
 - Extracts parameter defaults, types, and annotations
 
 ### swiftify-generator
