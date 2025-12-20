@@ -360,4 +360,380 @@ class SwiftDefaultsGeneratorTest {
         // Should have the function
         assertTrue(result.contains("func topLevelFunc(x: Int) async"))
     }
+
+    // ============================================================
+    // Implementation Generation Tests
+    // ============================================================
+
+    @Test
+    fun `generateWithImplementation wraps in extension for class`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "fetchData",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Data"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateWithImplementation(spec, "Repository")
+
+        assertTrue(result.contains("extension Repository"))
+        assertTrue(result.contains("public func fetchData()"))
+    }
+
+    @Test
+    fun `generateWithImplementation includes continuation pattern`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "loadUser",
+                parameters = listOf(
+                    SwiftParameter(name = "id", type = SwiftType.Named("String")),
+                ),
+                returnType = SwiftType.Named("User"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateWithImplementation(spec, "UserService")
+
+        assertTrue(result.contains("withCheckedThrowingContinuation"))
+        assertTrue(result.contains("continuation.resume"))
+    }
+
+    @Test
+    fun `generateWithImplementation for void return handles void properly`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "saveData",
+                parameters = listOf(
+                    SwiftParameter(name = "data", type = SwiftType.Named("Data")),
+                ),
+                returnType = SwiftType.Void,
+                isThrowing = true,
+            )
+
+        val result = generator.generateWithImplementation(spec, "DataStore")
+
+        // Void functions should use continuation that returns ()
+        assertTrue(result.contains("continuation.resume"))
+    }
+
+    @Test
+    fun `generateWithImplementation calls self for class methods`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "process",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Result"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateWithImplementation(spec, "Processor")
+
+        assertTrue(result.contains("self.process"))
+    }
+
+    @Test
+    fun `generateWithImplementation without class has no self prefix`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "globalFunc",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("String"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateWithImplementation(spec, null)
+
+        assertFalse(result.contains("extension"))
+        assertTrue(result.contains("globalFunc("))
+    }
+
+    // ============================================================
+    // Function Body Generation Tests
+    // ============================================================
+
+    @Test
+    fun `generateFunctionBody includes proper indentation`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "compute",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Int"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateFunctionBody(spec)
+
+        // Should have consistent indentation
+        assertTrue(result.contains("    "))
+    }
+
+    @Test
+    fun `generateFunctionBody includes completionHandler callback`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "fetch",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Data"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateFunctionBody(spec)
+
+        assertTrue(result.contains("completionHandler:"))
+    }
+
+    @Test
+    fun `generateFunctionBody handles error path for throwing functions`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "riskyOperation",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Result"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateFunctionBody(spec)
+
+        assertTrue(result.contains("if let error = error"))
+        assertTrue(result.contains("continuation.resume(throwing: error)"))
+    }
+
+    @Test
+    fun `generateFunctionBody handles non-throwing functions`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "safeOperation",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("String"),
+                isThrowing = false,
+                isAsync = true,
+            )
+
+        val result = generator.generateFunctionBody(spec)
+
+        assertTrue(result.contains("withCheckedContinuation"))
+        assertFalse(result.contains("withCheckedThrowingContinuation"))
+    }
+
+    // ============================================================
+    // Convenience Overload Edge Cases
+    // ============================================================
+
+    @Test
+    fun `convenience overloads respects maxOverloads limit`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "manyDefaults",
+                parameters = listOf(
+                    SwiftParameter(name = "a", type = SwiftType.Named("Int")),
+                    SwiftParameter(name = "b", type = SwiftType.Named("Int"), defaultValue = "1"),
+                    SwiftParameter(name = "c", type = SwiftType.Named("Int"), defaultValue = "2"),
+                    SwiftParameter(name = "d", type = SwiftType.Named("Int"), defaultValue = "3"),
+                    SwiftParameter(name = "e", type = SwiftType.Named("Int"), defaultValue = "4"),
+                    SwiftParameter(name = "f", type = SwiftType.Named("Int"), defaultValue = "5"),
+                    SwiftParameter(name = "g", type = SwiftType.Named("Int"), defaultValue = "6"),
+                ),
+                returnType = SwiftType.Void,
+            )
+
+        val result = generator.generateConvenienceOverloads(spec, "TestClass", maxOverloads = 3)
+
+        // Count number of function definitions
+        val funcCount = "public func manyDefaults".toRegex().findAll(result).count()
+        assertTrue(funcCount <= 3, "Expected at most 3 overloads, got $funcCount")
+    }
+
+    @Test
+    fun `convenience overloads handles all defaults at start`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "allDefaults",
+                parameters = listOf(
+                    SwiftParameter(name = "a", type = SwiftType.Named("Int"), defaultValue = "1"),
+                    SwiftParameter(name = "b", type = SwiftType.Named("Int"), defaultValue = "2"),
+                ),
+                returnType = SwiftType.Void,
+            )
+
+        val result = generator.generateConvenienceOverloads(spec, "TestClass")
+
+        // Should generate no-arg overload
+        assertTrue(result.contains("func allDefaults()"))
+    }
+
+    @Test
+    fun `convenience overload bodies preserves access level`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "internalFunc",
+                parameters = listOf(
+                    SwiftParameter(name = "x", type = SwiftType.Named("Int")),
+                    SwiftParameter(name = "y", type = SwiftType.Named("Int"), defaultValue = "0"),
+                ),
+                returnType = SwiftType.Void,
+                accessLevel = SwiftDefaultsSpec.AccessLevel.INTERNAL,
+            )
+
+        val result = generator.generateConvenienceOverloadBodies(spec)
+
+        assertTrue(result.isNotEmpty())
+        assertTrue(result[0].contains("internal func"))
+    }
+
+    @Test
+    fun `convenience overload handles nil default for optional`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "optionalParam",
+                parameters = listOf(
+                    SwiftParameter(name = "id", type = SwiftType.Named("String")),
+                    SwiftParameter(
+                        name = "extra",
+                        type = SwiftType.Optional(SwiftType.Named("String")),
+                        defaultValue = "nil",
+                    ),
+                ),
+                returnType = SwiftType.Named("Result"),
+                isThrowing = true,
+            )
+
+        val result = generator.generateConvenienceOverloads(spec, "Service")
+
+        assertTrue(result.contains("extra: nil"))
+    }
+
+    // ============================================================
+    // Type Handling Tests
+    // ============================================================
+
+    @Test
+    fun `generates function with dictionary return type`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "getMapping",
+                parameters = emptyList(),
+                returnType = SwiftType.Dictionary(
+                    SwiftType.Named("String"),
+                    SwiftType.Named("Int"),
+                ),
+            )
+
+        val result = generator.generate(spec)
+
+        assertTrue(result.contains("[String: Int]"))
+    }
+
+    @Test
+    fun `generates function with nested generic type`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "getNestedList",
+                parameters = emptyList(),
+                returnType = SwiftType.Array(
+                    SwiftType.Array(SwiftType.Named("String")),
+                ),
+            )
+
+        val result = generator.generate(spec)
+
+        assertTrue(result.contains("[[String]]"))
+    }
+
+    @Test
+    fun `generates function with variadic parameter marker`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "printAll",
+                parameters = listOf(
+                    SwiftParameter(
+                        name = "items",
+                        type = SwiftType.Named("String"),
+                        isVariadic = true,
+                    ),
+                ),
+                returnType = SwiftType.Void,
+            )
+
+        val result = generator.generate(spec)
+
+        assertTrue(result.contains("items: String..."))
+    }
+
+    @Test
+    fun `generates function with inout parameter`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "modify",
+                parameters = listOf(
+                    SwiftParameter(
+                        name = "value",
+                        type = SwiftType.Named("Int"),
+                        isInout = true,
+                    ),
+                ),
+                returnType = SwiftType.Void,
+            )
+
+        val result = generator.generate(spec)
+
+        assertTrue(result.contains("inout Int"))
+    }
+
+    // ============================================================
+    // Validation Tests
+    // ============================================================
+
+    @Test
+    fun `generate throws for blank function name`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "",
+                parameters = emptyList(),
+                returnType = SwiftType.Void,
+            )
+
+        val exception = org.junit.jupiter.api.assertThrows<io.swiftify.swift.SwiftifyValidationException> {
+            generator.generate(spec)
+        }
+
+        assertTrue(exception.message?.contains("name") == true)
+    }
+
+    @Test
+    fun `generate throws for blank parameter name`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "validFunc",
+                parameters = listOf(
+                    SwiftParameter(name = "", type = SwiftType.Named("Int")),
+                ),
+                returnType = SwiftType.Void,
+            )
+
+        val exception = org.junit.jupiter.api.assertThrows<io.swiftify.swift.SwiftifyValidationException> {
+            generator.generate(spec)
+        }
+
+        assertTrue(exception.message?.contains("Parameter") == true)
+    }
+
+    // ============================================================
+    // Private Access Level Tests
+    // ============================================================
+
+    @Test
+    fun `generates private function`() {
+        val spec =
+            SwiftDefaultsSpec(
+                name = "privateHelper",
+                parameters = emptyList(),
+                returnType = SwiftType.Named("Int"),
+                accessLevel = SwiftDefaultsSpec.AccessLevel.PRIVATE,
+            )
+
+        val result = generator.generate(spec)
+
+        assertTrue(result.contains("private func"))
+    }
 }
