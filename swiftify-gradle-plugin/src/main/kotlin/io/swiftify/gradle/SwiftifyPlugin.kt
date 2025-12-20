@@ -194,13 +194,17 @@ class SwiftifyPlugin : Plugin<Project> {
                 )
             }
 
-        // Depend on KSP tasks if KSP mode is selected
-        project.tasks.matching { it.name.startsWith("ksp") && it.name.endsWith("Kotlin") }.configureEach { kspTask ->
-            taskProvider.configure { task ->
-                task.mustRunAfter(kspTask)
-                // Only add actual dependency in KSP mode
-                if (extension.analysisMode.get() == AnalysisMode.KSP) {
-                    task.dependsOn(kspTask)
+        // Configure KSP dependencies after evaluation (when user config is processed)
+        project.afterEvaluate {
+            if (extension.analysisMode.get() == AnalysisMode.KSP) {
+                // Find all KSP tasks and add dependencies
+                project.tasks.matching { task ->
+                    task.name.startsWith("ksp") && task.name.contains("Kotlin")
+                }.forEach { kspTask ->
+                    taskProvider.configure { task ->
+                        task.dependsOn(kspTask)
+                        project.logger.info("Swiftify: swiftifyGenerate depends on ${kspTask.name}")
+                    }
                 }
             }
         }
