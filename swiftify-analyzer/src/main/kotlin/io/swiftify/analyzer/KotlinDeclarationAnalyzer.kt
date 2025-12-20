@@ -22,7 +22,7 @@ class KotlinDeclarationAnalyzer {
         )
     private val suspendFunctionPattern =
         Regex(
-            """(@SwiftDefaults\s*(?:\([^)]*\))?\s*|@SwiftAsync\s*(?:\([^)]*\))?\s*)?suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
+            """@SwiftDefaults\s*(?:\([^)]*\))?\s*suspend\s+fun\s+(\w+)(?:<([^>]+)>)?\s*\(([^)]*)\)(?:\s*:\s*(\S+))?""",
         )
     private val regularFunctionWithDefaultsPattern =
         Regex(
@@ -47,10 +47,6 @@ class KotlinDeclarationAnalyzer {
     private val swiftEnumAnnotationPattern =
         Regex(
             """@SwiftEnum\s*\(\s*name\s*=\s*"(\w+)"(?:,\s*exhaustive\s*=\s*(true|false))?\s*\)""",
-        )
-    private val swiftAsyncAnnotationPattern =
-        Regex(
-            """@SwiftAsync\s*\(\s*throwing\s*=\s*(true|false)\s*\)""",
         )
     private val swiftDefaultsAnnotationPattern =
         Regex(
@@ -270,27 +266,16 @@ class KotlinDeclarationAnalyzer {
         val results = mutableListOf<FunctionDeclaration>()
 
         suspendFunctionPattern.findAll(source).forEach { match ->
-            val annotation = match.groupValues[1]
-            val funcName = match.groupValues[2]
+            val funcName = match.groupValues[1]
             val typeParams =
-                match.groupValues[3]
+                match.groupValues[2]
                     .takeIf { it.isNotBlank() }
                     ?.split(",")
                     ?.map { it.trim() }
                     ?: emptyList()
-            val paramsStr = match.groupValues[4]
+            val paramsStr = match.groupValues[3]
             // Return type is optional - if not specified, it's Unit
-            val returnType = match.groupValues.getOrNull(5)?.takeIf { it.isNotBlank() } ?: "Unit"
-
-            // Parse annotation if present - support both @SwiftDefaults (preferred) and @SwiftAsync (deprecated)
-            val swiftDefaultsMatch = swiftDefaultsAnnotationPattern.find(annotation)
-            val swiftAsyncMatch = swiftAsyncAnnotationPattern.find(annotation)
-            val hasAnnotation =
-                swiftDefaultsMatch != null ||
-                    annotation.contains("@SwiftDefaults") ||
-                    swiftAsyncMatch != null ||
-                    annotation.contains("@SwiftAsync")
-            val isThrowing = swiftAsyncMatch?.groupValues?.get(1)?.toBooleanStrictOrNull() ?: true
+            val returnType = match.groupValues.getOrNull(4)?.takeIf { it.isNotBlank() } ?: "Unit"
 
             val parameters = parseParameters(paramsStr)
 
@@ -306,8 +291,8 @@ class KotlinDeclarationAnalyzer {
                     parameters = parameters,
                     returnTypeName = returnType,
                     typeParameters = typeParams,
-                    hasSwiftAsyncAnnotation = hasAnnotation,
-                    isThrowing = isThrowing,
+                    hasSwiftDefaultsAnnotation = true,
+                    isThrowing = true, // Suspend functions are throwing by default
                     containingClassName = containingClass,
                     isSuspend = true,
                 )
@@ -348,7 +333,7 @@ class KotlinDeclarationAnalyzer {
                     parameters = parameters,
                     returnTypeName = returnType,
                     typeParameters = typeParams,
-                    hasSwiftAsyncAnnotation = true,
+                    hasSwiftDefaultsAnnotation = true,
                     isThrowing = false,
                     containingClassName = containingClass,
                     isSuspend = false,

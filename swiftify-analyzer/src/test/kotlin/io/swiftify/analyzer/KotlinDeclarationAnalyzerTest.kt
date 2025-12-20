@@ -154,24 +154,8 @@ class KotlinDeclarationAnalyzerTest {
         val declarations = analyzer.analyze(kotlinSource)
 
         val suspendFn = declarations[0] as FunctionDeclaration
-        assertTrue(suspendFn.hasSwiftAsyncAnnotation) // Field name kept for backwards compat
-    }
-
-    @Test
-    fun `analyze suspend function with deprecated SwiftAsync annotation`() {
-        val kotlinSource =
-            """
-            package com.example
-
-            @SwiftAsync(throwing = true)
-            suspend fun loadData(): Data
-            """.trimIndent()
-
-        val declarations = analyzer.analyze(kotlinSource)
-
-        val suspendFn = declarations[0] as FunctionDeclaration
-        assertTrue(suspendFn.hasSwiftAsyncAnnotation)
-        assertTrue(suspendFn.isThrowing)
+        assertTrue(suspendFn.hasSwiftDefaultsAnnotation)
+        assertTrue(suspendFn.isThrowing) // Suspend functions are throwing by default
     }
 
     @Test

@@ -68,22 +68,6 @@ annotation class SwiftCase(
 )
 
 /**
- * @deprecated Use @SwiftDefaults instead. Kotlin 2.0+ already exports suspend functions
- * as Swift async/await automatically. Use @SwiftDefaults to generate convenience overloads
- * for functions with default parameters.
- */
-@Deprecated(
-    message = "Use @SwiftDefaults instead. Kotlin 2.0+ exports suspend as async automatically.",
-    replaceWith = ReplaceWith("SwiftDefaults"),
-)
-@Target(AnnotationTarget.FUNCTION)
-@Retention(AnnotationRetention.BINARY)
-annotation class SwiftAsync(
-    val throwing: Boolean = true,
-    val name: String = "",
-)
-
-/**
  * Marks a Flow-returning function to be exposed as Swift AsyncSequence.
  *
  * Example:

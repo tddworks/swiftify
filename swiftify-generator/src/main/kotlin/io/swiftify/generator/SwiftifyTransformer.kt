@@ -136,7 +136,7 @@ class SwiftifyTransformer {
                             // Check if we should process this function:
                             // - If requireAnnotations=true, only process annotated functions
                             // - If requireAnnotations=false, process all functions
-                            val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftAsyncAnnotation
+                            val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftDefaultsAnnotation
                             if (shouldProcess && config.defaults.generateDefaultOverloads) {
                                 // Since Kotlin 2.0+ generates async/await natively, we only generate:
                                 // 1. Nothing for functions without default params (Kotlin has them)
@@ -186,7 +186,7 @@ class SwiftifyTransformer {
             declarations.forEach { declaration ->
                 when (declaration) {
                     is FunctionDeclaration -> {
-                        val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftAsyncAnnotation
+                        val shouldProcess = !config.defaults.requireAnnotations || declaration.hasSwiftDefaultsAnnotation
                         if (shouldProcess && config.defaults.generateDefaultOverloads) {
                             val swiftCode = transformSuspendFunction(declaration, config, options)
                             swiftCodeParts += swiftCode

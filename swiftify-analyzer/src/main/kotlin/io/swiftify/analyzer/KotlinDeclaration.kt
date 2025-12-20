@@ -47,8 +47,8 @@ data class PropertyDeclaration(
 
 /**
  * Represents a function that can be transformed to Swift.
- * For suspend functions, generates async Swift code.
- * For regular functions with @SwiftDefaults, generates convenience overloads.
+ * Functions with @SwiftDefaults generate convenience overloads for default parameters.
+ * Suspend functions are exported as async by Kotlin 2.0+ automatically.
  */
 data class FunctionDeclaration(
     override val qualifiedName: String,
@@ -58,7 +58,8 @@ data class FunctionDeclaration(
     val parameters: List<ParameterDeclaration>,
     val returnTypeName: String,
     val typeParameters: List<String> = emptyList(),
-    val hasSwiftAsyncAnnotation: Boolean = false,
+    /** Whether this function has the @SwiftDefaults annotation */
+    val hasSwiftDefaultsAnnotation: Boolean = false,
     val isThrowing: Boolean = true,
     val receiverTypeName: String? = null,
     /** The name of the class containing this function, if any */

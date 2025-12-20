@@ -81,20 +81,16 @@ class SwiftifySymbolProcessor(
     ) {
         val modifiers = declaration.modifiers
 
-        // Check for @SwiftDefaults or @SwiftAsync annotations
+        // Check for @SwiftDefaults annotation
         val hasSwiftDefaults =
             declaration.annotations.any {
                 it.shortName.asString() == "SwiftDefaults"
             }
-        val hasSwiftAsync =
-            declaration.annotations.any {
-                it.shortName.asString() == "SwiftAsync"
-            }
 
         val isSuspend = modifiers.contains(Modifier.SUSPEND)
 
-        // Process suspend functions with annotations, or any function with @SwiftDefaults
-        if ((isSuspend && (hasSwiftDefaults || hasSwiftAsync)) || (!isSuspend && hasSwiftDefaults)) {
+        // Process functions with @SwiftDefaults annotation
+        if (hasSwiftDefaults) {
             processFunction(declaration, containingClassName, isSuspend)
         }
 
@@ -195,10 +191,6 @@ class SwiftifySymbolProcessor(
             declaration.annotations.any {
                 it.shortName.asString() == "SwiftDefaults"
             }
-        val hasSwiftAsync =
-            declaration.annotations.any {
-                it.shortName.asString() == "SwiftAsync"
-            }
         val hasSwiftFlow =
             declaration.annotations.any {
                 it.shortName.asString() == "SwiftFlow"
@@ -207,8 +199,7 @@ class SwiftifySymbolProcessor(
         val isSuspend = modifiers.contains(Modifier.SUSPEND)
 
         when {
-            (isSuspend && (hasSwiftDefaults || hasSwiftAsync)) || (!isSuspend && hasSwiftDefaults) ->
-                processFunction(declaration, null, isSuspend)
+            hasSwiftDefaults -> processFunction(declaration, null, isSuspend)
             hasSwiftFlow && isFlowReturning(declaration) -> processFlowFunction(declaration, null)
         }
     }
@@ -221,21 +212,6 @@ class SwiftifySymbolProcessor(
         val qualifiedName = declaration.qualifiedName?.asString() ?: return
         val simpleName = declaration.simpleName.asString()
         val packageName = declaration.packageName.asString()
-
-        // Get SwiftAsync or SwiftDefaults annotation if present
-        val swiftAsyncAnnotation =
-            declaration.annotations.find {
-                it.shortName.asString() == "SwiftAsync"
-            }
-        val swiftDefaultsAnnotation =
-            declaration.annotations.find {
-                it.shortName.asString() == "SwiftDefaults"
-            }
-
-        val isThrowing =
-            swiftAsyncAnnotation?.arguments?.find {
-                it.name?.asString() == "throwing"
-            }?.value as? Boolean ?: true
 
         // Get parameters with full type names and extracted default values
         val parameters =
@@ -262,8 +238,8 @@ class SwiftifySymbolProcessor(
                 parameters = parameters,
                 returnTypeName = returnTypeName,
                 typeParameters = declaration.typeParameters.map { it.name.asString() },
-                hasSwiftAsyncAnnotation = swiftAsyncAnnotation != null || swiftDefaultsAnnotation != null,
-                isThrowing = if (isSuspend) isThrowing else false,
+                hasSwiftDefaultsAnnotation = true,
+                isThrowing = isSuspend, // Suspend functions are throwing by default
                 containingClassName = containingClassName,
                 isSuspend = isSuspend,
             ),
@@ -408,7 +384,7 @@ class SwiftifySymbolProcessor(
                         if (decl.containingClassName != null) {
                             appendLine("class=${decl.containingClassName}")
                         }
-                        if (decl.hasSwiftAsyncAnnotation) {
+                        if (decl.hasSwiftDefaultsAnnotation) {
                             appendLine("hasAnnotation=true")
                         }
                         decl.parameters.forEach { param ->

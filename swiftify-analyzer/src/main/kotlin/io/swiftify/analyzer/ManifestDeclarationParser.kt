@@ -173,7 +173,7 @@ class ManifestDeclarationParser {
                         parameters = params,
                         returnTypeName = section["return"] ?: "Unit",
                         isThrowing = section["throwing"]?.toBooleanStrictOrNull() ?: true,
-                        hasSwiftAsyncAnnotation = hasAnnotation,
+                        hasSwiftDefaultsAnnotation = hasAnnotation,
                         containingClassName = containingClass,
                     ),
                 )
