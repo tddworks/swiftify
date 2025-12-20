@@ -162,10 +162,10 @@ class SwiftifyPlugin : Plugin<Project> {
                 task.description = "Process KSP manifest and generate Swift code (KSP mode)"
                 task.outputDirectory.set(extension.outputDirectory)
 
-                // Configure manifest file location from KSP output
-                val kspOutputDir = project.layout.buildDirectory.dir("generated/ksp")
-                task.manifestFile.set(
-                    kspOutputDir.map { it.file("main/resources/swiftify-manifest.txt") },
+                // Auto-detect manifest files from all KSP targets
+                val locator = ManifestLocator(project)
+                task.manifestFiles.set(
+                    project.provider { locator.locateManifests() },
                 )
 
                 // Only enable in KSP mode

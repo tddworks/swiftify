@@ -43,21 +43,22 @@ class SwiftifyProcessManifestTaskTest {
     }
 
     @Test
-    fun `manifestFile has default from plugin`() {
+    fun `manifestFiles has default from plugin`() {
         val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
 
-        // Plugin sets a default manifest file location
-        assertTrue(task.manifestFile.isPresent)
+        // Plugin sets a default manifest files location (provider)
+        assertTrue(task.manifestFiles.isPresent)
     }
 
     @Test
-    fun `manifestFile can be set`() {
+    fun `manifestFiles can be set`() {
         val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
         val manifest = File(tempDir, "manifest.txt")
-        task.manifestFile.set(manifest)
+        task.manifestFiles.set(listOf(manifest))
 
-        assertTrue(task.manifestFile.isPresent)
-        assertEquals(manifest.absolutePath, task.manifestFile.get().asFile.absolutePath)
+        assertTrue(task.manifestFiles.isPresent)
+        assertEquals(1, task.manifestFiles.get().size)
+        assertEquals(manifest.absolutePath, task.manifestFiles.get().first().absolutePath)
     }
 
     @Test
@@ -70,8 +71,9 @@ class SwiftifyProcessManifestTaskTest {
     }
 
     @Test
-    fun `task skips when no manifest file is configured`() {
+    fun `task skips when no manifest files are configured`() {
         val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
+        task.manifestFiles.set(emptyList())
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
 
@@ -83,11 +85,11 @@ class SwiftifyProcessManifestTaskTest {
     }
 
     @Test
-    fun `task skips when manifest file does not exist`() {
+    fun `task skips when manifest files do not exist`() {
         val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
 
         val nonExistentManifest = File(tempDir, "nonexistent.txt")
-        task.manifestFile.set(nonExistentManifest)
+        task.manifestFiles.set(listOf(nonExistentManifest))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -115,7 +117,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Loading:true
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -152,7 +154,7 @@ class SwiftifyProcessManifestTaskTest {
             param=refresh:Boolean
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -185,7 +187,7 @@ class SwiftifyProcessManifestTaskTest {
             param=filter:String
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -227,7 +229,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Error:false
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -266,7 +268,7 @@ class SwiftifyProcessManifestTaskTest {
             element=Int
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -288,7 +290,7 @@ class SwiftifyProcessManifestTaskTest {
 
         val manifestFile = File(tempDir, "manifest.txt")
         manifestFile.writeText("")
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -317,7 +319,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Loading:true
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "nested/output/dir")
         task.outputDirectory.set(outputDir)
@@ -342,7 +344,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Success:false
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -372,7 +374,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Success:false
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -403,7 +405,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Error:false
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -432,7 +434,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Success:false
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -460,7 +462,7 @@ class SwiftifyProcessManifestTaskTest {
             throwing=true
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -490,7 +492,7 @@ class SwiftifyProcessManifestTaskTest {
             param=timestamp:Long
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -522,7 +524,7 @@ class SwiftifyProcessManifestTaskTest {
             param=bool:Boolean
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -551,7 +553,7 @@ class SwiftifyProcessManifestTaskTest {
             param=limit:Int
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
 
         val outputDir = File(tempDir, "output")
         task.outputDirectory.set(outputDir)
@@ -586,7 +588,7 @@ class SwiftifyProcessManifestTaskTest {
             subclass=Success:false
             """.trimIndent(),
         )
-        task.manifestFile.set(manifestFile)
+        task.manifestFiles.set(listOf(manifestFile))
         task.outputDirectory.set(outputDir)
 
         task.processManifest()
@@ -595,5 +597,189 @@ class SwiftifyProcessManifestTaskTest {
         val content = swiftFile.readText()
         assertFalse(content.contains("old content"))
         assertTrue(content.contains("enum NewResult"))
+    }
+
+    // Multi-manifest tests
+
+    @Test
+    fun `task processes multiple manifest files from different targets`() {
+        val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
+
+        // Create manifests for different targets
+        val jvmManifest =
+            File(tempDir, "jvm-manifest.txt").apply {
+                writeText(
+                    """
+                    [sealed:com.example.Result]
+                    name=Result
+                    swiftName=Result
+                    exhaustive=true
+                    subclass=Success:false
+                    """.trimIndent(),
+                )
+            }
+
+        val iosManifest =
+            File(tempDir, "ios-manifest.txt").apply {
+                writeText(
+                    """
+                    [suspend:com.example.Api.fetch]
+                    name=fetch
+                    return=String
+                    throwing=true
+                    """.trimIndent(),
+                )
+            }
+
+        task.manifestFiles.set(listOf(jvmManifest, iosManifest))
+
+        val outputDir = File(tempDir, "output")
+        task.outputDirectory.set(outputDir)
+
+        task.processManifest()
+
+        val swiftFile = File(outputDir, "Swiftify.swift")
+        assertTrue(swiftFile.exists())
+
+        val content = swiftFile.readText()
+        assertTrue(content.contains("enum Result"))
+        assertTrue(content.contains("func fetch"))
+    }
+
+    @Test
+    fun `task deduplicates same declaration from multiple manifests`() {
+        val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
+
+        // Same sealed class in both manifests (common in KMP commonMain)
+        val manifest1 =
+            File(tempDir, "manifest1.txt").apply {
+                writeText(
+                    """
+                    [sealed:com.example.Result]
+                    name=Result
+                    swiftName=Result
+                    exhaustive=true
+                    subclass=Success:false
+                    """.trimIndent(),
+                )
+            }
+
+        val manifest2 =
+            File(tempDir, "manifest2.txt").apply {
+                writeText(
+                    """
+                    [sealed:com.example.Result]
+                    name=Result
+                    swiftName=Result
+                    exhaustive=true
+                    subclass=Success:false
+                    """.trimIndent(),
+                )
+            }
+
+        task.manifestFiles.set(listOf(manifest1, manifest2))
+
+        val outputDir = File(tempDir, "output")
+        task.outputDirectory.set(outputDir)
+
+        task.processManifest()
+
+        val swiftFile = File(outputDir, "Swiftify.swift")
+        val content = swiftFile.readText()
+
+        // Should only have one enum definition
+        val occurrences = content.split("enum Result").size - 1
+        assertEquals(1, occurrences)
+    }
+
+    @Test
+    fun `task handles mix of existing and non-existing manifest files`() {
+        val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
+
+        val existingManifest =
+            File(tempDir, "existing.txt").apply {
+                writeText(
+                    """
+                    [sealed:com.example.State]
+                    name=State
+                    swiftName=State
+                    exhaustive=true
+                    subclass=Loading:true
+                    """.trimIndent(),
+                )
+            }
+
+        val nonExistentManifest = File(tempDir, "nonexistent.txt")
+
+        task.manifestFiles.set(listOf(existingManifest, nonExistentManifest))
+
+        val outputDir = File(tempDir, "output")
+        task.outputDirectory.set(outputDir)
+
+        task.processManifest()
+
+        // Should process the existing manifest successfully
+        val swiftFile = File(outputDir, "Swiftify.swift")
+        assertTrue(swiftFile.exists())
+
+        val content = swiftFile.readText()
+        assertTrue(content.contains("enum State"))
+    }
+
+    @Test
+    fun `task processes manifests from three targets`() {
+        val task = project.tasks.getByName("swiftifyProcessManifest") as SwiftifyProcessManifestTask
+
+        val jvmManifest =
+            File(tempDir, "jvm-manifest.txt").apply {
+                writeText(
+                    """
+                    [sealed:com.example.Result]
+                    name=Result
+                    swiftName=Result
+                    exhaustive=true
+                    subclass=Success:false
+                    """.trimIndent(),
+                )
+            }
+
+        val iosManifest =
+            File(tempDir, "ios-manifest.txt").apply {
+                writeText(
+                    """
+                    [suspend:com.example.Api.fetch]
+                    name=fetch
+                    return=String
+                    throwing=true
+                    """.trimIndent(),
+                )
+            }
+
+        val macosManifest =
+            File(tempDir, "macos-manifest.txt").apply {
+                writeText(
+                    """
+                    [flow:com.example.Stream.observe]
+                    name=observe
+                    element=String
+                    """.trimIndent(),
+                )
+            }
+
+        task.manifestFiles.set(listOf(jvmManifest, iosManifest, macosManifest))
+
+        val outputDir = File(tempDir, "output")
+        task.outputDirectory.set(outputDir)
+
+        task.processManifest()
+
+        val swiftFile = File(outputDir, "Swiftify.swift")
+        assertTrue(swiftFile.exists())
+
+        val content = swiftFile.readText()
+        assertTrue(content.contains("enum Result"))
+        assertTrue(content.contains("func fetch"))
+        assertTrue(content.contains("func observe"))
+        assertTrue(content.contains("AsyncStream"))
     }
 }
