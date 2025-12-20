@@ -32,12 +32,8 @@ kotlin {
     }
 }
 
-// KSP processor for Swiftify
-dependencies {
-    add("kspJvm", "io.swiftify:swiftify-analyzer:0.1.0-SNAPSHOT")
-}
-
 // Swiftify DSL configuration
+// Note: KSP processor dependency is automatically added when using AnalysisMode.KSP
 // Note: frameworkName is auto-detected from KMP's baseName = "SampleKit"
 // Note: Kotlin 2.0+ already exports suspend functions as Swift async/await automatically.
 swiftify {

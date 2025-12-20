@@ -108,11 +108,10 @@ class SwiftifyPlugin : Plugin<Project> {
         project.logger.info("Swiftify: Configuring KSP-based analysis")
 
         // Add KSP processor dependency
-        try {
-            project.dependencies.add("ksp", "$PROCESSOR_ARTIFACT:${project.version}")
-        } catch (e: Exception) {
-            project.logger.debug("Swiftify: Could not add KSP processor: ${e.message}")
-        }
+        // For KMP projects, use target-specific configurations like kspJvm
+        // For non-KMP projects, use the generic ksp configuration
+        val processorDep = "$PROCESSOR_ARTIFACT:${project.version}"
+        addKspProcessorDependency(project, processorDep)
 
         // Configure KSP options
         try {
@@ -128,6 +127,43 @@ class SwiftifyPlugin : Plugin<Project> {
             }
         } catch (e: Exception) {
             project.logger.debug("Swiftify: Could not configure KSP options: ${e.message}")
+        }
+    }
+
+    /**
+     * Add KSP processor dependency to the appropriate configuration(s).
+     * For KMP projects, adds to kspJvm (and other JVM-based configurations).
+     * For non-KMP projects, adds to the generic ksp configuration.
+     */
+    private fun addKspProcessorDependency(project: Project, processorDep: String) {
+        val configurations = project.configurations
+
+        // Try target-specific KSP configurations for KMP projects
+        val kmpKspConfigs = listOf("kspJvm", "kspCommonMainMetadata")
+        var addedToAny = false
+
+        for (configName in kmpKspConfigs) {
+            try {
+                if (configurations.findByName(configName) != null) {
+                    project.dependencies.add(configName, processorDep)
+                    project.logger.info("Swiftify: Added KSP processor to $configName")
+                    addedToAny = true
+                }
+            } catch (e: Exception) {
+                project.logger.debug("Swiftify: Could not add to $configName: ${e.message}")
+            }
+        }
+
+        // Fallback to generic ksp configuration for non-KMP projects
+        if (!addedToAny) {
+            try {
+                if (configurations.findByName("ksp") != null) {
+                    project.dependencies.add("ksp", processorDep)
+                    project.logger.info("Swiftify: Added KSP processor to ksp")
+                }
+            } catch (e: Exception) {
+                project.logger.debug("Swiftify: Could not add KSP processor: ${e.message}")
+            }
         }
     }
 
